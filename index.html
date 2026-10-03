@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Class Analyzer — A/L Science Stream</title>
+<title>S.K. Wellala Biology Paper Class</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -118,16 +118,19 @@ canvas{max-height:320px;}
 @media (prefers-reduced-motion:reduce){.marq-track{animation:none}.marq{overflow-x:auto}}
 .chk{display:inline-flex;align-items:center;gap:6px;margin:4px 12px 4px 0;font-size:.85rem}
 .chk input{width:auto}
+.site-foot{text-align:center;padding:22px 14px 28px;color:var(--muted);font-size:.8rem}
+.site-foot b{color:var(--brand)}
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>">
 </head>
 <body>
 
 <header>
-  <div class="logo">🧬 <span>Class Analyzer</span> <span style="font-size:.7rem;color:var(--muted);font-weight:600">A/L Science</span></div>
+  <div class="logo">🧬 <span>S.K. Wellala Biology Paper Class</span></div>
   <div class="hdr-actions" id="hdrActions"></div>
 </header>
 <main id="app"></main>
+<footer class="site-foot">Site developer: <b>Tharusha Lansakra</b> · S.K. Wellala Biology Paper Class</footer>
 <div id="loading"><div class="spinner"></div></div>
 
 <script src="features.js"></script>
@@ -145,7 +148,7 @@ const $ = s => document.querySelector(s);
 const app = $("#app");
 const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const pct = (a,b) => b>0 ? Math.round(a/b*1000)/10 : 0;
-const SUBJECTS = ["Biology","Chemistry","Physics"];
+const SUBJECTS = ["Biology"];
 // Standard A/L grade boundaries by %
 const grade = p => p>=75?'A':p>=65?'B':p>=55?'C':p>=35?'S':'F';
 const gCls  = p => p>=75?'good':p>=55?'brand':p>=35?'warn':'bad';
@@ -286,7 +289,7 @@ else setupScreen();
 function landing(){
   app.innerHTML = `
   <div class="card hero">
-    <div class="badge">A/L Science Stream · Biology · Chemistry · Physics</div>
+    <div class="badge">A/L Biology · Paper Class</div>
     <h1>Track every paper.<br>Watch yourself improve.</h1>
     <p class="sub">Your teacher publishes marks paper-by-paper. Log in anytime to see your progress chart and full marks history — from your phone or computer.</p>
     <div class="hero-btns">
@@ -410,7 +413,7 @@ async function stuDash(){
   app.innerHTML = `
     <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <div><b style="font-size:1.05rem">🎓 ${esc(profile.fullName)}</b> <span class="pill brand">Student</span></div>
-      <div style="display:flex;gap:10px;align-items:center">
+      <div style="display:none">
         <label style="margin:0">Subject:</label>
         <select id="subj" style="width:auto">
           <option${state.stuSubject==='All'?' selected':''}>All</option>
@@ -426,7 +429,7 @@ async function stuDash(){
   const renderBody=papers=>{
     const rowsP=papers
       .filter(p=>state.stuSubject==='All'||p.subject===state.stuSubject)
-      .map(p=>({p, m:p.scores?.[user.uid]}))
+      .map(p=>({p, m:p.scores?.[String(profile.nic||'').toUpperCase()]}))
       .filter(r=>r.m!=null)
       .sort((a,b)=>String(a.p.date||'').localeCompare(String(b.p.date||'')));
     let inner='';
@@ -530,10 +533,10 @@ function teacherProfile(){
     <label>Full Name</label><input id="pn" value="${esc(p.fullName||'')}">
     <label>Phone Number</label><input id="pp" type="tel" placeholder="07X XXX XXXX" value="${esc(p.phone||'')}">
     <label>Institute / School</label><input id="pi" placeholder="e.g. ABC Tuition Class" value="${esc(p.institute||'')}">
-    <label>Class / Batch Name</label><input id="pc" placeholder="e.g. 2027 A/L Science" value="${esc(p.className||'')}">
+    <label>Class / Batch Name</label><input id="pc" placeholder="e.g. 2027 A/L Biology" value="${esc(p.className||'')}">
     <label>Qualification</label><input id="pq" placeholder="e.g. BSc (Hons), PGDE" value="${esc(p.qualification||'')}">
-    <label>Subjects you teach</label>
-    <div>${SUBJECTS.map(x=>`<label class="chk"><input type="checkbox" class="psub" value="${x}" ${have.includes(x)?'checked':''}>${x}</label>`).join('')}</div>
+    <label style="display:none">Subjects you teach</label>
+    <div style="display:none">${SUBJECTS.map(x=>`<label class="chk"><input type="checkbox" class="psub" value="${x}" checked>${x}</label>`).join('')}</div>
     <button class="btn btn-primary" id="psave" style="margin-top:12px">Save & Continue</button>
     <div id="pmsg"></div></div>`;
   $("#psave").onclick=async()=>{
@@ -558,17 +561,21 @@ async function teacherDash(){
   const students=stuSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.fullName.localeCompare(b.fullName));
   const pending=penSnap.docs.map(d=>({nic:d.id,...d.data()}));
   const papers=papSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  // roster = signed-up students + students the teacher added by NIC; marks are keyed by NIC
+  const roster=students.map(x=>({id:String(x.nic||'').toUpperCase(),uid:x.id,fullName:x.fullName,nic:String(x.nic||'').toUpperCase(),email:x.email,signedUp:true}));
+  pending.forEach(x=>{ if(!roster.some(r=>r.id===x.nic)) roster.push({id:x.nic,fullName:x.fullName,nic:x.nic,email:x.email||'',signedUp:false}); });
+  roster.sort((a,b)=>a.fullName.localeCompare(b.fullName));
   state.settings = setSnap?.exists()? setSnap.data() : {teacherSignupOpen:true};
 
   app.innerHTML = `
   <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
     <div><b style="font-size:1.05rem">👩‍🏫 ${esc(profile.fullName||'Instructor')}</b> <span class="pill brand">Teacher</span> <button class="btn btn-ghost btn-sm" id="editProf">✏️ Profile</button>
-      <span class="sub" style="display:inline"> · ${students.length} students · ${papers.length} papers</span></div>
+      <span class="sub" style="display:inline"> · ${roster.length} students · ${papers.length} papers</span></div>
     <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
       <span class="switch"><input type="checkbox" id="regOpen" ${state.settings.teacherSignupOpen!==false?'checked':''}><span class="slider"></span></span>
       <span style="font-size:.8rem">New teacher signups</span></label>
   </div>
-  ${rankMarquee(students,papers)}
+  ${rankMarquee(roster,papers)}
   <div class="tabs">
     <button data-tab="students" class="${state.tab==='students'?'active':''}">👨‍🎓 Students</button>
     <button data-tab="marks" class="${state.tab==='marks'?'active':''}">📝 Marks</button>
@@ -581,7 +588,7 @@ async function teacherDash(){
   $("#regOpen").onchange=async e=>{
     await setDoc(doc(db,'settings','registration'),{teacherSignupOpen:e.target.checked},{merge:true});
   };
-  ({students:tabStudents, marks:tabMarks, analytics:tabAnalytics})[state.tab]({students,pending,papers});
+  ({students:tabStudents, marks:tabMarks, analytics:tabAnalytics})[state.tab]({students:state.tab==='students'?students:roster,pending,papers});
 }
 
 /* ---- Students tab ---- */
@@ -589,7 +596,7 @@ function tabStudents({students,pending}){
   $("#tabBody").innerHTML = `
   <div class="card">
     <h2>Add Student</h2>
-    <p class="sub" style="margin:0 0 4px">Students register themselves on the student portal with this NIC — adding them here reserves the NIC and tracks who hasn't signed up yet.</p>
+    <p class="sub" style="margin:0 0 4px">Add each student with their NIC. You can enter their marks straight away — they don't need to sign up first. Later they can sign up with the same NIC to see their results.</p>
     <div class="row">
       <div><label>Full name</label><input id="an" placeholder="e.g. Nimal Silva"></div>
       <div><label>NIC</label><input id="anic" placeholder="123456789V / 200012345678" maxlength="12"></div>
@@ -636,7 +643,7 @@ function tabStudents({students,pending}){
       const papSnap=await getDocs(collection(db,'papers'));
       for(const d of papSnap.docs){
         const sc=d.data().scores||{};
-        if(sc[b.dataset.del]!=null){ delete sc[b.dataset.del]; await updateDoc(doc(db,'papers',d.id),{scores:sc}); }
+        if(sc[b.dataset.nic]!=null){ delete sc[b.dataset.nic]; await updateDoc(doc(db,'papers',d.id),{scores:sc}); }
       }
       await deleteDoc(doc(db,'students',b.dataset.del));
       await deleteDoc(doc(db,'nics',b.dataset.nic)).catch(()=>{});
@@ -657,7 +664,7 @@ function tabMarks({students,papers}){
   <div class="card">
     <h2>Create Paper / Exam</h2>
     <div class="row">
-      <div><label>Subject</label><select id="cpSubj">${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+      <div style="display:none"><label>Subject</label><select id="cpSubj">${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>
       <div><label>Paper title</label><input id="cpTitle" placeholder="e.g. Paper 1 — MCQ"></div>
       <div><label>Date</label><input id="cpDate" type="date"></div>
       <div><label>Max marks</label><input id="cpMax" type="number" value="100" min="1"></div>
@@ -723,7 +730,7 @@ function drawMarksPane(students,papers){
           <td style="max-width:120px"><input type="number" min="0" max="${sel.max}" value="${sc??''}" data-mk="${s.id}"></td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${p}%</span>`:'—'}</td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${grade(p)}</span>`:'—'}</td></tr>`;
-      }).join('')}</table></div>`:'<p class="sub">No students registered yet.</p>'}
+      }).join('')}</table></div>`:'<p class="sub">No students yet — add them in the Students tab using their NIC.</p>'}
   </div>`;
   let timer=null;
   document.querySelectorAll('[data-mk]').forEach(inp=>inp.onchange=async()=>{
@@ -826,7 +833,7 @@ function tabAnalytics({students,papers}){
   };
   $("#pdf").onclick=()=>{
     const { jsPDF }=window.jspdf; const d=new jsPDF();
-    d.setFontSize(15); d.text('Class Analyzer — Class Rankings',14,16);
+    d.setFontSize(15); d.text('S.K. Wellala Biology Paper Class — Class Rankings',14,16);
     d.setFontSize(9); d.setTextColor(120); d.text(`Generated ${new Date().toLocaleString()}`,14,22); d.setTextColor(0);
     d.autoTable({startY:28,head:[['Rank','Name','NIC',...SUBJECTS,'Overall %','Grade']],
       body:st.ranked.map(x=>[String(x.rank),x.s.fullName,x.s.nic,...SUBJECTS.map(s2=>x.subP[s2]!=null?x.subP[s2]+'%':'—'),x.overall+'%',grade(x.overall)])});
