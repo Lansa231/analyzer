@@ -259,10 +259,10 @@ function bootFirebase(cfg){
         }
       }catch(e){}
     }
-    route();
+    route(); busy(false);
   };
+  busy(true);   // wait for Firebase to restore the saved login before drawing any page
   onAuthStateChanged(auth,u=>{ if(!signingUp) authLoad(u); });
-  route();
 }
 setTheme(localStorage.getItem('ca_theme')||'light');
 /* >>> BEFORE UPLOADING TO GITHUB: paste your Firebase config between the braces below, e.g.
