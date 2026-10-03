@@ -41,7 +41,6 @@ h2{font-size:1.05rem; margin-bottom:14px;}
 label{display:block; font-size:.8rem; font-weight:600; color:var(--muted); margin:14px 0 5px;}
 input,select{width:100%; padding:11px 13px; border:1.5px solid var(--line); border-radius:11px; font-size:.93rem; background:var(--bg); color:var(--ink);}
 input:focus,select:focus{outline:none; border-color:var(--brand); background:var(--card);}
-input.invalid{border-color:var(--bad);}
 .btn{border:none; border-radius:11px; padding:11px 20px; font-weight:700; font-size:.92rem; cursor:pointer; transition:.15s; font-family:inherit;}
 .btn:disabled{opacity:.55; cursor:not-allowed;}
 .btn-primary{background:linear-gradient(120deg,var(--brand),var(--brand2)); color:#fff; width:100%; margin-top:18px;}
@@ -49,7 +48,6 @@ input.invalid{border-color:var(--bad);}
 .btn-ghost{background:var(--brand-bg); color:var(--brand);}
 .btn-danger{background:var(--bad-bg); color:var(--bad);}
 .btn-sm{padding:6px 13px; font-size:.8rem; border-radius:8px;}
-.btn-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:18px;}
 .hero{padding:56px 28px; text-align:center;}
 .hero .badge{display:inline-block; background:var(--brand-bg); color:var(--brand); font-weight:700; font-size:.75rem; letter-spacing:.08em;
   text-transform:uppercase; padding:6px 14px; border-radius:999px; margin-bottom:16px;}
@@ -103,6 +101,7 @@ canvas{max-height:320px;}
 .list-item:last-child{border-bottom:none;}
 .mono{font-variant-numeric:tabular-nums;}
 .saved{color:var(--good); font-size:.78rem; font-weight:700;}
+.mode-tag{font-size:.68rem; background:var(--warn-bg); color:var(--warn); padding:3px 10px; border-radius:999px; font-weight:700;}
 @media(max-width:600px){
   .hero{padding:40px 18px;} .hero h1{font-size:1.5rem;}
   .card{padding:18px;}
@@ -112,20 +111,17 @@ canvas{max-height:320px;}
 <body>
 
 <header>
-  <div class="logo">🧬 <span>Class Analyzer</span> <span style="font-size:.7rem;color:var(--muted);font-weight:600">A/L Science</span></div>
+  <div class="logo">🧬 <span>Class Analyzer</span> <span style="font-size:.7rem;color:var(--muted);font-weight:600">A/L Science</span> <span class="mode-tag">LOCAL MODE</span></div>
   <div class="hdr-actions" id="hdrActions"></div>
 </header>
 <main id="app"></main>
 <div id="loading"><div class="spinner"></div></div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged,
-         signOut, sendPasswordResetEmail, updateProfile }
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-         collection, query, where, onSnapshot, serverTimestamp }
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<script>
+/* =====================================================================
+   CLASS ANALYZER — LOCAL MODE  (zero-config: works on GitHub Pages,
+   no Firebase needed. Data is stored in this browser via localStorage.)
+   ===================================================================== */
 
 /* ============================== HELPERS ============================== */
 const $ = s => document.querySelector(s);
@@ -133,132 +129,97 @@ const app = $("#app");
 const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const pct = (a,b) => b>0 ? Math.round(a/b*1000)/10 : 0;
 const SUBJECTS = ["Biology","Chemistry","Physics"];
-// Standard A/L grade boundaries by %
-const grade = p => p>=75?'A':p>=65?'B':p>=55?'C':p>=35?'S':'F';
+const grade = p => p>=75?'A':p>=65?'B':p>=55?'C':p>=35?'S':'F';   // A/L boundaries
 const gCls  = p => p>=75?'good':p>=55?'brand':p>=35?'warn':'bad';
 const NIC_RE = /^(\d{9}[VvXx]|\d{12})$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,9);
 const busy = on => $("#loading").classList.toggle('show', !!on);
 let charts = {};
 function killCharts(){ Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}}); charts={}; }
-function friendly(e){
-  const m={'auth/email-already-in-use':'This email is already registered. Try logging in instead.',
-    'auth/invalid-credential':'Incorrect email or password.','auth/wrong-password':'Incorrect email or password.',
-    'auth/user-not-found':'No account found with this email.','auth/invalid-email':'That email address does not look valid.',
-    'auth/weak-password':'Password is too weak — use at least 8 characters with letters and numbers.',
-    'auth/too-many-requests':'Too many attempts. Please wait a minute and try again.',
-    'auth/network-request-failed':'Network error — check your internet connection.',
-    'auth/missing-email':'Please enter your email address.'};
-  return m[e.code] || e.message || 'Something went wrong. Please try again.';
+
+/* -------- password hashing (SHA-256 + salt; fallback if unavailable) -------- */
+async function hashPw(pw, salt){
+  const msg = salt + '::' + pw;
+  try{
+    if(window.crypto && crypto.subtle){
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+      return 's2' + [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+  }catch(e){}
+  let h1=0x811c9dc5, h2=0x01000193;
+  for(let i=0;i<msg.length;i++){ const c=msg.charCodeAt(i); h1=(Math.imul(h1^c,0x01000193))>>>0; h2=(Math.imul(h2+c,0x85ebca6b)^h1)>>>0; }
+  return 'fb'+(h1>>>0).toString(16).padStart(8,'0')+(h2>>>0).toString(16).padStart(8,'0');
 }
+const newSalt = () => uid() + uid();
+
+/* ============================== LOCAL DATABASE ============================== */
+const DB_KEY='ca_local_db_v1';
+function loadDB(){
+  try{ return JSON.parse(localStorage.getItem(DB_KEY)) || {users:{},nicIndex:{},papers:[]}; }
+  catch(e){ return {users:{},nicIndex:{},papers:[]}; }
+}
+let db = loadDB();
+function save(){ try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){ alert('Storage full or blocked — enable cookies/storage for this site.'); } }
+function usersList(){ return Object.values(db.users); }
+function findByEmail(em){ em=em.toLowerCase(); return usersList().find(u=>u.email===em) || null; }
+function findByNIC(nic){ const id=db.nicIndex[nic.toUpperCase()]; return id?db.users[id]:null; }
+
+/* ============================== SESSION ============================== */
+const SES_KEY='ca_sess_v1';
+let sess = null;
+function loadSess(){ try{ sess=JSON.parse(sessionStorage.getItem(SES_KEY)); }catch(e){ sess=null; }
+  if(sess && !db.users[sess.uid]) sess=null; }
+function setSess(uid){ sess={uid}; sessionStorage.setItem(SES_KEY, JSON.stringify(sess)); }
+function clearSess(){ sess=null; sessionStorage.removeItem(SES_KEY); }
+const me = () => sess? db.users[sess.uid] : null;
+
+/* ============================== THEME ============================== */
 function setTheme(t){ document.documentElement.dataset.theme=t; localStorage.setItem('ca_theme',t); chartDefaults(); }
 function chartDefaults(){
-  const dark = document.documentElement.dataset.theme==='dark';
+  const dark=document.documentElement.dataset.theme==='dark';
   Chart.defaults.color = dark ? '#8fa6b3' : '#5b7280';
   Chart.defaults.borderColor = dark ? 'rgba(143,166,179,.15)' : 'rgba(91,114,128,.12)';
 }
 const themeBtn = () => `<button class="btn btn-ghost btn-sm" id="themeBtn">${document.documentElement.dataset.theme==='dark'?'☀️ Light':'🌙 Dark'}</button>`;
 function bindTheme(){ const b=$("#themeBtn"); if(b) b.onclick=()=>{ setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'); route(); }; }
 
-/* ============================== STATE ============================== */
-let auth=null, db=null, user=null, role=null, profile=null;
-let state = { tab:'marks', selPaper:null, stuSubject:'All', settings:null };
-let unsubStu = null;
-const AL = SUBJECTS.map(s=>({s,g:0,p:0,total:0})); // not used; kept minimal
-
 /* ============================== ROUTER ============================== */
-const routes = () => ({
-  '':'landing', '#/':'landing', '#/login':'login', '#/signup':'signup', '#/forgot':'forgot',
-  '#/dashboard':'stuDash', '#/teacher':'teacherAuth', '#/teacher/dashboard':'teacherDash'
-});
+let state = { tab:'marks', selPaper:null, stuSubject:'All' };
 window.addEventListener('hashchange', route);
-
 function go(h){ if(location.hash===h) route(); else location.hash=h; }
 function route(){
-  if(unsubStu){ unsubStu(); unsubStu=null; }
   killCharts();
-  const r = (routes()[location.hash] || 'landing');
-  // guards
-  if(r==='stuDash' && !(user && role==='student')) return go('#/login');
-  if(r==='teacherDash' && !(user && role==='teacher')) return go('#/teacher');
-  if(r==='landing' && user && role==='student') return go('#/dashboard');
-  if(r==='teacherAuth' && user && role==='teacher') return go('#/teacher/dashboard');
+  const r = { '':'landing','#/':'landing','#/login':'login','#/signup':'signup','#/forgot':'forgot',
+              '#/dashboard':'stuDash','#/teacher':'teacherAuth','#/teacher/dashboard':'teacherDash',
+              '#/teacher/forgot':'teacherForgot' }[location.hash] || 'landing';
+  const u=me();
+  if(r==='stuDash' && !(u&&u.role==='student')) return go('#/login');
+  if(r==='teacherDash' && !(u&&u.role==='teacher')) return go('#/teacher');
+  if(r==='landing' && u && u.role==='student') return go('#/dashboard');
+  if(r==='teacherAuth' && u && u.role==='teacher') return go('#/teacher/dashboard');
   renderHdr(r);
-  ({landing,login,signup,forgot,stuDash,teacherAuth,teacherDash})[r]();
+  ({landing,login,signup,forgot,stuDash,teacherAuth,teacherForgot,teacherDash})[r]();
   window.scrollTo(0,0);
 }
 function renderHdr(r){
-  const h=$("#hdrActions");
-  if(user && (r==='stuDash'||r==='teacherDash')){
-    h.innerHTML = `<span class="pill brand">${role==='teacher'?'👩‍🏫 Teacher':'🎓 Student'}</span> ${themeBtn()} <button class="btn btn-danger btn-sm" id="logoutBtn">Log out</button>`;
-    $("#logoutBtn").onclick = async ()=>{ if(unsubStu){unsubStu();unsubStu=null;} await signOut(auth); };
-  } else {
-    h.innerHTML = themeBtn();
-  }
+  const h=$("#hdrActions"), u=me();
+  if(u && (r==='stuDash'||r==='teacherDash')){
+    h.innerHTML=`<span class="pill brand">${u.role==='teacher'?'👩‍🏫 Teacher':'🎓 Student'}</span> ${themeBtn()} <button class="btn btn-danger btn-sm" id="logoutBtn">Log out</button>`;
+    $("#logoutBtn").onclick=()=>{ clearSess(); go('#/'); };
+  } else h.innerHTML=themeBtn();
   bindTheme();
 }
-
-/* ============================== SETUP / BOOT ============================== */
-function parseCfg(txt){
-  // Accepts strict JSON OR the JS snippet Firebase shows: const firebaseConfig = { apiKey: "..", ... };
-  let t=String(txt||'').trim();
-  const a=t.indexOf('{'), b=t.lastIndexOf('}');
-  if(a<0||b<a) throw new Error('no braces');
-  t=t.slice(a,b+1)
-     .replace(/\/\/.*$/gm,'')                       // line comments
-     .replace(/[\u201C\u201D]/g,'"').replace(/[\u2018\u2019]/g,"'")  // smart quotes
-     .replace(/'([^']*)'/g,'"$1"')                  // single -> double quotes
-     .replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g,'$1"$2":') // quote bare keys
-     .replace(/,\s*([}\]])/g,'$1');                // trailing commas
-  return JSON.parse(t);
-}
-function setupScreen(msg){
-  app.innerHTML = `<div class="card auth-card">
-    <h2>🔧 One-time Setup</h2>
-    <p class="sub">Paste your Firebase web config (from Firebase console → Project settings → Your apps → web app). It looks like <code>{"apiKey":"...","projectId":"...",...}</code></p>
-    <textarea id="cfgIn" rows="6" style="width:100%;padding:10px;border:1.5px solid var(--line);border-radius:11px;font-family:monospace;font-size:.78rem;background:var(--bg);color:var(--ink)"></textarea>
-    <button class="btn btn-primary" id="cfgBtn">Save &amp; Connect</button>
-    <div class="err" id="cfgMsg" style="display:${msg?'block':'none'}">${esc(msg||'')}</div>
-  </div>`;
-  $("#cfgBtn").onclick=()=>{
-    let cfg; try{ cfg=parseCfg($("#cfgIn").value); }catch(e){ $("#cfgMsg").style.display='block'; $("#cfgMsg").textContent='Could not read that config. Paste the whole { ... } block from Firebase.'; return; }
-    if(!cfg.apiKey||!cfg.projectId){ $("#cfgMsg").style.display='block'; $("#cfgMsg").textContent='Config needs at least apiKey and projectId.'; return; }
-    localStorage.setItem('ca_fb_config', JSON.stringify(cfg));
-    bootFirebase(cfg);
-  };
-}
-function bootFirebase(cfg){
-  try{ const fa=initializeApp(cfg); auth=getAuth(fa); db=getFirestore(fa); }
-  catch(e){ return setupScreen('Could not connect: '+e.message); }
-  onAuthStateChanged(auth, async u=>{
-    user=u; role=null; profile=null;
-    if(u){
-      try{
-        const t=await getDoc(doc(db,'teachers',u.uid));
-        if(t.exists()){ role='teacher'; profile=t.data(); }
-        else{
-          const s=await getDoc(doc(db,'students',u.uid));
-          if(s.exists()){ role='student'; profile=s.data(); }
-          else { await signOut(auth); role=null; }
-        }
-      }catch(e){}
-    }
-    route();
-  });
-  route();
-}
-setTheme(localStorage.getItem('ca_theme')||'light');
-const savedCfg=localStorage.getItem('ca_fb_config');
-if(savedCfg){ try{ bootFirebase(JSON.parse(savedCfg)); }catch(e){ setupScreen('Saved config invalid — paste again.');} }
-else setupScreen();
+window.addEventListener('storage', e=>{ if(e.key===DB_KEY){ db=loadDB(); if(!me()) clearSess(); route(); } }); // live sync between tabs
 
 /* ============================== LANDING ============================== */
 function landing(){
-  app.innerHTML = `
+  const hasTeacher=usersList().some(u=>u.role==='teacher');
+  app.innerHTML=`
   <div class="card hero">
     <div class="badge">A/L Science Stream · Biology · Chemistry · Physics</div>
     <h1>Track every paper.<br>Watch yourself improve.</h1>
-    <p class="sub">Your teacher publishes marks paper-by-paper. Log in anytime to see your progress chart and full marks history — from your phone or computer.</p>
+    <p class="sub">Your teacher publishes marks paper-by-paper. Log in anytime to see your progress chart and full marks history — on your phone or computer.</p>
     <div class="hero-btns">
       <button class="btn btn-primary" id="bLogin">Log In</button>
       <button class="btn btn-ghost" id="bSignup" style="padding:13px 34px;font-size:.92rem">Sign Up</button>
@@ -267,16 +228,17 @@ function landing(){
   <div class="grid g4">
     <div class="card stat" style="margin:0"><div style="font-size:1.6rem">📈</div><div class="lbl" style="margin-top:6px">Progress charts per subject</div></div>
     <div class="card stat" style="margin:0"><div style="font-size:1.6rem">📄</div><div class="lbl" style="margin-top:6px">Paper-by-paper marks</div></div>
-    <div class="card stat" style="margin:0"><div style="font-size:1.6rem">🔒</div><div class="lbl" style="margin-top:6px">Private — only you see your marks</div></div>
+    <div class="card stat" style="margin:0"><div style="font-size:1.6rem">🔒</div><div class="lbl" style="margin-top:6px">Hashed passwords</div></div>
     <div class="card stat" style="margin:0"><div style="font-size:1.6rem">📱</div><div class="lbl" style="margin-top:6px">Works on any device</div></div>
-  </div>`;
+  </div>
+  ${hasTeacher?'':`<div class="card" style="text-align:center"><p class="sub" style="margin:0">Instructors: open the portal at <code>/#/teacher</code> to create your account and manage the class.</p></div>`}`;
   $("#bLogin").onclick=()=>go('#/login');
   $("#bSignup").onclick=()=>go('#/signup');
 }
 
-/* ============================== AUTH: STUDENT ============================== */
+/* ============================== STUDENT AUTH ============================== */
 function login(){
-  app.innerHTML = `<div class="card auth-card">
+  app.innerHTML=`<div class="card auth-card">
     <h2>🎓 Student Login</h2>
     <label>Email or NIC number</label>
     <input id="idf" placeholder="you@email.com or 200012345678" autocomplete="username">
@@ -289,23 +251,28 @@ function login(){
   </div>`;
   $("#btn").onclick=async()=>{
     const msg=$("#msg"); msg.innerHTML=''; busy(true);
-    try{
-      let ident=$("#idf").value.trim(), email=ident;
-      if(!ident) throw {message:'Please enter your email or NIC.'};
-      if(!EMAIL_RE.test(ident)){
-        if(!NIC_RE.test(ident)) throw {message:'That does not look like a valid email or NIC number.'};
-        const n=await getDoc(doc(db,'nics',ident.toUpperCase()));
-        if(!n.exists()) throw {message:'No account found for this NIC. Please sign up first.'};
-        email=n.data().email;
-      }
-      await signInWithEmailAndPassword(auth, email, $("#pw").value);
-    }catch(e){ busy(false); msg.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
+    await new Promise(r=>setTimeout(r,150));
+    const ident=$("#idf").value.trim();
+    let u=null, err='';
+    if(!ident) err='Please enter your email or NIC.';
+    else if(EMAIL_RE.test(ident)) u=findByEmail(ident);
+    else if(NIC_RE.test(ident)) u=findByNIC(ident);
+    else err='That does not look like a valid email or NIC number.';
+    if(!err && !u) err='No account found. Please check your details or sign up.';
+    if(!err && u.role!=='student') err='This is not a student account. Use the instructor portal instead.';
+    if(!err){
+      const h=await hashPw($("#pw").value, u.salt);
+      if(h!==u.pwHash) err='Incorrect password. Try again or use "Forgot password".';
+    }
+    busy(false);
+    if(err){ msg.innerHTML=`<div class="err">${esc(err)}</div>`; return; }
+    setSess(u.id); go('#/dashboard');
   };
   $("#pw").addEventListener('keydown',e=>{ if(e.key==='Enter') $("#btn").click(); });
 }
 
 function signup(){
-  app.innerHTML = `<div class="card auth-card">
+  app.innerHTML=`<div class="card auth-card">
     <h2>🎓 Student Sign Up</h2>
     <label>Full Name</label><input id="nm" placeholder="e.g. Kasun Perera">
     <div class="field-err" id="e-nm"></div>
@@ -322,12 +289,8 @@ function signup(){
     <div id="msg"></div>
     <p class="hint" style="text-align:center">Already registered? <a href="#/login">Log in</a></p>
   </div>`;
-  const pwScore = v => { let s=0; if(v.length>=8)s++; if(/[a-zA-Z]/.test(v)&&/\d/.test(v))s++; if(v.length>=12||/[^a-zA-Z0-9]/.test(v))s++; return s; };
-  $("#pw").oninput=e=>{
-    const s=pwScore(e.target.value), f=$("#meterFill");
-    f.style.width=(s*33+1)+'%';
-    f.style.background=['#b91c1c','#b45309','#0e7490','#0f766e'][s];
-  };
+  const pwScore=v=>{let s=0; if(v.length>=8)s++; if(/[a-zA-Z]/.test(v)&&/\d/.test(v))s++; if(v.length>=12||/[^a-zA-Z0-9]/.test(v))s++; return s;};
+  $("#pw").oninput=e=>{ const s=pwScore(e.target.value),f=$("#meterFill"); f.style.width=(s*33+1)+'%'; f.style.background=['#b91c1c','#b45309','#0e7490','#0f766e'][s]; };
   $("#btn").onclick=async()=>{
     ["nm","nic","em","pw","pw2"].forEach(x=>$("#e-"+x).textContent='');
     $("#msg").innerHTML='';
@@ -340,45 +303,72 @@ function signup(){
     if(pwScore(pw)<2){$("#e-pw").textContent='Use at least 8 characters with both letters and numbers.';bad=true;}
     if(pw!==pw2){$("#e-pw2").textContent='Passwords do not match.';bad=true;}
     if(bad) return;
-    busy(true);
-    try{
-      const nicDoc=await getDoc(doc(db,'nics',nic));
-      if(nicDoc.exists()){ busy(false); $("#msg").innerHTML=`<div class="err">This NIC is already registered. <a href="#/login">Log in instead</a>.</div>`; return; }
-      const cred=await createUserWithEmailAndPassword(auth, em, pw);
-      await updateProfile(cred.user,{displayName:nm});
-      await setDoc(doc(db,'students',cred.user.uid),{fullName:nm, nic, email:em, createdAt:serverTimestamp()});
-      await setDoc(doc(db,'nics',nic),{uid:cred.user.uid, email:em});
-      try{ await deleteDoc(doc(db,'pending',nic)); }catch(e){}
-      busy(false);
-    }catch(e){ busy(false); $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
+    busy(true); await new Promise(r=>setTimeout(r,150));
+    let err='';
+    if(findByNIC(nic)) err='This NIC is already registered. <a href="#/login">Log in instead</a>.';
+    else if(findByEmail(em)) err='This email is already registered. <a href="#/login">Log in instead</a>.';
+    if(err){ busy(false); $("#msg").innerHTML=`<div class="err">${err}</div>`; return; }
+    const id=uid(), salt=newSalt();
+    const u={id, fullName:nm, nic, email:em, salt, pwHash:await hashPw(pw,salt), role:'student', createdAt:Date.now()};
+    db.users[id]=u; db.nicIndex[nic]=id; save();
+    busy(false);
+    setSess(id); go('#/dashboard');
   };
 }
 
 function forgot(){
-  app.innerHTML = `<div class="card auth-card">
+  app.innerHTML=`<div class="card auth-card">
     <h2>🔑 Reset Password</h2>
-    <p class="sub">Enter the email you registered with and we'll send you a reset link.</p>
+    <p class="sub">Enter your NIC, email and a new password. (Local mode cannot send emails — identity is verified against your NIC + email.)</p>
+    <label>NIC Number</label><input id="nic" placeholder="123456789V / 200012345678" maxlength="12">
     <label>Email</label><input id="em" type="email" placeholder="you@email.com">
-    <button class="btn btn-primary" id="btn">Send Reset Link</button>
+    <label>New Password</label><input id="pw" type="password" placeholder="Min 8 chars, letters + numbers">
+    <label>Confirm New Password</label><input id="pw2" type="password" placeholder="Repeat new password">
+    <button class="btn btn-primary" id="btn">Reset Password</button>
     <div id="msg"></div>
     <p class="hint" style="text-align:center"><a href="#/login">← Back to login</a></p>
   </div>`;
   $("#btn").onclick=async()=>{
-    const msg=$("#msg"); msg.innerHTML=''; busy(true);
-    try{
-      await sendPasswordResetEmail(auth, $("#em").value.trim());
-      busy(false);
-      msg.innerHTML=`<div class="ok">✅ Reset link sent! Check your inbox (and spam folder), then log in with your new password.</div>`;
-    }catch(e){ busy(false); msg.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
+    const msg=$("#msg"); msg.innerHTML=''; busy(true); await new Promise(r=>setTimeout(r,150));
+    const nic=$("#nic").value.trim().toUpperCase(), em=$("#em").value.trim().toLowerCase(),
+          pw=$("#pw").value, pw2=$("#pw2").value;
+    const u=findByNIC(nic);
+    let err='';
+    if(!u||u.email!==em) err='No account matches that NIC + email combination.';
+    else if(u.role!=='student') err='This is not a student account.';
+    else if(pw.length<8||!/([a-zA-Z].*\d|\d.*[a-zA-Z])/.test(pw)) err='New password must be 8+ characters with letters and numbers.';
+    else if(pw!==pw2) err='Passwords do not match.';
+    if(err){ busy(false); msg.innerHTML=`<div class="err">${esc(err)}</div>`; return; }
+    u.salt=newSalt(); u.pwHash=await hashPw(pw,u.salt); save();
+    busy(false);
+    msg.innerHTML=`<div class="ok">✅ Password reset! <a href="#/login">Log in with your new password</a>.</div>`;
   };
 }
 
 /* ============================== STUDENT DASHBOARD ============================== */
-async function stuDash(){
-  if(!profile) return;
-  app.innerHTML = `
+function stuDash(){
+  const u=me(); if(!u) return;
+  const papers=db.papers.filter(p=>p.published).map(p=>{
+    const m=p.scores?.[u.id];
+    return m==null?null:{p,m};
+  }).filter(Boolean).sort((a,b)=>String(a.p.date||'').localeCompare(String(b.p.date||'')));
+  const rowsAll=state.stuSubject==='All'?papers:papers.filter(r=>r.p.subject===state.stuSubject);
+
+  let body='';
+  if(!rowsAll.length){
+    body=`<div class="card"><p class="sub">📭 No published marks yet${state.stuSubject!=='All'?' for '+esc(state.stuSubject):''}. Your teacher will publish them here after each paper.</p></div>`;
+  }else{
+    body=`<div class="card"><h2>📈 Progress — ${esc(state.stuSubject)}</h2><canvas id="c1"></canvas></div>
+    <div class="card"><h2>📄 Paper-by-Paper Marks</h2><div class="tbl-wrap"><table>
+      <tr><th>Date</th><th>Subject</th><th>Paper</th><th>Marks</th><th>%</th><th>Grade</th></tr>
+      ${rowsAll.map(r=>{const p=pct(r.m,r.p.max);return `<tr><td class="mono">${esc(r.p.date||'—')}</td><td>${esc(r.p.subject)}</td><td>${esc(r.p.title)}</td>
+        <td class="mono"><b>${r.m}</b> / ${r.p.max}</td><td><span class="pill ${gCls(p)}">${p}%</span></td>
+        <td><span class="pill ${gCls(p)}">${grade(p)}</span></td></tr>`;}).join('')}
+    </table></div></div>`;
+  }
+  app.innerHTML=`
     <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-      <div><b style="font-size:1.05rem">🎓 ${esc(profile.fullName)}</b> <span class="pill brand">Student</span></div>
+      <div><b style="font-size:1.05rem">🎓 ${esc(u.fullName)}</b> <span class="pill brand">Student</span></div>
       <div style="display:flex;gap:10px;align-items:center">
         <label style="margin:0">Subject:</label>
         <select id="subj" style="width:auto">
@@ -386,49 +376,20 @@ async function stuDash(){
           ${SUBJECTS.map(s=>`<option${state.stuSubject===s?' selected':''}>${s}</option>`).join('')}
         </select>
       </div>
-    </div>
-    <div id="stuBody"><div class="card"><p class="sub">Loading your marks…</p></div></div>`;
-  $("#subj").onchange=e=>{ state.stuSubject=e.target.value; drawStu(); };
-
-  const q=query(collection(db,'papers'), where('published','==',true));
-  const load=async()=>{ const snap=await getDocs(q); return snap.docs.map(d=>({id:d.id,...d.data()})); };
-  const renderBody=papers=>{
-    const rowsP=papers
-      .filter(p=>state.stuSubject==='All'||p.subject===state.stuSubject)
-      .map(p=>({p, m:p.scores?.[user.uid]}))
-      .filter(r=>r.m!=null)
-      .sort((a,b)=>String(a.p.date||'').localeCompare(String(b.p.date||'')));
-    let inner='';
-    if(!rowsP.length){
-      inner=`<div class="card"><p class="sub">📭 No published marks yet${state.stuSubject!=='All'?' for '+esc(state.stuSubject):''}. Your teacher will publish them here after each paper.</p></div>`;
-    }else{
-      inner=`<div class="card"><h2>📈 Progress — ${esc(state.stuSubject)}</h2><canvas id="c1"></canvas></div>
-      <div class="card"><h2>📄 Paper-by-Paper Marks</h2><div class="tbl-wrap"><table>
-        <tr><th>Date</th><th>Subject</th><th>Paper</th><th>Marks</th><th>%</th><th>Grade</th></tr>
-        ${rowsP.map(r=>{const p=pct(r.m,r.p.max);return `<tr><td class="mono">${esc(r.p.date||'—')}</td><td>${esc(r.p.subject)}</td><td>${esc(r.p.title)}</td>
-          <td class="mono"><b>${r.m}</b> / ${r.p.max}</td><td><span class="pill ${gCls(p)}">${p}%</span></td>
-          <td><span class="pill ${gCls(p)}">${grade(p)}</span></td></tr>`;}).join('')}
-      </table></div></div>`;
-    }
-    $("#stuBody").innerHTML=inner;
-    if(rowsP.length){
-      const dark=document.documentElement.dataset.theme==='dark';
-      charts.s1=new Chart($("#c1"),{type:'line',data:{labels:rowsP.map(r=>r.p.title),
-        datasets:[{label:'My score %',data:rowsP.map(r=>pct(r.m,r.p.max)),
-          borderColor:'#0e7490', backgroundColor:'rgba(14,116,144,.12)', fill:true, tension:.35, pointRadius:5, pointBackgroundColor:'#0d9488'}]},
-        options:{scales:{y:{min:0,max:100,title:{display:true,text:'Percentage'}}},
-          plugins:{legend:{display:true},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y}%`}}}}});
-    }
-  };
-  window.drawStu = () => load().then(renderBody).catch(e=>{ $("#stuBody").innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; });
-  unsubStu=onSnapshot(q, snap=>renderBody(snap.docs.map(d=>({id:d.id,...d.data()}))), ()=>{});
-  const first=await load().catch(()=>[]);
-  renderBody(first);
+    </div>${body}`;
+  $("#subj").onchange=e=>{ state.stuSubject=e.target.value; stuDash(); };
+  if(rowsAll.length){
+    charts.s1=new Chart($("#c1"),{type:'line',data:{labels:rowsAll.map(r=>r.p.title),
+      datasets:[{label:'My score %',data:rowsAll.map(r=>pct(r.m,r.p.max)),
+        borderColor:'#0e7490',backgroundColor:'rgba(14,116,144,.12)',fill:true,tension:.35,pointRadius:5,pointBackgroundColor:'#0d9488'}]},
+      options:{scales:{y:{min:0,max:100,title:{display:true,text:'Percentage'}}},
+        plugins:{legend:{display:true},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y}%`}}}}});
+  }
 }
 
 /* ============================== TEACHER AUTH ============================== */
 function teacherAuth(){
-  app.innerHTML = `<div class="card auth-card">
+  app.innerHTML=`<div class="card auth-card">
     <h2>👩‍🏫 Instructor Portal</h2>
     <div class="tabs" style="margin-bottom:6px">
       <button id="tIn" class="active">Sign In</button><button id="tUp">Create Account</button>
@@ -436,6 +397,7 @@ function teacherAuth(){
     <div id="fIn">
       <label>Email</label><input id="em" type="email" placeholder="you@school.lk" autocomplete="email">
       <label>Password</label><input id="pw" type="password" placeholder="Your password" autocomplete="current-password">
+      <div style="text-align:right;margin-top:8px"><a href="#/teacher/forgot" style="font-size:.82rem">Forgot password?</a></div>
       <button class="btn btn-primary" id="inBtn">Sign In</button>
     </div>
     <div id="fUp" style="display:none">
@@ -449,49 +411,62 @@ function teacherAuth(){
   $("#tIn").onclick=()=>{ $("#tIn").classList.add('active');$("#tUp").classList.remove('active');$("#fIn").style.display='block';$("#fUp").style.display='none'; };
   $("#tUp").onclick=()=>{ $("#tUp").classList.add('active');$("#tIn").classList.remove('active');$("#fUp").style.display='block';$("#fIn").style.display='none'; };
   $("#inBtn").onclick=async()=>{
-    $("#msg").innerHTML=''; busy(true);
-    try{ await signInWithEmailAndPassword(auth,$("#em").value.trim(),$("#pw").value); }
-    catch(e){ busy(false); $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
+    $("#msg").innerHTML=''; busy(true); await new Promise(r=>setTimeout(r,150));
+    const u=findByEmail($("#em").value.trim());
+    let err='';
+    if(!u) err='No account found with this email.';
+    else if(u.role!=='teacher') err='This is not an instructor account.';
+    else if((await hashPw($("#pw").value,u.salt))!==u.pwHash) err='Incorrect password.';
+    busy(false);
+    if(err){ $("#msg").innerHTML=`<div class="err">${esc(err)}</div>`; return; }
+    setSess(u.id); go('#/teacher/dashboard');
   };
   $("#upBtn").onclick=async()=>{
     $("#msg").innerHTML='';
-    const nm=$("#unm").value.trim(), em=$("#uem").value.trim(), pw=$("#upw").value;
+    const nm=$("#unm").value.trim(), em=$("#uem").value.trim().toLowerCase(), pw=$("#upw").value;
     if(nm.length<3) return $("#msg").innerHTML=`<div class="err">Please enter your name.</div>`;
     if(!EMAIL_RE.test(em)) return $("#msg").innerHTML=`<div class="err">Please enter a valid email.</div>`;
     if(pw.length<8) return $("#msg").innerHTML=`<div class="err">Password must be at least 8 characters.</div>`;
-    busy(true);
-    try{
-      const s=await getDoc(doc(db,'settings','registration')).catch(()=>null);
-      if(s?.exists() && s.data().teacherSignupOpen===false){
-        busy(false); $("#msg").innerHTML=`<div class="err">Instructor registration is closed. Ask the administrator to enable it.</div>`; return;
-      }
-      const cred=await createUserWithEmailAndPassword(auth, em, pw);
-      await setDoc(doc(db,'teachers',cred.user.uid),{fullName:nm, email:em, createdAt:serverTimestamp()});
-      busy(false);
-    }catch(e){ busy(false); $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
+    if(findByEmail(em)) return $("#msg").innerHTML=`<div class="err">This email is already registered.</div>`;
+    busy(true); await new Promise(r=>setTimeout(r,150));
+    const id=uid(), salt=newSalt();
+    db.users[id]={id, fullName:nm, nic:'', email:em, salt, pwHash:await hashPw(pw,salt), role:'teacher', createdAt:Date.now()};
+    save(); busy(false); setSess(id); go('#/teacher/dashboard');
+  };
+}
+function teacherForgot(){
+  app.innerHTML=`<div class="card auth-card">
+    <h2>🔑 Instructor Reset</h2>
+    <p class="sub">Verify your email and choose a new password.</p>
+    <label>Email</label><input id="em" type="email" placeholder="you@school.lk">
+    <label>New Password</label><input id="pw" type="password" placeholder="Min 8 chars">
+    <button class="btn btn-primary" id="btn">Reset Password</button>
+    <div id="msg"></div>
+    <p class="hint" style="text-align:center"><a href="#/teacher">← Back to instructor login</a></p>
+  </div>`;
+  $("#btn").onclick=async()=>{
+    const msg=$("#msg"); msg.innerHTML=''; busy(true); await new Promise(r=>setTimeout(r,150));
+    const u=findByEmail($("#em").value.trim().toLowerCase()); const pw=$("#pw").value;
+    let err='';
+    if(!u||u.role!=='teacher') err='No instructor account with this email.';
+    else if(pw.length<8) err='Password must be at least 8 characters.';
+    if(err){ busy(false); msg.innerHTML=`<div class="err">${esc(err)}</div>`; return; }
+    u.salt=newSalt(); u.pwHash=await hashPw(pw,u.salt); save();
+    busy(false); msg.innerHTML=`<div class="ok">✅ Password reset! <a href="#/teacher">Sign in</a>.</div>`;
   };
 }
 
 /* ============================== TEACHER DASHBOARD ============================== */
-async function teacherDash(){
-  if(!profile) return;
-  const [stuSnap, penSnap, papSnap, setSnap] = await Promise.all([
-    getDocs(collection(db,'students')), getDocs(collection(db,'pending')),
-    getDocs(collection(db,'papers')), getDoc(doc(db,'settings','registration')).catch(()=>null)
-  ]).catch(e=>{ app.innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; return [null]; });
-  if(!stuSnap) return;
-  const students=stuSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.fullName.localeCompare(b.fullName));
-  const pending=penSnap.docs.map(d=>({nic:d.id,...d.data()}));
-  const papers=papSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-  state.settings = setSnap?.exists()? setSnap.data() : {teacherSignupOpen:true};
+function teacherDash(){
+  const u=me(); if(!u) return;
+  const students=usersList().filter(x=>x.role==='student').sort((a,b)=>a.fullName.localeCompare(b.fullName));
+  const papers=db.papers.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
 
-  app.innerHTML = `
+  app.innerHTML=`
   <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-    <div><b style="font-size:1.05rem">👩‍🏫 ${esc(profile.fullName||'Instructor')}</b> <span class="pill brand">Teacher</span>
+    <div><b style="font-size:1.05rem">👩‍🏫 ${esc(u.fullName)}</b> <span class="pill brand">Teacher</span>
       <span class="sub" style="display:inline"> · ${students.length} students · ${papers.length} papers</span></div>
-    <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
-      <span class="switch"><input type="checkbox" id="regOpen" ${state.settings.teacherSignupOpen!==false?'checked':''}><span class="slider"></span></span>
-      <span style="font-size:.8rem">New teacher signups</span></label>
+    <button class="btn btn-ghost btn-sm" id="expBtn">⬇ Backup Data</button>
   </div>
   <div class="tabs">
     <button data-tab="students" class="${state.tab==='students'?'active':''}">👨‍🎓 Students</button>
@@ -501,74 +476,74 @@ async function teacherDash(){
   <div id="tabBody"></div>`;
 
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; state.selPaper=null; teacherDash(); });
-  $("#regOpen").onchange=async e=>{
-    await setDoc(doc(db,'settings','registration'),{teacherSignupOpen:e.target.checked},{merge:true});
+  $("#expBtn").onclick=()=>{
+    const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='class-analyzer-backup.json'; a.click();
   };
-  ({students:tabStudents, marks:tabMarks, analytics:tabAnalytics})[state.tab]({students,pending,papers});
+  ({students:tabStudents, marks:tabMarks, analytics:tabAnalytics})[state.tab]({students,papers});
 }
 
 /* ---- Students tab ---- */
-function tabStudents({students,pending}){
-  $("#tabBody").innerHTML = `
+function tabStudents({students}){
+  $("#tabBody").innerHTML=`
   <div class="card">
     <h2>Add Student</h2>
-    <p class="sub" style="margin:0 0 4px">Students register themselves on the student portal with this NIC — adding them here reserves the NIC and tracks who hasn't signed up yet.</p>
+    <p class="sub" style="margin:0 0 4px">Creates a working login instantly — share the email/NIC and password with the student.</p>
     <div class="row">
       <div><label>Full name</label><input id="an" placeholder="e.g. Nimal Silva"></div>
       <div><label>NIC</label><input id="anic" placeholder="123456789V / 200012345678" maxlength="12"></div>
-      <div><label>Email (optional)</label><input id="aem" placeholder="student@email.com"></div>
-      <button class="btn btn-primary" id="addStu" style="width:auto;margin:0">+ Add</button>
+      <div><label>Email</label><input id="aem" placeholder="student@email.com"></div>
+      <div><label>Password</label><input id="apw" placeholder="Min 8 chars, letters + numbers"></div>
+      <button class="btn btn-primary" id="addStu" style="width:auto;margin:0;flex:0 0 auto">+ Add</button>
     </div>
     <div id="addMsg"></div>
   </div>
   <div class="card">
     <h2>Registered Students (${students.length})</h2>
     ${students.length?`<div class="tbl-wrap"><table><tr><th>Name</th><th>NIC</th><th>Email</th><th style="text-align:right">Actions</th></tr>
-      ${students.map(s=>`<tr><td><b>${esc(s.fullName)}</b></td><td class="mono">${esc(s.nic)}</td><td>${esc(s.email)}</td>
+      ${students.map(s=>`<tr><td><b>${esc(s.fullName)}</b></td><td class="mono">${esc(s.nic||'—')}</td><td>${esc(s.email)}</td>
         <td style="text-align:right;white-space:nowrap">
-          <button class="btn btn-ghost btn-sm" data-edit="${s.id}" data-name="${esc(s.fullName)}">Edit</button>
-          <button class="btn btn-danger btn-sm" data-del="${s.id}" data-nic="${esc(s.nic)}">Remove</button></td></tr>`).join('')}
-    </table></div>`:'<p class="sub">No students registered yet.</p>'}
-  </div>
-  ${pending.length?`<div class="card"><h2>Awaiting Sign Up (${pending.length})</h2>
-    <div class="tbl-wrap"><table><tr><th>Name</th><th>NIC</th><th>Email</th><th></th></tr>
-    ${pending.map(p=>`<tr><td>${esc(p.fullName)}</td><td class="mono">${esc(p.nic)}</td><td>${esc(p.email||'—')}</td>
-      <td><button class="btn btn-danger btn-sm" data-delpen="${esc(p.nic)}">Remove</button></td></tr>`).join('')}
-    </table></div></div>`:''}`;
+          <button class="btn btn-ghost btn-sm" data-edit="${s.id}">Rename</button>
+          <button class="btn btn-ghost btn-sm" data-rpw="${s.id}">Reset PW</button>
+          <button class="btn btn-danger btn-sm" data-del="${s.id}">Remove</button></td></tr>`).join('')}
+    </table></div>`:'<p class="sub">No students yet — add your first student above.</p>'}
+  </div>`;
 
   $("#addStu").onclick=async()=>{
-    const nm=$("#an").value.trim(), nic=$("#anic").value.trim().toUpperCase(), em=$("#aem").value.trim();
+    const nm=$("#an").value.trim(), nic=$("#anic").value.trim().toUpperCase(),
+          em=$("#aem").value.trim().toLowerCase(), pw=$("#apw").value;
     const m=$("#addMsg"); m.innerHTML='';
-    if(nm.length<3) return m.innerHTML='<div class="err">Please enter the student\'s name.</div>';
-    if(!NIC_RE.test(nic)) return m.innerHTML='<div class="err">Invalid NIC format.</div>';
-    busy(true);
-    try{
-      if((await getDoc(doc(db,'nics',nic))).exists()){ busy(false); return m.innerHTML='<div class="err">A student with this NIC is already registered.</div>'; }
-      await setDoc(doc(db,'pending',nic),{fullName:nm, email:em, addedAt:serverTimestamp()});
-      busy(false); state.tab='students'; teacherDash();
-    }catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
+    let err='';
+    if(nm.length<3) err='Please enter the student\'s name.';
+    else if(!NIC_RE.test(nic)) err='Invalid NIC format.';
+    else if(!EMAIL_RE.test(em)) err='Please enter a valid email.';
+    else if(pw.length<8||!/([a-zA-Z].*\d|\d.*[a-zA-Z])/.test(pw)) err='Password must be 8+ characters with letters and numbers.';
+    else if(findByNIC(nic)) err='A student with this NIC already exists.';
+    else if(findByEmail(em)) err='A user with this email already exists.';
+    if(err){ m.innerHTML=`<div class="err">${esc(err)}</div>`; return; }
+    busy(true); await new Promise(r=>setTimeout(r,150));
+    const id=uid(), salt=newSalt();
+    db.users[id]={id, fullName:nm, nic, email:em, salt, pwHash:await hashPw(pw,salt), role:'student', createdAt:Date.now()};
+    db.nicIndex[nic]=id; save(); busy(false); teacherDash();
   };
-  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{
-    const name=prompt('Edit student name:', b.dataset.name);
-    if(name && name.trim().length>=3){ busy(true); await updateDoc(doc(db,'students',b.dataset.edit),{fullName:name.trim()}); busy(false); teacherDash(); }
+  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{
+    const s=db.users[b.dataset.edit];
+    const name=prompt('Edit student name:', s.fullName);
+    if(name&&name.trim().length>=3){ s.fullName=name.trim(); save(); teacherDash(); }
   });
-  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
-    if(!confirm(`Remove this student? Their marks will be deleted and they will not be able to log in.`)) return;
-    busy(true);
-    try{
-      const papSnap=await getDocs(collection(db,'papers'));
-      for(const d of papSnap.docs){
-        const sc=d.data().scores||{};
-        if(sc[b.dataset.del]!=null){ delete sc[b.dataset.del]; await updateDoc(doc(db,'papers',d.id),{scores:sc}); }
-      }
-      await deleteDoc(doc(db,'students',b.dataset.del));
-      await deleteDoc(doc(db,'nics',b.dataset.nic)).catch(()=>{});
-      busy(false); teacherDash();
-    }catch(e){ busy(false); alert(friendly(e)); }
+  document.querySelectorAll('[data-rpw]').forEach(b=>b.onclick=async()=>{
+    const pw=prompt('Enter a new password for '+db.users[b.dataset.rpw].fullName+' (min 8 chars, letters + numbers):');
+    if(!pw) return;
+    if(pw.length<8||!/([a-zA-Z].*\d|\d.*[a-zA-Z])/.test(pw)) return alert('Password must be 8+ characters with letters and numbers.');
+    const s=db.users[b.dataset.rpw]; s.salt=newSalt(); s.pwHash=await hashPw(pw,s.salt); save(); alert('Password updated.');
   });
-  document.querySelectorAll('[data-delpen]').forEach(b=>b.onclick=async()=>{
-    if(!confirm('Remove this pending entry?')) return;
-    busy(true); await deleteDoc(doc(db,'pending',b.dataset.delpen)); busy(false); teacherDash();
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
+    const s=db.users[b.dataset.del];
+    if(!confirm(`Remove ${s.fullName}? Their marks will be deleted and they cannot log in.`)) return;
+    delete db.users[s.id];
+    if(s.nic) delete db.nicIndex[s.nic];
+    db.papers.forEach(p=>{ if(p.scores && p.scores[s.id]!=null) delete p.scores[s.id]; });
+    save(); teacherDash();
   });
 }
 
@@ -576,7 +551,7 @@ function tabStudents({students,pending}){
 function tabMarks({students,papers}){
   const sel = papers.find(p=>p.id===state.selPaper) || papers[0] || null;
   if(sel) state.selPaper=sel.id;
-  $("#tabBody").innerHTML = `
+  $("#tabBody").innerHTML=`
   <div class="card">
     <h2>Create Paper / Exam</h2>
     <div class="row">
@@ -607,58 +582,52 @@ function tabMarks({students,papers}){
   </div>
   <div id="marksPane"></div>`;
 
-  $("#cpBtn").onclick=async()=>{
+  $("#cpBtn").onclick=()=>{
     const title=$("#cpTitle").value.trim(), max=parseInt($("#cpMax").value), date=$("#cpDate").value;
     const m=$("#cpMsg"); m.innerHTML='';
     if(!title) return m.innerHTML='<div class="err">Please give the paper a title.</div>';
     if(!max||max<1) return m.innerHTML='<div class="err">Max marks must be at least 1.</div>';
-    busy(true);
-    try{
-      await addDoc(collection(db,'papers'),{subject:$("#cpSubj").value, title, date, max, published:false, scores:{}});
-      busy(false); teacherDash();
-    }catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
+    db.papers.push({id:uid(), subject:$("#cpSubj").value, title, date, max, published:false, scores:{}});
+    save(); teacherDash();
   };
-  document.querySelectorAll('[data-pub]').forEach(t=>t.onchange=async()=>{
-    busy(true);
-    await updateDoc(doc(db,'papers',t.dataset.pub),{published:t.checked});
-    busy(false); tabMarks({students,papers:papers.map(p=>p.id===t.dataset.pub?{...p,published:t.checked}:p)});
+  document.querySelectorAll('[data-pub]').forEach(t=>t.onchange=()=>{
+    const p=db.papers.find(x=>x.id===t.dataset.pub); p.published=t.checked; save();
+    t.closest('.paper-row').querySelector('span[style*="font-size:.8rem"]').textContent = p.published?'Published ✅':'Hidden from students';
   });
-  document.querySelectorAll('[data-delp]').forEach(b=>b.onclick=async()=>{
+  document.querySelectorAll('[data-delp]').forEach(b=>b.onclick=()=>{
     if(!confirm('Delete this paper and all its marks?')) return;
-    busy(true); await deleteDoc(doc(db,'papers',b.dataset.delp)); busy(false); state.selPaper=null; teacherDash();
+    db.papers=db.papers.filter(p=>p.id!==b.dataset.delp); save(); state.selPaper=null; teacherDash();
   });
-  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{ state.selPaper=b.dataset.open; drawMarksPane(students,papers); });
-  drawMarksPane(students,papers);
+  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{ state.selPaper=b.dataset.open; drawMarksPane(students); });
+  drawMarksPane(students);
 }
-
-function drawMarksPane(students,papers){
+function drawMarksPane(students){
   const pane=$("#marksPane"); if(!pane) return;
-  const selPapers=papers.filter(p=>p.id===state.selPaper);
-  const sel=selPapers[0];
+  const sel=db.papers.find(p=>p.id===state.selPaper);
   if(!sel){ pane.innerHTML=''; return; }
-  pane.innerHTML = `
+  pane.innerHTML=`
   <div class="card">
     <h2>✏️ Marks — ${esc(sel.subject)}: ${esc(sel.title)} <span class="sub" style="display:inline">(max ${sel.max})</span> <span id="svLbl" class="saved" style="margin-left:8px"></span></h2>
     ${students.length?`<div class="tbl-wrap"><table><tr><th>Student</th><th>NIC</th><th>Marks / ${sel.max}</th><th>%</th><th>Grade</th></tr>
       ${students.map(s=>{
         const sc=sel.scores?.[s.id]; const p=sc!=null?pct(sc,sel.max):null;
-        return `<tr><td><b>${esc(s.fullName)}</b></td><td class="mono">${esc(s.nic)}</td>
+        return `<tr><td><b>${esc(s.fullName)}</b></td><td class="mono">${esc(s.nic||'—')}</td>
           <td style="max-width:120px"><input type="number" min="0" max="${sel.max}" value="${sc??''}" data-mk="${s.id}"></td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${p}%</span>`:'—'}</td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${grade(p)}</span>`:'—'}</td></tr>`;
-      }).join('')}</table></div>`:'<p class="sub">No students registered yet.</p>'}
+      }).join('')}</table></div>`:'<p class="sub">No students added yet.</p>'}
   </div>`;
-  let timer=null;
-  document.querySelectorAll('[data-mk]').forEach(inp=>inp.onchange=async()=>{
+  document.querySelectorAll('[data-mk]').forEach(inp=>inp.onchange=()=>{
     const v=inp.value===''?null:Math.max(0,Math.min(sel.max,parseInt(inp.value)||0));
-    const scores={...(sel.scores||{})};
-    if(v==null) delete scores[inp.dataset.mk]; else scores[inp.dataset.mk]=v;
-    sel.scores=scores;
-    clearTimeout(timer);
-    $("#svLbl").textContent='○ saving…';
-    timer=setTimeout(async()=>{
-      try{ await updateDoc(doc(db,'papers',sel.id),{scores}); $("#svLbl").textContent='✓ saved'; }catch(e){ $("#svLbl").textContent='⚠ '+friendly(e); }
-    },400);
+    if(!sel.scores) sel.scores={};
+    if(v==null) delete sel.scores[inp.dataset.mk]; else sel.scores[inp.dataset.mk]=v;
+    save();
+    const row=inp.closest('tr');
+    const p=v!=null?pct(v,sel.max):null;
+    row.cells[3].innerHTML = p!=null?`<span class="pill ${gCls(p)}">${p}%</span>`:'—';
+    row.cells[4].innerHTML = p!=null?`<span class="pill ${gCls(p)}">${grade(p)}</span>`:'—';
+    $("#svLbl").textContent='✓ saved';
+    setTimeout(()=>{ const l=$("#svLbl"); if(l) l.textContent=''; },1500);
   });
 }
 
@@ -685,10 +654,9 @@ function computeStats(students,papers){
   const attention=per.filter(x=>x.overall!=null && (x.overall<40 || SUBJECTS.some(s=>x.subP[s]!=null&&x.subP[s]<40)));
   return {per,ranked,subAvg,bins,attention};
 }
-
 function tabAnalytics({students,papers}){
   const st=computeStats(students,papers);
-  $("#tabBody").innerHTML = `
+  $("#tabBody").innerHTML=`
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px">
       <h2 style="margin:0">📊 Class Analytics</h2>
@@ -722,7 +690,7 @@ function tabAnalytics({students,papers}){
   <div class="card">
     <h2>📋 Class Rankings</h2>
     ${st.ranked.length?`<div class="tbl-wrap"><table><tr><th>Rank</th><th>Name</th><th>NIC</th>${SUBJECTS.map(x=>`<th>${x}</th>`).join('')}<th>Overall</th><th>Grade</th></tr>
-      ${st.ranked.map(x=>`<tr><td><b>#${x.rank}</b></td><td>${esc(x.s.fullName)}</td><td class="mono">${esc(x.s.nic)}</td>
+      ${st.ranked.map(x=>`<tr><td><b>#${x.rank}</b></td><td>${esc(x.s.fullName)}</td><td class="mono">${esc(x.s.nic||'—')}</td>
         ${SUBJECTS.map(s2=>`<td>${x.subP[s2]!=null?x.subP[s2]+'%':'—'}</td>`).join('')}
         <td><span class="pill ${gCls(x.overall)}">${x.overall}%</span></td>
         <td><span class="pill ${gCls(x.overall)}">${grade(x.overall)}</span></td></tr>`).join('')}
@@ -738,9 +706,9 @@ function tabAnalytics({students,papers}){
 
   $("#xls").onclick=()=>{
     const rankAoa=[['Rank','Name','NIC',...SUBJECTS.map(x=>x+' %'),'Overall %','Grade'],
-      ...st.ranked.map(x=>[x.rank,x.s.fullName,x.s.nic,...SUBJECTS.map(s2=>x.subP[s2]??''),x.overall,grade(x.overall)])];
+      ...st.ranked.map(x=>[x.rank,x.s.fullName,x.s.nic||'',...SUBJECTS.map(s2=>x.subP[s2]??''),x.overall,grade(x.overall)])];
     const papAoa=[['Name','NIC',...papers.map(p=>`${p.subject} | ${p.title} (${p.date||'-'})`),'Overall %'],
-      ...st.per.filter(x=>x.overall!=null).map(x=>[x.s.fullName,x.s.nic,
+      ...st.per.filter(x=>x.overall!=null).map(x=>[x.s.fullName,x.s.nic||'',
         ...papers.map(p=>p.scores?.[x.s.id]??''),x.overall])];
     const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rankAoa),'Rankings');
@@ -752,13 +720,16 @@ function tabAnalytics({students,papers}){
     d.setFontSize(15); d.text('Class Analyzer — Class Rankings',14,16);
     d.setFontSize(9); d.setTextColor(120); d.text(`Generated ${new Date().toLocaleString()}`,14,22); d.setTextColor(0);
     d.autoTable({startY:28,head:[['Rank','Name','NIC',...SUBJECTS,'Overall %','Grade']],
-      body:st.ranked.map(x=>[String(x.rank),x.s.fullName,x.s.nic,...SUBJECTS.map(s2=>x.subP[s2]!=null?x.subP[s2]+'%':'—'),x.overall+'%',grade(x.overall)])});
+      body:st.ranked.map(x=>[String(x.rank),x.s.fullName,x.s.nic||'',...SUBJECTS.map(s2=>x.subP[s2]!=null?x.subP[s2]+'%':'—'),x.overall+'%',grade(x.overall)])});
     d.save('class-analyzer-rankings.pdf');
   };
 }
 
-/* first render */
+/* ============================== BOOT ============================== */
+setTheme(localStorage.getItem('ca_theme')||'light');
 chartDefaults();
+loadSess();
+route();
 </script>
 </body>
 </html>
