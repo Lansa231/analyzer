@@ -5,8 +5,13 @@
 
 /* ---- Student dashboard: summary tiles above the chart ---- */
 document.addEventListener('ca:student-marks', e => {
-  const { rows, name } = e.detail, body = document.getElementById('stuBody');
-  if (!body || !rows.length) return;
+  const { rows, name, nic, email } = e.detail, body = document.getElementById('stuBody');
+  if (!body) return;
+  if (rows.length) addSummary(rows, body);
+  addWelcome(name, nic, email, rows.length, body);
+});
+
+function addSummary(rows, body) {
   const { esc, grade, gCls } = window.CA;
 
   const avg = Math.round(rows.reduce((a, r) => a + r.pct, 0) / rows.length * 10) / 10;
@@ -34,4 +39,18 @@ document.addEventListener('ca:student-marks', e => {
     ${tile('Latest paper', last.pct + '%', esc(last.title) + ' · ' + trend)}
   </div>`;
   body.prepend(card);
-});
+}
+
+function addWelcome(name, nic, email, n, body) {
+  const { esc } = window.CA, first = esc(String(name || '').split(' ')[0]);
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `<h2>👋 Welcome, ${first}!</h2>
+    <p class="sub" style="margin:0 0 8px">Your account is ready. Your details:</p>
+    <div style="display:flex;gap:18px;flex-wrap:wrap">
+      <div><span class="sub">Name</span><br><b>${esc(name)}</b></div>
+      <div><span class="sub">NIC</span><br><b>${esc(nic)}</b></div>
+      <div><span class="sub">Email</span><br><b>${esc(email)}</b></div></div>
+    ${n ? '' : '<p class="sub" style="margin:12px 0 0">📌 No marks yet. When your teacher publishes a paper, your progress chart, summary and paper-by-paper marks will appear here automatically.</p>'}`;
+  body.prepend(card);
+}

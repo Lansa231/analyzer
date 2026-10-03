@@ -196,7 +196,7 @@ function route(){
   // guards
   if(r==='stuDash' && !(user && role==='student')) return go('#/login');
   if(r==='teacherDash' && !(user && role==='teacher')) return go('#/teacher');
-  if(r==='landing' && user && role==='student') return go('#/dashboard');
+  if(['landing','login','signup','forgot'].includes(r) && user && role==='student') return go('#/dashboard');
   if(r==='teacherAuth' && user && role==='teacher') return go('#/teacher/dashboard');
   renderHdr(r);
   ({landing,login,signup,forgot,stuDash,teacherAuth,teacherDash})[r]();
@@ -380,7 +380,7 @@ function signup(){
       await setDoc(doc(db,'students',cred.user.uid),{fullName:nm, nic, email:em, createdAt:serverTimestamp()});
       await setDoc(doc(db,'nics',nic),{uid:cred.user.uid, email:em});
       try{ await deleteDoc(doc(db,'pending',nic)); }catch(e){}
-      signingUp=false; await authLoad(auth.currentUser); busy(false);
+      signingUp=false; await authLoad(auth.currentUser); busy(false); go('#/dashboard');
     }catch(e){ signingUp=false; busy(false); $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
 }
@@ -442,7 +442,7 @@ async function stuDash(){
       </table></div></div>`;
     }
     $("#stuBody").innerHTML=inner;
-    try{ document.dispatchEvent(new CustomEvent('ca:student-marks',{detail:{name:profile.fullName,subject:state.stuSubject,
+    try{ document.dispatchEvent(new CustomEvent('ca:student-marks',{detail:{name:profile.fullName,nic:profile.nic,email:profile.email,subject:state.stuSubject,
       rows:rowsP.map(r=>({title:r.p.title,subject:r.p.subject,date:r.p.date,mark:r.m,max:r.p.max,pct:pct(r.m,r.p.max)}))}})); }catch(e){}
     if(rowsP.length){
       const dark=document.documentElement.dataset.theme==='dark';
