@@ -263,7 +263,7 @@ setTheme(localStorage.getItem('ca_theme')||'light');
 /* >>> BEFORE UPLOADING TO GITHUB: paste your Firebase config between the braces below, e.g.
    const HARDCODED_CFG = { apiKey:"AIza...", authDomain:"...", projectId:"...", appId:"..." };
    Leave as null to use the one-time setup screen (config then only works in that one browser). */
-const HARDCODED_CFG = const firebaseConfig = {
+const HARDCODED_CFG = {
   apiKey: "AIzaSyDMg2pV6BZZi0dFCfteM1BSx_0Ac3P43s8",
   authDomain: "marks2-dabd9.firebaseapp.com",
   projectId: "marks2-dabd9",
@@ -271,7 +271,7 @@ const HARDCODED_CFG = const firebaseConfig = {
   messagingSenderId: "312906849238",
   appId: "1:312906849238:web:9844e0b01ead5cfda56277",
   measurementId: "G-NQK2R0Q174"
-};;
+};
 const savedCfg=localStorage.getItem('ca_fb_config');
 if(HARDCODED_CFG){ bootFirebase(HARDCODED_CFG); }
 else if(savedCfg){ try{ bootFirebase(JSON.parse(savedCfg)); }catch(e){ setupScreen('Saved config invalid — paste again.');} }
