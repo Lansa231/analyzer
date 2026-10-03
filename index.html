@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Class Analyzer — A/L Science Stream</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="icon" type="image/png" href="favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -131,6 +130,7 @@ canvas{max-height:320px;}
 <main id="app"></main>
 <div id="loading"><div class="spinner"></div></div>
 
+<script src="features.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged,
@@ -187,6 +187,7 @@ const routes = () => ({
 window.addEventListener('hashchange', route);
 
 function go(h){ if(location.hash===h) route(); else location.hash=h; }
+window.CA={esc,pct,grade,gCls,SUBJECTS,app,get role(){return role}};
 function route(){
   if(unsubStu){ unsubStu(); unsubStu=null; }
   killCharts();
@@ -198,6 +199,7 @@ function route(){
   if(r==='teacherAuth' && user && role==='teacher') return go('#/teacher/dashboard');
   renderHdr(r);
   ({landing,login,signup,forgot,stuDash,teacherAuth,teacherDash})[r]();
+  try{ document.dispatchEvent(new CustomEvent('ca:view',{detail:{name:r}})); }catch(e){}
   window.scrollTo(0,0);
 }
 function renderHdr(r){
@@ -437,6 +439,8 @@ async function stuDash(){
       </table></div></div>`;
     }
     $("#stuBody").innerHTML=inner;
+    try{ document.dispatchEvent(new CustomEvent('ca:student-marks',{detail:{name:profile.fullName,subject:state.stuSubject,
+      rows:rowsP.map(r=>({title:r.p.title,subject:r.p.subject,date:r.p.date,mark:r.m,max:r.p.max,pct:pct(r.m,r.p.max)}))}})); }catch(e){}
     if(rowsP.length){
       const dark=document.documentElement.dataset.theme==='dark';
       charts.s1=new Chart($("#c1"),{type:'line',data:{labels:rowsP.map(r=>r.p.title),
