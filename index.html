@@ -106,6 +106,17 @@ canvas{max-height:320px;}
   .hero{padding:40px 18px;} .hero h1{font-size:1.5rem;}
   .card{padding:18px;}
 }
+.marq{overflow:hidden;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin:14px 0;padding:10px 0}
+.marq-h{font-size:.72rem;font-weight:800;color:var(--brand);letter-spacing:.06em;padding:0 14px 6px}
+.marq-track{display:flex;width:max-content;animation:marq 40s linear infinite}
+.marq:hover .marq-track{animation-play-state:paused}
+.marq-item{display:flex;align-items:center;gap:9px;padding:0 22px;white-space:nowrap}
+.face{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:1.5rem;border:2px solid var(--brand)}
+.marq-item small{display:block;color:var(--muted);font-size:.72rem}
+@keyframes marq{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.marq-track{animation:none}.marq{overflow-x:auto}}
+.chk{display:inline-flex;align-items:center;gap:6px;margin:4px 12px 4px 0;font-size:.85rem}
+.chk input{width:auto}
 </style>
 </head>
 <body>
@@ -457,17 +468,56 @@ function teacherForgot(){
 }
 
 /* ============================== TEACHER DASHBOARD ============================== */
+/* ---- Clipart faces + ranking marquee ---- */
+const FACES=['😀','😎','🤓','😊','🙂','😄','🧐','😇','🤩','😺','🦊','🐼','🐯','🐨','🦉','🐸'];
+const FACE_BG=['#fde68a','#bfdbfe','#fbcfe8','#bbf7d0','#ddd6fe','#fed7aa','#a5f3fc','#fecaca'];
+function faceOf(id){ let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0))>>>0; return {e:FACES[h%FACES.length], bg:FACE_BG[(h>>3)%FACE_BG.length]}; }
+function rankMarquee(students,papers){
+  const r=computeStats(students,papers).ranked;
+  if(!r.length) return `<div class="marq"><div class="marq-h">🏆 CLASS RANKINGS</div><p class="sub" style="padding:0 14px">Rankings will scroll here once you enter marks.</p></div>`;
+  const medal=n=>n===1?'🥇':n===2?'🥈':n===3?'🥉':'#'+n;
+  const items=r.map(x=>{ const f=faceOf(x.s.id);
+    return `<div class="marq-item"><span class="face" style="background:${f.bg}">${f.e}</span><span><b>${medal(x.rank)} ${esc(x.s.fullName)}</b><small>${x.overall}% overall</small></span></div>`; }).join('');
+  return `<div class="marq"><div class="marq-h">🏆 CLASS RANKINGS</div><div class="marq-track" style="animation-duration:${Math.max(25,r.length*4)}s">${items}${items}</div></div>`;
+}
+
+/* ---- Teacher profile (shown once after signup, editable later) ---- */
+function teacherProfile(){
+  const u=me(); if(!u) return; const have=u.subjects||[];
+  app.innerHTML=`<div class="card auth-card" style="max-width:560px">
+    <h2>👩‍🏫 ${u.profileDone?'Edit your profile':'Complete your details'}</h2>
+    <p class="sub">${u.profileDone?'Update your instructor details.':'One last step before you start entering marks.'}</p>
+    <label>Full Name</label><input id="pn" value="${esc(u.fullName||'')}">
+    <label>Phone Number</label><input id="pp" type="tel" placeholder="07X XXX XXXX" value="${esc(u.phone||'')}">
+    <label>Institute / School</label><input id="pi" placeholder="e.g. ABC Tuition Class" value="${esc(u.institute||'')}">
+    <label>Class / Batch Name</label><input id="pc" placeholder="e.g. 2027 A/L Science" value="${esc(u.className||'')}">
+    <label>Qualification</label><input id="pq" placeholder="e.g. BSc (Hons), PGDE" value="${esc(u.qualification||'')}">
+    <label>Subjects you teach</label>
+    <div>${SUBJECTS.map(x=>`<label class="chk"><input type="checkbox" class="psub" value="${x}" ${have.includes(x)?'checked':''}>${x}</label>`).join('')}</div>
+    <button class="btn btn-primary" id="psave" style="margin-top:12px">Save &amp; Continue</button>
+    <div id="pmsg"></div></div>`;
+  $("#psave").onclick=()=>{
+    const d={fullName:$("#pn").value.trim(), phone:$("#pp").value.trim(), institute:$("#pi").value.trim(),
+      className:$("#pc").value.trim(), qualification:$("#pq").value.trim(),
+      subjects:[...document.querySelectorAll('.psub:checked')].map(c=>c.value)};
+    if(d.fullName.length<3||!d.phone||!d.institute) return $("#pmsg").innerHTML='<div class="err">Please fill in your name, phone and institute.</div>';
+    d.profileDone=true; Object.assign(db.users[u.id],d); save(); teacherDash();
+  };
+}
+
 function teacherDash(){
   const u=me(); if(!u) return;
+  if(!u.profileDone || state.editProfile){ state.editProfile=false; return teacherProfile(); }
   const students=usersList().filter(x=>x.role==='student').sort((a,b)=>a.fullName.localeCompare(b.fullName));
   const papers=db.papers.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
 
   app.innerHTML=`
   <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-    <div><b style="font-size:1.05rem">👩‍🏫 ${esc(u.fullName)}</b> <span class="pill brand">Teacher</span>
+    <div><b style="font-size:1.05rem">👩‍🏫 ${esc(u.fullName)}</b> <span class="pill brand">Teacher</span> <button class="btn btn-ghost btn-sm" id="editProf">✏️ Profile</button>
       <span class="sub" style="display:inline"> · ${students.length} students · ${papers.length} papers</span></div>
     <button class="btn btn-ghost btn-sm" id="expBtn">⬇ Backup Data</button>
   </div>
+  ${rankMarquee(students,papers)}
   <div class="tabs">
     <button data-tab="students" class="${state.tab==='students'?'active':''}">👨‍🎓 Students</button>
     <button data-tab="marks" class="${state.tab==='marks'?'active':''}">📝 Marks</button>
@@ -476,6 +526,7 @@ function teacherDash(){
   <div id="tabBody"></div>`;
 
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; state.selPaper=null; teacherDash(); });
+  $("#editProf").onclick=()=>{ state.editProfile=true; teacherDash(); };
   $("#expBtn").onclick=()=>{
     const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='class-analyzer-backup.json'; a.click();
