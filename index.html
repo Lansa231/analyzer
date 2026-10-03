@@ -271,7 +271,7 @@ const HARDCODED_CFG = const firebaseConfig = {
   messagingSenderId: "312906849238",
   appId: "1:312906849238:web:9844e0b01ead5cfda56277",
   measurementId: "G-NQK2R0Q174"
-};
+};;
 const savedCfg=localStorage.getItem('ca_fb_config');
 if(HARDCODED_CFG){ bootFirebase(HARDCODED_CFG); }
 else if(savedCfg){ try{ bootFirebase(JSON.parse(savedCfg)); }catch(e){ setupScreen('Saved config invalid — paste again.');} }
