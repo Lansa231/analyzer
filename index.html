@@ -175,6 +175,7 @@ function bindTheme(){ const b=$("#themeBtn"); if(b) b.onclick=()=>{ setTheme(doc
 
 /* ============================== STATE ============================== */
 let auth=null, db=null, user=null, role=null, profile=null;
+let signingUp=false, authLoad=null;
 let state = { tab:'marks', selPaper:null, stuSubject:'All', settings:null };
 let unsubStu = null;
 const AL = SUBJECTS.map(s=>({s,g:0,p:0,total:0})); // not used; kept minimal
@@ -245,7 +246,7 @@ function setupScreen(msg){
 function bootFirebase(cfg){
   try{ const fa=initializeApp(cfg); auth=getAuth(fa); db=getFirestore(fa); }
   catch(e){ return setupScreen('Could not connect: '+e.message); }
-  onAuthStateChanged(auth, async u=>{
+  authLoad=async u=>{
     user=u; role=null; profile=null;
     if(u){
       try{
@@ -259,7 +260,8 @@ function bootFirebase(cfg){
       }catch(e){}
     }
     route();
-  });
+  };
+  onAuthStateChanged(auth,u=>{ if(!signingUp) authLoad(u); });
   route();
 }
 setTheme(localStorage.getItem('ca_theme')||'light');
@@ -372,13 +374,14 @@ function signup(){
     try{
       const nicDoc=await getDoc(doc(db,'nics',nic));
       if(nicDoc.exists()){ busy(false); $("#msg").innerHTML=`<div class="err">This NIC is already registered. <a href="#/login">Log in instead</a>.</div>`; return; }
+      signingUp=true;
       const cred=await createUserWithEmailAndPassword(auth, em, pw);
       await updateProfile(cred.user,{displayName:nm});
       await setDoc(doc(db,'students',cred.user.uid),{fullName:nm, nic, email:em, createdAt:serverTimestamp()});
       await setDoc(doc(db,'nics',nic),{uid:cred.user.uid, email:em});
       try{ await deleteDoc(doc(db,'pending',nic)); }catch(e){}
-      busy(false);
-    }catch(e){ busy(false); $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
+      signingUp=false; await authLoad(auth.currentUser); busy(false);
+    }catch(e){ signingUp=false; busy(false); $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
 }
 
@@ -495,10 +498,11 @@ function teacherAuth(){
       if(s?.exists() && s.data().teacherSignupOpen===false){
         busy(false); $("#msg").innerHTML=`<div class="err">Instructor registration is closed. Ask the administrator to enable it.</div>`; return;
       }
+      signingUp=true;
       const cred=await createUserWithEmailAndPassword(auth, em, pw);
       await setDoc(doc(db,'teachers',cred.user.uid),{fullName:nm, email:em, createdAt:serverTimestamp()});
-      busy(false);
-    }catch(e){ busy(false); $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
+      signingUp=false; await authLoad(auth.currentUser); busy(false);
+    }catch(e){ signingUp=false; busy(false); $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
 }
 
