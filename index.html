@@ -127,6 +127,11 @@ canvas{max-height:320px;}
 .bgfx span{position:absolute;bottom:-70px;opacity:.15;animation:floatUp linear infinite;will-change:transform}
 @keyframes floatUp{from{transform:translateY(0) rotate(0)}to{transform:translateY(-120vh) rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.bgfx{display:none}}
+.split{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);max-width:980px;margin:28px auto;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.split .auth-card{max-width:none;margin:0;border-radius:0;box-shadow:none}
+.side{position:relative;min-height:320px;background:linear-gradient(rgba(6,60,70,.55),rgba(6,60,70,.75)),url('signup-photo.jpg') center/cover no-repeat,linear-gradient(135deg,#0e7490,#0d9488);display:flex;align-items:flex-end}
+.side-txt{padding:28px;color:#fff}.side-txt h2{color:#fff;margin:6px 0}.side-txt p{margin:0;opacity:.9;font-size:.9rem}
+@media (max-width:760px){.split{grid-template-columns:1fr;margin:12px auto}.side{min-height:150px}}
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>">
 </head>
@@ -199,7 +204,11 @@ const routes = () => ({
 window.addEventListener('hashchange', route);
 
 function go(h){ if(location.hash===h) route(); else location.hash=h; }
-window.CA={esc,pct,grade,gCls,SUBJECTS,app,get role(){return role}};
+window.CA={esc,pct,grade,gCls,SUBJECTS,BATCHES,app,go,busy,friendly,state,
+  get role(){return role}, get user(){return user}, get profile(){return profile}, get db(){return db},
+  fs:{doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,addDoc,collection,query,where,serverTimestamp},
+  tabs:[],                                   // add-on files push {id,label,render(ctx)} here to add teacher tabs
+  refresh:()=>route()};
 function route(){
   if(unsubStu){ unsubStu(); unsubStu=null; }
   killCharts();
@@ -357,7 +366,8 @@ async function getLists(){
 async function signup(){
   const L=await getLists();
   const O=a=>a.map(x=>`<option>${esc(x)}</option>`).join('');
-  app.innerHTML = `<div class="card auth-card">
+  app.innerHTML = `<div class="split"><div class="side"><div class="side-txt"><div style="font-size:2rem">🧬</div><h2>S.K. Wellala<br>Biology Paper Class</h2><p>Join your class, follow every paper and watch your progress grow.</p></div></div>
+  <div class="card auth-card">
     <h2>🎓 Student Sign Up</h2>
     <label>Full Name</label><input id="nm" placeholder="e.g. Kasun Perera">
     <div class="field-err" id="e-nm"></div>
@@ -379,7 +389,7 @@ async function signup(){
     <button class="btn btn-primary" id="btn">Create Account</button>
     <div id="msg"></div>
     <p class="hint" style="text-align:center">Already registered? <a href="#/login">Log in</a></p>
-  </div>`;
+  </div></div>`;
   const pwScore = v => { let s=0; if(v.length>=8)s++; if(/[a-zA-Z]/.test(v)&&/\d/.test(v))s++; if(v.length>=12||/[^a-zA-Z0-9]/.test(v))s++; return s; };
   $("#pw").oninput=e=>{
     const s=pwScore(e.target.value), f=$("#meterFill");
@@ -510,6 +520,7 @@ function teacherAuth(){
     <div id="fIn">
       <label>Email</label><input id="em" type="email" placeholder="you@school.lk" autocomplete="email">
       <label>Password</label><input id="pw" type="password" placeholder="Your password" autocomplete="current-password">
+      <div style="text-align:right;margin-top:6px"><a href="#" id="tForgot" style="font-size:.82rem">Forgot password?</a></div>
       <button class="btn btn-primary" id="inBtn">Sign In</button>
     </div>
     <div id="fUp" style="display:none">
@@ -524,6 +535,13 @@ function teacherAuth(){
   let TL={centers:[]}; getLists().then(x=>{ TL=x; $("#uct").innerHTML='<option value="">Select center</option>'+x.centers.map(c=>`<option>${esc(c)}</option>`).join(''); });
   $("#tIn").onclick=()=>{ $("#tIn").classList.add('active');$("#tUp").classList.remove('active');$("#fIn").style.display='block';$("#fUp").style.display='none'; };
   $("#tUp").onclick=()=>{ $("#tUp").classList.add('active');$("#tIn").classList.remove('active');$("#fUp").style.display='block';$("#fIn").style.display='none'; };
+  $("#tForgot").onclick=async e=>{
+    e.preventDefault(); const m=$("#msg"), em=$("#em").value.trim(); m.innerHTML='';
+    if(!EMAIL_RE.test(em)) return m.innerHTML='<div class="err">Type your email in the Email box above first, then click Forgot password.</div>';
+    busy(true);
+    try{ await sendPasswordResetEmail(auth,em); busy(false); m.innerHTML='<div class="ok">✅ Reset link sent! Check your inbox (and spam folder), set a new password, then sign in.</div>'; }
+    catch(err){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(err))}</div>`; }
+  };
   $("#inBtn").onclick=async()=>{
     $("#msg").innerHTML=''; busy(true);
     try{ await signInWithEmailAndPassword(auth,$("#em").value.trim(),$("#pw").value); }
@@ -641,6 +659,7 @@ async function teacherDash(){
     <button data-tab="analytics" class="${state.tab==='analytics'?'active':''}">📊 Analytics</button>
     <button data-tab="ranks" class="${state.tab==='ranks'?'active':''}">🏅 Rankings</button>
     <button data-tab="allmarks" class="${state.tab==='allmarks'?'active':''}">🌐 All Marks</button>
+    ${window.CA.tabs.map(t=>`<button data-tab="x_${t.id}" class="${state.tab==='x_'+t.id?'active':''}">${t.label}</button>`).join('')}
     ${adm?`<button data-tab="teachers" class="${state.tab==='teachers'?'active':''}">🧑‍🏫 Teachers</button><button data-tab="admin" class="${state.tab==='admin'?'active':''}">⚙️ Centers &amp; Payments</button>`:''}
   </div>
   <div id="tabBody"></div>`;
@@ -654,7 +673,11 @@ async function teacherDash(){
   if($("#ctrSel")) $("#ctrSel").onchange=e=>{ state.center=e.target.value; teacherDash(); };
   if(!adm && ['teachers','admin'].includes(state.tab)) state.tab='students';
   const tabs={students:tabStudents,marks:tabMarks,analytics:tabAnalytics,ranks:tabRanks,allmarks:tabAllMarks,teachers:tabTeachers,admin:tabAdmin};
-  (tabs[state.tab]||tabStudents)({students:roster,roster,rosterAll,pending,papers,teachers});
+  const ctx={students:roster,roster,rosterAll,pending,papers,papersAll,teachers,adm};
+  const xt=window.CA.tabs.find(t=>'x_'+t.id===state.tab);
+  if(xt){ try{ xt.render({...ctx,el:$("#tabBody")}); }catch(e){ $("#tabBody").innerHTML=`<div class="card"><div class="err">${esc(e.message)}</div></div>`; } }
+  else (tabs[state.tab]||tabStudents)(ctx);
+  try{ document.dispatchEvent(new CustomEvent('ca:teacher-view',{detail:{tab:state.tab,batch:state.batch,adm}})); }catch(e){}
 }
 
 /* ---- Student profile page (teacher / developer) ---- */
