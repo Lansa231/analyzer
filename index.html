@@ -120,6 +120,7 @@ canvas{max-height:320px;}
 .chk input{width:auto}
 .site-foot{text-align:center;padding:22px 14px 28px;color:var(--muted);font-size:.8rem}
 .site-foot b{color:var(--brand)}
+.vbadge{background:#dcfce7;color:#166534;border-radius:999px;padding:2px 9px;font-size:.72rem;font-weight:700;white-space:nowrap}
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>">
 </head>
@@ -130,7 +131,7 @@ canvas{max-height:320px;}
   <div class="hdr-actions" id="hdrActions"></div>
 </header>
 <main id="app"></main>
-<footer class="site-foot">Site developer: <b>Tharusha Lansakara</b> · S.K. Wellala Biology Paper Class</footer>
+<footer class="site-foot">Site developer: <b>Tharusha Lansakra</b> · S.K. Wellala Biology Paper Class</footer>
 <div id="loading"><div class="spinner"></div></div>
 
 <script src="features.js"></script>
@@ -149,6 +150,7 @@ const app = $("#app");
 const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const pct = (a,b) => b>0 ? Math.round(a/b*1000)/10 : 0;
 const SUBJECTS = ["Biology"];
+const BATCHES = ["2027 A/L","2028 A/L"];
 // Standard A/L grade boundaries by %
 const grade = p => p>=75?'A':p>=65?'B':p>=55?'C':p>=35?'S':'F';
 const gCls  = p => p>=75?'good':p>=55?'brand':p>=35?'warn':'bad';
@@ -179,7 +181,7 @@ function bindTheme(){ const b=$("#themeBtn"); if(b) b.onclick=()=>{ setTheme(doc
 /* ============================== STATE ============================== */
 let auth=null, db=null, user=null, role=null, profile=null;
 let signingUp=false, authLoad=null;
-let state = { tab:'marks', selPaper:null, stuSubject:'All', settings:null };
+let state = {batch:'2027 A/L',center:'All',rankPaper:null, tab:'marks', selPaper:null, stuSubject:'All', settings:null };
 let unsubStu = null;
 const AL = SUBJECTS.map(s=>({s,g:0,p:0,total:0})); // not used; kept minimal
 
@@ -254,7 +256,7 @@ function bootFirebase(cfg){
     if(u){
       try{
         const t=await getDoc(doc(db,'teachers',u.uid));
-        if(t.exists()){ role='teacher'; profile=t.data(); }
+        if(t.exists()){ role='teacher'; profile=t.data(); try{ profile.isAdmin=(await getDoc(doc(db,'admins',u.uid))).exists(); }catch(e){ profile.isAdmin=false; } }
         else{
           const s=await getDoc(doc(db,'students',u.uid));
           if(s.exists()){ role='student'; profile=s.data(); }
@@ -337,7 +339,13 @@ function login(){
   $("#pw").addEventListener('keydown',e=>{ if(e.key==='Enter') $("#btn").click(); });
 }
 
-function signup(){
+async function getLists(){
+  const x=await getDoc(doc(db,'settings','lists')).catch(()=>null), d=x?.exists()?x.data():{};
+  return {centers:d.centers||[],payMethods:d.payMethods||[]};
+}
+async function signup(){
+  const L=await getLists();
+  const O=a=>a.map(x=>`<option>${esc(x)}</option>`).join('');
   app.innerHTML = `<div class="card auth-card">
     <h2>🎓 Student Sign Up</h2>
     <label>Full Name</label><input id="nm" placeholder="e.g. Kasun Perera">
@@ -346,6 +354,12 @@ function signup(){
     <div class="field-err" id="e-nic"></div>
     <label>Email</label><input id="em" type="email" placeholder="you@email.com" autocomplete="email">
     <div class="field-err" id="e-em"></div>
+    <label>Mobile Number</label><input id="mob" type="tel" placeholder="07X XXX XXXX"><div class="field-err" id="e-mob"></div>
+    <label>WhatsApp Number</label><input id="wa" type="tel" placeholder="07X XXX XXXX"><div class="field-err" id="e-wa"></div>
+    <label>School</label><input id="sch" placeholder="Your school"><div class="field-err" id="e-sch"></div>
+    <label>Batch</label><select id="bat">${BATCHES.map(b=>`<option>${b}</option>`).join('')}</select>
+    <label>Exam Center</label><select id="ctr"><option value="">Select your center</option>${O(L.centers)}</select><div class="field-err" id="e-ctr"></div>
+    <label>How do you pay for the class?</label><select id="pay"><option value="">Select payment method</option>${O(L.payMethods)}</select><div class="field-err" id="e-pay"></div>
     <label>Password</label><input id="pw" type="password" placeholder="Min 8 chars, letters + numbers" autocomplete="new-password">
     <div class="meter"><div id="meterFill" style="width:0"></div></div>
     <div class="field-err" id="e-pw"></div>
@@ -362,7 +376,7 @@ function signup(){
     f.style.background=['#b91c1c','#b45309','#0e7490','#0f766e'][s];
   };
   $("#btn").onclick=async()=>{
-    ["nm","nic","em","pw","pw2"].forEach(x=>$("#e-"+x).textContent='');
+    ["nm","nic","em","pw","pw2","mob","wa","sch","ctr","pay"].forEach(x=>$("#e-"+x).textContent='');
     $("#msg").innerHTML='';
     const nm=$("#nm").value.trim(), nic=$("#nic").value.trim().toUpperCase(),
           em=$("#em").value.trim().toLowerCase(), pw=$("#pw").value, pw2=$("#pw2").value;
@@ -372,6 +386,13 @@ function signup(){
     if(!EMAIL_RE.test(em)){$("#e-em").textContent='Please enter a valid email address.';bad=true;}
     if(pwScore(pw)<2){$("#e-pw").textContent='Use at least 8 characters with both letters and numbers.';bad=true;}
     if(pw!==pw2){$("#e-pw2").textContent='Passwords do not match.';bad=true;}
+    const ph=v=>/^(\+94|0)\d{9}$/.test(v.replace(/[\s-]/g,''));
+    const mob=$("#mob").value.trim(), wa=$("#wa").value.trim(), sch=$("#sch").value.trim(), bat=$("#bat").value, ctr=$("#ctr").value, pay=$("#pay").value;
+    if(!ph(mob)){$("#e-mob").textContent='Enter a valid mobile number.';bad=true;}
+    if(!ph(wa)){$("#e-wa").textContent='Enter a valid WhatsApp number.';bad=true;}
+    if(sch.length<2){$("#e-sch").textContent='Please enter your school.';bad=true;}
+    if(L.centers.length&&!ctr){$("#e-ctr").textContent='Please select your center.';bad=true;}
+    if(L.payMethods.length&&!pay){$("#e-pay").textContent='Please select how you pay.';bad=true;}
     if(bad) return;
     busy(true);
     try{
@@ -380,7 +401,7 @@ function signup(){
       signingUp=true;
       const cred=await createUserWithEmailAndPassword(auth, em, pw);
       await updateProfile(cred.user,{displayName:nm});
-      await setDoc(doc(db,'students',cred.user.uid),{fullName:nm, nic, email:em, createdAt:serverTimestamp()});
+      await setDoc(doc(db,'students',cred.user.uid),{fullName:nm, nic, email:em, mobile:mob, whatsapp:wa, school:sch, batch:bat, center:ctr, payMethod:pay, verified:false, createdAt:serverTimestamp()});
       await setDoc(doc(db,'nics',nic),{uid:cred.user.uid, email:em});
       try{ await deleteDoc(doc(db,'pending',nic)); }catch(e){}
       signingUp=false; await authLoad(auth.currentUser); busy(false); go('#/dashboard');
@@ -410,9 +431,11 @@ function forgot(){
 /* ============================== STUDENT DASHBOARD ============================== */
 async function stuDash(){
   if(!profile) return;
+  try{ const f=await getDoc(doc(db,'students',user.uid)); if(f.exists()) profile=f.data(); }catch(e){}
   app.innerHTML = `
     <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-      <div><b style="font-size:1.05rem">🎓 ${esc(profile.fullName)}</b> <span class="pill brand">Student</span></div>
+      <div><b style="font-size:1.05rem">🎓 ${esc(profile.fullName)}</b> <span class="pill brand">Student</span> ${profile.verified?'<span class="vbadge">✔ Verified</span>':'<span class="sub" style="display:inline">· pending verification</span>'}
+        <div class="sub" style="margin:2px 0 0">${esc(profile.batch||BATCHES[0])}${profile.center?' · '+esc(profile.center):''}${profile.school?' · '+esc(profile.school):''}</div></div>
       <div style="display:none">
         <label style="margin:0">Subject:</label>
         <select id="subj" style="width:auto">
@@ -428,6 +451,7 @@ async function stuDash(){
   const load=async()=>{ const snap=await getDocs(q); return snap.docs.map(d=>({id:d.id,...d.data()})); };
   const renderBody=papers=>{
     const rowsP=papers
+      .filter(p=>(p.batch||BATCHES[0])===(profile.batch||BATCHES[0]))
       .filter(p=>state.stuSubject==='All'||p.subject===state.stuSubject)
       .map(p=>({p, m:p.scores?.[String(profile.nic||'').toUpperCase()]}))
       .filter(r=>r.m!=null)
@@ -478,10 +502,12 @@ function teacherAuth(){
       <label>Full Name</label><input id="unm" placeholder="e.g. Mrs. Fernando">
       <label>Email</label><input id="uem" type="email" placeholder="you@school.lk">
       <label>Password (min 8 chars)</label><input id="upw" type="password" placeholder="Choose a strong password">
+      <label>Exam Center</label><select id="uct"><option value="">Select center</option></select>
       <button class="btn btn-primary" id="upBtn">Create Instructor Account</button>
     </div>
     <div id="msg"></div>
   </div>`;
+  let TL={centers:[]}; getLists().then(x=>{ TL=x; $("#uct").innerHTML='<option value="">Select center</option>'+x.centers.map(c=>`<option>${esc(c)}</option>`).join(''); });
   $("#tIn").onclick=()=>{ $("#tIn").classList.add('active');$("#tUp").classList.remove('active');$("#fIn").style.display='block';$("#fUp").style.display='none'; };
   $("#tUp").onclick=()=>{ $("#tUp").classList.add('active');$("#tIn").classList.remove('active');$("#fUp").style.display='block';$("#fIn").style.display='none'; };
   $("#inBtn").onclick=async()=>{
@@ -495,6 +521,7 @@ function teacherAuth(){
     if(nm.length<3) return $("#msg").innerHTML=`<div class="err">Please enter your name.</div>`;
     if(!EMAIL_RE.test(em)) return $("#msg").innerHTML=`<div class="err">Please enter a valid email.</div>`;
     if(pw.length<8) return $("#msg").innerHTML=`<div class="err">Password must be at least 8 characters.</div>`;
+    if(TL.centers.length&&!$("#uct").value) return $("#msg").innerHTML=`<div class="err">Please select your exam center.</div>`;
     busy(true);
     try{
       const s=await getDoc(doc(db,'settings','registration')).catch(()=>null);
@@ -503,7 +530,7 @@ function teacherAuth(){
       }
       signingUp=true;
       const cred=await createUserWithEmailAndPassword(auth, em, pw);
-      await setDoc(doc(db,'teachers',cred.user.uid),{fullName:nm, email:em, createdAt:serverTimestamp()});
+      await setDoc(doc(db,'teachers',cred.user.uid),{fullName:nm, email:em, center:$("#uct").value, verified:false, createdAt:serverTimestamp()});
       signingUp=false; await authLoad(auth.currentUser); busy(false);
     }catch(e){ signingUp=false; busy(false); $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
@@ -515,13 +542,13 @@ const FACES=['😀','😎','🤓','😊','🙂','😄','🧐','😇','🤩','�
 const FACE_BG=['#fde68a','#bfdbfe','#fbcfe8','#bbf7d0','#ddd6fe','#fed7aa','#a5f3fc','#fecaca'];
 function faceOf(id){ let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0))>>>0; return {e:FACES[h%FACES.length], bg:FACE_BG[(h>>3)%FACE_BG.length]}; }
 function rankMarquee(students,papers){
-  const r=computeStats(students,papers).ranked;
-  if(!r.length) return `<div class="marq"><div class="marq-h">🏆 CLASS RANKINGS</div><p class="sub" style="padding:0 14px">Rankings will scroll here once you enter marks.</p></div>`;
+  const paper=papers.find(p=>p.id===state.rankPaper)||papers[0];
+  const r=paper?paperRanks(students,paper):[];
+  if(!r.length) return `<div class="marq"><div class="marq-h">🏆 PAPER RANKINGS</div><p class="sub" style="padding:0 14px">Rankings for the latest paper will scroll here once you enter marks.</p></div>`;
   const medal=n=>n===1?'🥇':n===2?'🥈':n===3?'🥉':'#'+n;
   const items=r.map(x=>{ const f=faceOf(x.s.id);
-    return `<div class="marq-item"><span class="face" style="background:${f.bg}">${f.e}</span><span><b>${medal(x.rank)} ${esc(x.s.fullName)}</b><small>${x.overall}% overall</small></span></div>`; }).join('');
-  const dur=Math.max(25,r.length*4);
-  return `<div class="marq"><div class="marq-h">🏆 CLASS RANKINGS</div><div class="marq-track" style="animation-duration:${dur}s">${items}${items}</div></div>`;
+    return `<div class="marq-item"><span class="face" style="background:${f.bg}">${f.e}</span><span><b>${medal(x.rank)} ${esc(x.s.fullName)}</b><small>${x.m}/${paper.max} · ${x.pct}%</small></span></div>`; }).join('');
+  return `<div class="marq"><div class="marq-h">🏆 ${esc(paper.title).toUpperCase()} — RANKINGS</div><div class="marq-track" style="animation-duration:${Math.max(25,r.length*4)}s">${items}${items}</div></div>`;
 }
 
 /* ---- Teacher profile (shown once after signup, editable later) ---- */
@@ -552,108 +579,158 @@ function teacherProfile(){
 
 async function teacherDash(){
   if(!profile) return;
+  if(!profile.isAdmin && profile.verified!==true){
+    app.innerHTML=`<div class="card auth-card"><h2>⏳ Awaiting verification</h2><p class="sub">Your instructor account is created. The site developer must verify it before you can enter marks.</p><button class="btn btn-primary" id="recheck">Check again</button></div>`;
+    $("#recheck").onclick=async()=>{ try{ const t=await getDoc(doc(db,'teachers',user.uid)); if(t.exists()) profile={...t.data(),isAdmin:profile.isAdmin}; }catch(e){} teacherDash(); };
+    return;
+  }
   if(!profile.profileDone || state.editProfile){ state.editProfile=false; return teacherProfile(); }
-  const [stuSnap, penSnap, papSnap, setSnap] = await Promise.all([
+  const [stuSnap, penSnap, papSnap, setSnap, lstSnap, tchSnap] = await Promise.all([
     getDocs(collection(db,'students')), getDocs(collection(db,'pending')),
-    getDocs(collection(db,'papers')), getDoc(doc(db,'settings','registration')).catch(()=>null)
+    getDocs(collection(db,'papers')), getDoc(doc(db,'settings','registration')).catch(()=>null),
+    getDoc(doc(db,'settings','lists')).catch(()=>null), profile.isAdmin?getDocs(collection(db,'teachers')):null
   ]).catch(e=>{ app.innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; return [null]; });
   if(!stuSnap) return;
   const students=stuSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.fullName.localeCompare(b.fullName));
   const pending=penSnap.docs.map(d=>({nic:d.id,...d.data()}));
-  const papers=papSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-  // roster = signed-up students + students the teacher added by NIC; marks are keyed by NIC
-  const roster=students.map(x=>({id:String(x.nic||'').toUpperCase(),uid:x.id,fullName:x.fullName,nic:String(x.nic||'').toUpperCase(),email:x.email,signedUp:true}));
-  pending.forEach(x=>{ if(!roster.some(r=>r.id===x.nic)) roster.push({id:x.nic,fullName:x.fullName,nic:x.nic,email:x.email||'',signedUp:false}); });
-  roster.sort((a,b)=>a.fullName.localeCompare(b.fullName));
+  const papersAll=papSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const papers=papersAll.filter(p=>(p.batch||BATCHES[0])===state.batch);
+  const rosterAll=students.map(x=>({id:String(x.nic||'').toUpperCase(),uid:x.id,fullName:x.fullName,nic:String(x.nic||'').toUpperCase(),email:x.email,mobile:x.mobile,whatsapp:x.whatsapp,school:x.school,batch:x.batch||BATCHES[0],center:x.center||'',payMethod:x.payMethod,verified:!!x.verified,signedUp:true}));
+  pending.forEach(x=>{ if(!rosterAll.some(r=>r.id===x.nic)) rosterAll.push({id:x.nic,fullName:x.fullName,nic:x.nic,email:x.email||'',batch:x.batch||BATCHES[0],center:x.center||'',verified:false,signedUp:false}); });
+  rosterAll.sort((a,b)=>a.fullName.localeCompare(b.fullName));
+  const roster=rosterAll.filter(r=>r.batch===state.batch&&(state.center==='All'||r.center===state.center));
+  const lsd=lstSnap?.exists()?lstSnap.data():{};
+  state.lists={centers:lsd.centers||[],payMethods:lsd.payMethods||[]};
+  const teachers=tchSnap?tchSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.fullName).localeCompare(String(b.fullName))):[];
+  const adm=!!profile.isAdmin;
   state.settings = setSnap?.exists()? setSnap.data() : {teacherSignupOpen:true};
 
   app.innerHTML = `
   <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-    <div><b style="font-size:1.05rem">👩‍🏫 ${esc(profile.fullName||'Instructor')}</b> <span class="pill brand">Teacher</span> <button class="btn btn-ghost btn-sm" id="editProf">✏️ Profile</button>
+    <div><b style="font-size:1.05rem">👩‍🏫 ${esc(profile.fullName||'Instructor')}</b> <span class="pill brand">${adm?'Developer':'Teacher'}</span> <button class="btn btn-ghost btn-sm" id="editProf">✏️ Profile</button>
       <span class="sub" style="display:inline"> · ${roster.length} students · ${papers.length} papers</span></div>
-    <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
+    ${adm?`<label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
       <span class="switch"><input type="checkbox" id="regOpen" ${state.settings.teacherSignupOpen!==false?'checked':''}><span class="slider"></span></span>
-      <span style="font-size:.8rem">New teacher signups</span></label>
+      <span style="font-size:.8rem">New teacher signups</span></label>`:''}
   </div>
+  <div class="tabs">${BATCHES.map(b=>`<button data-batch="${b}" class="${state.batch===b?'active':''}">🎓 ${b}</button>`).join('')}</div>
+  <div style="display:flex;gap:8px;align-items:center;margin:8px 0"><label style="margin:0">Center:</label>
+    <select id="ctrSel" style="width:auto"><option>All</option>${state.lists.centers.map(c=>`<option${state.center===c?' selected':''}>${esc(c)}</option>`).join('')}</select></div>
   ${rankMarquee(roster,papers)}
   <div class="tabs">
     <button data-tab="students" class="${state.tab==='students'?'active':''}">👨‍🎓 Students</button>
     <button data-tab="marks" class="${state.tab==='marks'?'active':''}">📝 Marks</button>
     <button data-tab="analytics" class="${state.tab==='analytics'?'active':''}">📊 Analytics</button>
+    <button data-tab="ranks" class="${state.tab==='ranks'?'active':''}">🏅 Rankings</button>
+    ${adm?`<button data-tab="teachers" class="${state.tab==='teachers'?'active':''}">🧑‍🏫 Teachers</button><button data-tab="admin" class="${state.tab==='admin'?'active':''}">⚙️ Centers &amp; Payments</button>`:''}
   </div>
   <div id="tabBody"></div>`;
 
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; state.selPaper=null; teacherDash(); });
   $("#editProf").onclick=()=>{ state.editProfile=true; teacherDash(); };
-  $("#regOpen").onchange=async e=>{
+  if($("#regOpen")) $("#regOpen").onchange=async e=>{
     await setDoc(doc(db,'settings','registration'),{teacherSignupOpen:e.target.checked},{merge:true});
   };
-  ({students:tabStudents, marks:tabMarks, analytics:tabAnalytics})[state.tab]({students:state.tab==='students'?students:roster,pending,papers});
+  document.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>{ state.batch=b.dataset.batch; state.selPaper=null; state.rankPaper=null; teacherDash(); });
+  $("#ctrSel").onchange=e=>{ state.center=e.target.value; teacherDash(); };
+  if(!adm && ['teachers','admin'].includes(state.tab)) state.tab='students';
+  const tabs={students:tabStudents,marks:tabMarks,analytics:tabAnalytics,ranks:tabRanks,teachers:tabTeachers,admin:tabAdmin};
+  (tabs[state.tab]||tabStudents)({students:roster,roster,rosterAll,pending,papers,teachers});
 }
 
 /* ---- Students tab ---- */
-function tabStudents({students,pending}){
-  $("#tabBody").innerHTML = `
-  <div class="card">
-    <h2>Add Student</h2>
-    <p class="sub" style="margin:0 0 4px">Add each student with their NIC. You can enter their marks straight away — they don't need to sign up first. Later they can sign up with the same NIC to see their results.</p>
+function tabStudents({roster,rosterAll}){
+  const adm=profile.isAdmin, L=state.lists;
+  const opt=(a,sel)=>a.map(x=>`<option${x===sel?' selected':''}>${esc(x)}</option>`).join('');
+  const vb=s=>s.verified?' <span class="vbadge">✔ Verified</span>':'';
+  const row=s=>`<tr><td><b>${esc(s.fullName)}</b>${vb(s)}${s.signedUp?'':' <span class="sub">(not signed up)</span>'}</td><td class="mono">${esc(s.nic)}</td><td>${esc(s.batch)}</td><td>${esc(s.center||'—')}</td>
+    <td>${esc(s.mobile||'—')}${s.whatsapp?`<br><span class="sub" style="margin:0">WA ${esc(s.whatsapp)}</span>`:''}</td><td>${esc(s.school||'—')}</td><td>${esc(s.payMethod||'—')}</td>
+    <td style="text-align:right;white-space:nowrap">${adm&&s.signedUp?`<button class="btn btn-ghost btn-sm" data-ver="${s.uid}" data-v="${s.verified?1:0}">${s.verified?'Unverify':'Verify'}</button> `:''}
+    ${s.signedUp?`<button class="btn btn-ghost btn-sm" data-edit="${s.uid}" data-name="${esc(s.fullName)}">Edit</button> `:''}
+    <button class="btn btn-danger btn-sm" data-rm="${esc(s.nic)}" data-uid="${s.uid||''}">Remove</button></td></tr>`;
+  const table=a=>a.length?`<div class="tbl-wrap"><table><tr><th>Name</th><th>NIC</th><th>Batch</th><th>Center</th><th>Contact</th><th>School</th><th>Paid via</th><th></th></tr>${a.map(row).join('')}</table></div>`:'<p class="sub">No students found.</p>';
+  $("#tabBody").innerHTML=`
+  <div class="card"><h2>🔎 Find a student</h2>
+    <input id="q" placeholder="Search by NIC or name (all batches &amp; centers)"><div id="qres"></div></div>
+  <div class="card"><h2>Add Student to ${esc(state.batch)}</h2>
+    <p class="sub" style="margin:0 0 4px">Add a student with their NIC and enter marks straight away — they can sign up later with the same NIC.</p>
     <div class="row">
-      <div><label>Full name</label><input id="an" placeholder="e.g. Nimal Silva"></div>
-      <div><label>NIC</label><input id="anic" placeholder="123456789V / 200012345678" maxlength="12"></div>
-      <div><label>Email (optional)</label><input id="aem" placeholder="student@email.com"></div>
-      <button class="btn btn-primary" id="addStu" style="width:auto;margin:0">+ Add</button>
-    </div>
-    <div id="addMsg"></div>
-  </div>
-  <div class="card">
-    <h2>Registered Students (${students.length})</h2>
-    ${students.length?`<div class="tbl-wrap"><table><tr><th>Name</th><th>NIC</th><th>Email</th><th style="text-align:right">Actions</th></tr>
-      ${students.map(s=>`<tr><td><b>${esc(s.fullName)}</b></td><td class="mono">${esc(s.nic)}</td><td>${esc(s.email)}</td>
-        <td style="text-align:right;white-space:nowrap">
-          <button class="btn btn-ghost btn-sm" data-edit="${s.id}" data-name="${esc(s.fullName)}">Edit</button>
-          <button class="btn btn-danger btn-sm" data-del="${s.id}" data-nic="${esc(s.nic)}">Remove</button></td></tr>`).join('')}
-    </table></div>`:'<p class="sub">No students registered yet.</p>'}
-  </div>
-  ${pending.length?`<div class="card"><h2>Awaiting Sign Up (${pending.length})</h2>
-    <div class="tbl-wrap"><table><tr><th>Name</th><th>NIC</th><th>Email</th><th></th></tr>
-    ${pending.map(p=>`<tr><td>${esc(p.fullName)}</td><td class="mono">${esc(p.nic)}</td><td>${esc(p.email||'—')}</td>
-      <td><button class="btn btn-danger btn-sm" data-delpen="${esc(p.nic)}">Remove</button></td></tr>`).join('')}
-    </table></div></div>`:''}`;
-
+      <div><label>Full name</label><input id="an"></div><div><label>NIC</label><input id="anic" maxlength="12"></div>
+      <div><label>Center</label><select id="act"><option value="">—</option>${opt(L.centers,state.center)}</select></div>
+      <button class="btn btn-primary" id="addStu" style="width:auto;margin:0">+ Add</button></div>
+    <div id="addMsg"></div></div>
+  <div class="card"><h2>${esc(state.batch)} students (${roster.length})</h2>${table(roster)}</div>`;
+  const wire=()=>{
+    document.querySelectorAll('[data-ver]').forEach(b=>b.onclick=async()=>{ busy(true); await updateDoc(doc(db,'students',b.dataset.ver),{verified:b.dataset.v!=='1'}); busy(false); teacherDash(); });
+    document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{
+      const n=prompt('Edit student name:',b.dataset.name);
+      if(n&&n.trim().length>=3){ busy(true); await updateDoc(doc(db,'students',b.dataset.edit),{fullName:n.trim()}); busy(false); teacherDash(); } });
+    document.querySelectorAll('[data-rm]').forEach(b=>b.onclick=async()=>{
+      if(!confirm('Remove this student? Their marks will be deleted.')) return;
+      busy(true);
+      try{
+        const nic=b.dataset.rm, ps=await getDocs(collection(db,'papers'));
+        for(const d of ps.docs){ const sc=d.data().scores||{}; if(sc[nic]!=null){ delete sc[nic]; await updateDoc(doc(db,'papers',d.id),{scores:sc}); } }
+        if(b.dataset.uid) await deleteDoc(doc(db,'students',b.dataset.uid));
+        await deleteDoc(doc(db,'nics',nic)).catch(()=>{}); await deleteDoc(doc(db,'pending',nic)).catch(()=>{});
+        busy(false); teacherDash();
+      }catch(e){ busy(false); alert(friendly(e)); } });
+  };
+  wire();
+  $("#q").oninput=e=>{
+    const v=e.target.value.trim().toUpperCase();
+    $("#qres").innerHTML=v.length<2?'':table(rosterAll.filter(s=>s.nic.includes(v)||s.fullName.toUpperCase().includes(v)).slice(0,25));
+    wire();
+  };
   $("#addStu").onclick=async()=>{
-    const nm=$("#an").value.trim(), nic=$("#anic").value.trim().toUpperCase(), em=$("#aem").value.trim();
-    const m=$("#addMsg"); m.innerHTML='';
+    const nm=$("#an").value.trim(), nic=$("#anic").value.trim().toUpperCase(), m=$("#addMsg"); m.innerHTML='';
     if(nm.length<3) return m.innerHTML='<div class="err">Please enter the student\'s name.</div>';
     if(!NIC_RE.test(nic)) return m.innerHTML='<div class="err">Invalid NIC format.</div>';
     busy(true);
     try{
       if((await getDoc(doc(db,'nics',nic))).exists()){ busy(false); return m.innerHTML='<div class="err">A student with this NIC is already registered.</div>'; }
-      await setDoc(doc(db,'pending',nic),{fullName:nm, email:em, addedAt:serverTimestamp()});
-      busy(false); state.tab='students'; teacherDash();
+      await setDoc(doc(db,'pending',nic),{fullName:nm,email:'',batch:state.batch,center:$("#act").value,addedAt:serverTimestamp()});
+      busy(false); teacherDash();
     }catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
-  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{
-    const name=prompt('Edit student name:', b.dataset.name);
-    if(name && name.trim().length>=3){ busy(true); await updateDoc(doc(db,'students',b.dataset.edit),{fullName:name.trim()}); busy(false); teacherDash(); }
-  });
-  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
-    if(!confirm(`Remove this student? Their marks will be deleted and they will not be able to log in.`)) return;
-    busy(true);
-    try{
-      const papSnap=await getDocs(collection(db,'papers'));
-      for(const d of papSnap.docs){
-        const sc=d.data().scores||{};
-        if(sc[b.dataset.nic]!=null){ delete sc[b.dataset.nic]; await updateDoc(doc(db,'papers',d.id),{scores:sc}); }
-      }
-      await deleteDoc(doc(db,'students',b.dataset.del));
-      await deleteDoc(doc(db,'nics',b.dataset.nic)).catch(()=>{});
-      busy(false); teacherDash();
-    }catch(e){ busy(false); alert(friendly(e)); }
-  });
-  document.querySelectorAll('[data-delpen]').forEach(b=>b.onclick=async()=>{
-    if(!confirm('Remove this pending entry?')) return;
-    busy(true); await deleteDoc(doc(db,'pending',b.dataset.delpen)); busy(false); teacherDash();
-  });
+}
+
+/* ---- Rankings tab (paper by paper) ---- */
+function paperRanks(students,paper){
+  const rows=students.map(s=>({s,m:paper.scores?.[s.id]})).filter(x=>x.m!=null).sort((a,b)=>b.m-a.m);
+  let rk=0,prev=null; rows.forEach((x,i)=>{ if(x.m!==prev){rk=i+1;prev=x.m;} x.rank=rk; x.pct=pct(x.m,paper.max); });
+  return rows;
+}
+function tabRanks({students,papers}){
+  const sel=papers.find(p=>p.id===state.rankPaper)||papers[0]||null;
+  if(sel) state.rankPaper=sel.id;
+  const rows=sel?paperRanks(students,sel):[];
+  $("#tabBody").innerHTML=`<div class="card"><h2>🏅 Rankings by paper — ${esc(state.batch)}</h2>
+    ${papers.length?`<label>Paper</label><select id="rkSel" style="width:auto">${papers.map(p=>`<option value="${p.id}"${p.id===sel.id?' selected':''}>${esc(p.title)} (${esc(p.date||'no date')})</option>`).join('')}</select>`:'<p class="sub">No papers yet.</p>'}
+    ${rows.length?`<div class="tbl-wrap"><table><tr><th>Rank</th><th>Student</th><th>NIC</th><th>Center</th><th>Marks</th><th>%</th></tr>
+    ${rows.map(x=>{const f=faceOf(x.s.id);return `<tr><td><b>${x.rank}</b></td><td><span class="face" style="background:${f.bg};width:30px;height:30px;font-size:1.1rem;display:inline-grid;margin-right:6px;vertical-align:middle">${f.e}</span>${esc(x.s.fullName)}</td><td class="mono">${esc(x.s.nic)}</td><td>${esc(x.s.center||'—')}</td><td>${x.m} / ${sel.max}</td><td>${x.pct}%</td></tr>`;}).join('')}</table></div>`:(sel?'<p class="sub">No marks entered for this paper yet.</p>':'')}</div>`;
+  if($("#rkSel")) $("#rkSel").onchange=e=>{ state.rankPaper=e.target.value; teacherDash(); };
+}
+
+/* ---- Developer: all teachers ---- */
+function tabTeachers({teachers}){
+  $("#tabBody").innerHTML=`<div class="card"><h2>🧑‍🏫 All teachers (${teachers.length})</h2>
+  ${teachers.length?`<div class="tbl-wrap"><table><tr><th>Name</th><th>Email</th><th>Center</th><th>Institute</th><th>Phone</th><th></th></tr>
+  ${teachers.map(t=>`<tr><td><b>${esc(t.fullName||'')}</b>${t.verified?' <span class="vbadge">✔ Verified</span>':' <span class="sub">(not verified)</span>'}</td><td>${esc(t.email||'')}</td><td>${esc(t.center||'—')}</td><td>${esc(t.institute||'—')}</td><td>${esc(t.phone||'—')}</td>
+  <td><button class="btn btn-ghost btn-sm" data-tv="${t.id}" data-v="${t.verified?1:0}">${t.verified?'Unverify':'Verify'}</button></td></tr>`).join('')}</table></div>`:'<p class="sub">No teachers yet.</p>'}</div>`;
+  document.querySelectorAll('[data-tv]').forEach(b=>b.onclick=async()=>{ busy(true); await updateDoc(doc(db,'teachers',b.dataset.tv),{verified:b.dataset.v!=='1'}); busy(false); teacherDash(); });
+}
+
+/* ---- Developer: exam centers & payment methods ---- */
+function tabAdmin(){
+  const L=state.lists;
+  const block=(k,title,ph)=>`<div class="card"><h2>${title}</h2><div class="row"><div><input id="in_${k}" placeholder="${ph}"></div>
+    <button class="btn btn-primary" data-add="${k}" style="width:auto;margin:0">+ Add</button></div>
+    ${L[k].length?L[k].map((x,i)=>`<div class="paper-row"><b>${esc(x)}</b><button class="btn btn-danger btn-sm" data-rmv="${k}:${i}">Remove</button></div>`).join(''):'<p class="sub">None yet.</p>'}</div>`;
+  $("#tabBody").innerHTML=block('centers','🏫 Exam Centers','e.g. Ratnapura Center')+block('payMethods','💳 Payment Methods','e.g. Bank deposit, Cash, Online');
+  const save=async(k)=>{ busy(true); await setDoc(doc(db,'settings','lists'),{[k]:L[k]},{merge:true}); busy(false); teacherDash(); };
+  document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{ const k=b.dataset.add, v=$("#in_"+k).value.trim(); if(!v||L[k].includes(v)) return; L[k]=[...L[k],v]; save(k); });
+  document.querySelectorAll('[data-rmv]').forEach(b=>b.onclick=()=>{ const [k,i]=b.dataset.rmv.split(':'); L[k]=L[k].filter((_,j)=>j!==+i); save(k); });
 }
 
 /* ---- Marks tab ---- */
@@ -698,7 +775,7 @@ function tabMarks({students,papers}){
     if(!max||max<1) return m.innerHTML='<div class="err">Max marks must be at least 1.</div>';
     busy(true);
     try{
-      await addDoc(collection(db,'papers'),{subject:$("#cpSubj").value, title, date, max, published:false, scores:{}});
+      await addDoc(collection(db,'papers'),{subject:$("#cpSubj").value, batch:state.batch, title, date, max, published:false, scores:{}});
       busy(false); teacherDash();
     }catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
