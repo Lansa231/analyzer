@@ -12,17 +12,17 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
 :root{
-  --bg:#f2f7f9; --card:#ffffff; --ink:#122a35; --muted:#5b7280; --line:#e3ecf1;
-  --brand:#0e7490; --brand2:#0d9488; --brand-soft:#e0f2f1;
-  --good:#0f766e; --bad:#b91c1c; --warn:#b45309;
-  --good-bg:#d7f0ea; --bad-bg:#fee2e2; --warn-bg:#fef3c7; --brand-bg:#e0f2f1;
-  --shadow:0 8px 28px rgba(14,74,90,.10); --radius:16px;
+  --bg:#f1f8f3; --card:#ffffff; --ink:#12281c; --muted:#5a7364; --line:#dfece4;
+  --brand:#15803d; --brand2:#22a06b; --brand-soft:#e4f4e8;
+  --good:#166534; --bad:#b91c1c; --warn:#b45309;
+  --good-bg:#dcf3e3; --bad-bg:#fee2e2; --warn-bg:#fef3c7; --brand-bg:#e4f4e8;
+  --shadow:0 8px 28px rgba(20,80,40,.10); --radius:16px;
 }
 [data-theme="dark"]{
-  --bg:#0b1520; --card:#132433; --ink:#e6eef4; --muted:#8fa6b3; --line:#22394a;
-  --brand:#2dd4bf; --brand2:#38bdf8; --brand-soft:#134e4a;
-  --good:#2dd4bf; --bad:#f87171; --warn:#fbbf24;
-  --good-bg:#0f3d36; --bad-bg:#4c1d1d; --warn-bg:#45320b; --brand-bg:#134e4a;
+  --bg:#0a1710; --card:#12261a; --ink:#e6f2ea; --muted:#8fb09a; --line:#1f3a2a;
+  --brand:#4ade80; --brand2:#a3e635; --brand-soft:#14532d;
+  --good:#4ade80; --bad:#f87171; --warn:#fbbf24;
+  --good-bg:#12391f; --bad-bg:#4c1d1d; --warn-bg:#45320b; --brand-bg:#14532d;
   --shadow:0 8px 28px rgba(0,0,0,.4);
 }
 @font-face{font-family:'SinhalaFont';src:url('sinhala.woff2') format('woff2'),url('sinhala.ttf') format('truetype');font-display:swap}
@@ -130,10 +130,10 @@ canvas{max-height:320px;}
 @media (prefers-reduced-motion:reduce){.bgfx{display:none}}
 .split{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);max-width:980px;margin:28px auto;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
 .split .auth-card{max-width:none;margin:0;border-radius:0;box-shadow:none}
-.side{position:relative;min-height:320px;background:linear-gradient(rgba(6,60,70,.55),rgba(6,60,70,.75)),url('signup-photo.jpg') center/cover no-repeat,linear-gradient(135deg,#0e7490,#0d9488);display:flex;align-items:flex-end}
+.side{position:relative;min-height:320px;background:linear-gradient(rgba(6,45,25,.55),rgba(6,45,25,.75)),url('signup-photo.jpg') center/cover no-repeat,linear-gradient(135deg,#15803d,#22a06b);display:flex;align-items:flex-end}
 .side-txt{padding:28px;color:#fff}.side-txt h2{color:#fff;margin:6px 0}.side-txt p{margin:0;opacity:.9;font-size:.9rem}
 @media (max-width:760px){.split{grid-template-columns:1fr;margin:12px auto}.side{min-height:150px}}
-.hero.photo{background:linear-gradient(rgba(6,50,60,.55),rgba(6,50,60,.78)),url('hero-photo.jpg') center/cover no-repeat,linear-gradient(135deg,#0e7490,#0d9488);color:#fff;min-height:380px;display:flex;align-items:center;padding:40px 36px;border-radius:var(--radius)}
+.hero.photo{background:linear-gradient(rgba(6,45,25,.55),rgba(6,45,25,.78)),url('hero-photo.jpg') center/cover no-repeat,linear-gradient(135deg,#15803d,#22a06b);color:#fff;min-height:380px;display:flex;align-items:center;padding:40px 36px;border-radius:var(--radius)}
 .hero.photo .hero-in{max-width:540px;width:100%}
 .hero.photo h1,.hero.photo .sub{color:#fff}.hero.photo .sub{opacity:.92;margin:0 0 24px}
 .hero.photo .badge{background:rgba(255,255,255,.18);color:#fff}
@@ -414,7 +414,7 @@ async function signup(){
   $("#pw").oninput=e=>{
     const s=pwScore(e.target.value), f=$("#meterFill");
     f.style.width=(s*33+1)+'%';
-    f.style.background=['#b91c1c','#b45309','#0e7490','#0f766e'][s];
+    f.style.background=['#b91c1c','#b45309','#15803d','#0f766e'][s];
   };
   $("#btn").onclick=async()=>{
     ["nm","nic","em","pw","pw2","mob","wa","sch","ctr","pay"].forEach(x=>$("#e-"+x).textContent='');
@@ -519,7 +519,7 @@ async function stuDash(){
       const dark=document.documentElement.dataset.theme==='dark';
       charts.s1=new Chart($("#c1"),{type:'line',data:{labels:rowsP.map(r=>r.p.title),
         datasets:[{label:'My score %',data:rowsP.map(r=>pct(r.m,r.p.max)),
-          borderColor:'#0e7490', backgroundColor:'rgba(14,116,144,.12)', fill:true, tension:.35, pointRadius:5, pointBackgroundColor:'#0d9488'}]},
+          borderColor:'#15803d', backgroundColor:'rgba(21,128,61,.12)', fill:true, tension:.35, pointRadius:5, pointBackgroundColor:'#22a06b'}]},
         options:{scales:{y:{min:0,max:100,title:{display:true,text:'Percentage'}}},
           plugins:{legend:{display:true},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y}%`}}}}});
     }
@@ -729,7 +729,7 @@ async function studentView(){
     <div class="card"><h2>📄 Paper-by-paper</h2><div class="tbl-wrap"><table><tr><th>Date</th><th>Paper</th><th>Marks</th><th>%</th><th>Grade</th><th>Rank</th><th>Status</th></tr>
     ${rows.map(r=>`<tr><td class="mono">${esc(r.p.date||'—')}</td><td>${esc(r.p.title)}</td><td class="mono"><b>${r.m}</b> / ${r.p.max}</td><td><span class="pill ${gCls(r.pc)}">${r.pc}%</span></td><td><span class="pill ${gCls(r.pc)}">${grade(r.pc)}</span></td><td>${r.rank} / ${r.n}</td><td>${r.p.published?'Published':'Hidden'}</td></tr>`).join('')}</table></div></div>`
     :'<div class="card"><p class="sub">No marks entered for this student yet.</p></div>'}`;
-    if(rows.length) charts.sv=new Chart($("#svC"),{type:'line',data:{labels:rows.map(r=>r.p.title),datasets:[{label:'Score %',data:rows.map(r=>r.pc),borderColor:'#0e7490',backgroundColor:'rgba(14,116,144,.12)',fill:true,tension:.35,pointRadius:5,pointBackgroundColor:'#0d9488'}]},options:{scales:{y:{min:0,max:100}}}});
+    if(rows.length) charts.sv=new Chart($("#svC"),{type:'line',data:{labels:rows.map(r=>r.p.title),datasets:[{label:'Score %',data:rows.map(r=>r.pc),borderColor:'#15803d',backgroundColor:'rgba(21,128,61,.12)',fill:true,tension:.35,pointRadius:5,pointBackgroundColor:'#22a06b'}]},options:{scales:{y:{min:0,max:100}}}});
     if($("#svVer")) $("#svVer").onclick=async()=>{ busy(true); await updateDoc(doc(db,'students',s.id),{verified:!s.verified}); busy(false); studentView(); };
     $("#svDel").onclick=async()=>{
       if(!confirm('Remove this student? Their marks will be deleted.')) return;
@@ -1018,10 +1018,10 @@ function tabAnalytics({students,papers}){
   </div>`;
 
   charts.c1=new Chart($("#cSubj"),{type:'bar',data:{labels:SUBJECTS,datasets:[{label:'Class average %',
-    data:SUBJECTS.map(x=>st.subAvg[x]??0),backgroundColor:['#0e7490','#0d9488','#2563eb'],borderRadius:10}]},
+    data:SUBJECTS.map(x=>st.subAvg[x]??0),backgroundColor:['#15803d','#22a06b','#65a30d'],borderRadius:10}]},
     options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.parsed.y}%`}}},scales:{y:{min:0,max:100}}}});
   charts.c2=new Chart($("#cDist"),{type:'bar',data:{labels:['0–20%','21–40%','41–60%','61–80%','81–100%'],
-    datasets:[{label:'Students',data:st.bins,backgroundColor:['#b91c1c','#b45309','#0e7490','#0d9488','#0f766e'],borderRadius:10}]},
+    datasets:[{label:'Students',data:st.bins,backgroundColor:['#b91c1c','#b45309','#15803d','#22a06b','#0f766e'],borderRadius:10}]},
     options:{plugins:{legend:{display:false}},scales:{y:{ticks:{stepSize:1}}}}});
 
   $("#xls").onclick=()=>{
