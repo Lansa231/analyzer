@@ -25,7 +25,8 @@
   --good-bg:#0f3d36; --bad-bg:#4c1d1d; --warn-bg:#45320b; --brand-bg:#134e4a;
   --shadow:0 8px 28px rgba(0,0,0,.4);
 }
-*{box-sizing:border-box; margin:0; padding:0; font-family:'Inter',system-ui,sans-serif;}
+@font-face{font-family:'SinhalaFont';src:url('sinhala.woff2') format('woff2'),url('sinhala.ttf') format('truetype');font-display:swap}
+*{box-sizing:border-box; margin:0; padding:0; font-family:'Inter','SinhalaFont','Noto Sans Sinhala','Nirmala UI','Iskoola Pota',system-ui,sans-serif;}
 body{background:var(--bg); color:var(--ink); min-height:100vh; transition:background .25s, color .25s;}
 a{color:var(--brand); text-decoration:none;}
 header{position:sticky; top:0; z-index:50; background:var(--card); border-bottom:1px solid var(--line);
@@ -132,6 +133,15 @@ canvas{max-height:320px;}
 .side{position:relative;min-height:320px;background:linear-gradient(rgba(6,60,70,.55),rgba(6,60,70,.75)),url('signup-photo.jpg') center/cover no-repeat,linear-gradient(135deg,#0e7490,#0d9488);display:flex;align-items:flex-end}
 .side-txt{padding:28px;color:#fff}.side-txt h2{color:#fff;margin:6px 0}.side-txt p{margin:0;opacity:.9;font-size:.9rem}
 @media (max-width:760px){.split{grid-template-columns:1fr;margin:12px auto}.side{min-height:150px}}
+.hero.photo{background:linear-gradient(rgba(6,50,60,.55),rgba(6,50,60,.78)),url('hero-photo.jpg') center/cover no-repeat,linear-gradient(135deg,#0e7490,#0d9488);color:#fff;min-height:380px;display:flex;align-items:center;padding:40px 36px;border-radius:var(--radius)}
+.hero.photo .hero-in{max-width:540px;width:100%}
+.hero.photo h1,.hero.photo .sub{color:#fff}.hero.photo .sub{opacity:.92;margin:0 0 24px}
+.hero.photo .badge{background:rgba(255,255,255,.18);color:#fff}
+.hero.photo .btn-ghost{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.65)}
+.hero.pos-left{justify-content:flex-start;text-align:left}.hero.pos-left .hero-btns{justify-content:flex-start}
+.hero.pos-center{justify-content:center;text-align:center}.hero.pos-center .hero-in{margin:0 auto}.hero.pos-center .sub{margin:0 auto 24px}
+.hero.pos-right{justify-content:flex-end;text-align:right}.hero.pos-right .hero-btns{justify-content:flex-end}
+@media (max-width:760px){.hero.photo{min-height:320px;padding:28px 18px}}
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>">
 </head>
@@ -308,17 +318,27 @@ else if(savedCfg){ try{ bootFirebase(JSON.parse(savedCfg)); }catch(e){ setupScre
 else setupScreen();
 
 /* ============================== LANDING ============================== */
+/* ===== EDIT THE OPENING-PAGE TEXT HERE =====
+   pos: 'left' | 'center' | 'right'  (where the text sits over the photo)
+   title may use <br> for a new line. Photo file: hero-photo.jpg (same folder as index.html). */
+const HERO={
+  pos:'left',
+  badge:'A/L Biology · Paper Class',
+  title:'Track every paper.<br>Watch yourself improve.',
+  sub:'Your teacher publishes marks paper-by-paper. Log in anytime to see your progress chart and full marks history — from your phone or computer.',
+  login:'Log In', signup:'Sign Up'
+};
 function landing(){
   app.innerHTML = `
-  <div class="card hero">
-    <div class="badge">A/L Biology · Paper Class</div>
-    <h1>Track every paper.<br>Watch yourself improve.</h1>
-    <p class="sub">Your teacher publishes marks paper-by-paper. Log in anytime to see your progress chart and full marks history — from your phone or computer.</p>
+  <div class="card hero photo pos-${HERO.pos}"><div class="hero-in">
+    <div class="badge">${HERO.badge}</div>
+    <h1>${HERO.title}</h1>
+    <p class="sub">${HERO.sub}</p>
     <div class="hero-btns">
-      <button class="btn btn-primary" id="bLogin">Log In</button>
-      <button class="btn btn-ghost" id="bSignup" style="padding:13px 34px;font-size:.92rem">Sign Up</button>
+      <button class="btn btn-primary" id="bLogin">${HERO.login}</button>
+      <button class="btn btn-ghost" id="bSignup" style="padding:13px 34px;font-size:.92rem">${HERO.signup}</button>
     </div>
-  </div>
+  </div></div>
   <div class="grid g4">
     <div class="card stat" style="margin:0"><div style="font-size:1.6rem">📈</div><div class="lbl" style="margin-top:6px">Progress charts per subject</div></div>
     <div class="card stat" style="margin:0"><div style="font-size:1.6rem">📄</div><div class="lbl" style="margin-top:6px">Paper-by-paper marks</div></div>
