@@ -2,7 +2,7 @@
    Firebase Authentication is still used for logins. EDIT API_URL below. */
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-export const API_URL = "https://odd-paper-03f0.tm936763.workers.dev/api";   // <-- put your Worker address here
+export const API_URL = "https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev/api";   // <-- put your Worker address here
 
 const TS = { __ts: true };
 export const serverTimestamp = () => TS;
@@ -15,8 +15,12 @@ export const query = (c, ...w) => ({ type: 'col', col: c.col, wheres: [...c.wher
 async function call(body) {
   const u = getAuth().currentUser, h = { 'Content-Type': 'application/json' };
   if (u) h.Authorization = 'Bearer ' + await u.getIdToken();
-  const r = await fetch(API_URL, { method: 'POST', headers: h, body: JSON.stringify(body) });
-  const j = await r.json().catch(() => ({ error: 'The server sent an unreadable reply.' }));
+  if (API_URL.includes('YOUR-WORKER')) throw new Error('API_URL in d1-shim.js is still the placeholder. Put your Worker address there.');
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 20000);
+  let r; try { r = await fetch(API_URL, { method: 'POST', headers: h, body: JSON.stringify(body), signal: ctl.signal }); }
+  catch (e) { throw new Error(e.name === 'AbortError' ? 'The server did not answer within 20 seconds.' : 'Could not connect to the server (' + e.message + '). Check API_URL in d1-shim.js.'); }
+  finally { clearTimeout(tm); }
+  const j = await r.json().catch(() => ({ error: 'The server sent an unreadable reply (HTTP ' + r.status + ').' }));
   if (!r.ok) { const e = new Error(j.error || 'Request failed'); e.code = j.code || 'unavailable'; throw e; }
   return j;
 }

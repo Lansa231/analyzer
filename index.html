@@ -240,7 +240,8 @@ function route(){
   if(['landing','login','signup','forgot'].includes(r) && user && role==='student') return go('#/dashboard');
   if(r==='teacherAuth' && user && role==='teacher') return go('#/teacher/dashboard');
   renderHdr(r);
-  ({landing,login,signup,forgot,stuDash,teacherAuth,teacherDash,studentView,contact})[r]();
+  { const fail=e=>{ busy(false); app.innerHTML=`<div class="card" style="max-width:560px;margin:28px auto"><h2>⚠️ Something went wrong</h2><div class="err">${esc(friendly(e))}</div><p class="sub" style="margin-top:8px">Technical detail: ${esc(e&&e.message||String(e))}</p><button class="btn btn-primary" onclick="location.reload()" style="width:auto">Reload</button></div>`; };
+    try{ const out=({landing,login,signup,forgot,stuDash,teacherAuth,teacherDash,studentView,contact})[r](); if(out&&out.catch) out.catch(fail); }catch(e){ fail(e); } }
   try{ document.dispatchEvent(new CustomEvent('ca:view',{detail:{name:r}})); }catch(e){}
   window.scrollTo(0,0);
 }
@@ -288,7 +289,7 @@ function bootFirebase(cfg){
   try{ const fa=initializeApp(cfg); auth=getAuth(fa); db=getFirestore(fa); }
   catch(e){ return setupScreen('Could not connect: '+e.message); }
   authLoad=async u=>{
-    user=u; role=null; profile=null;
+    let lookupErr=null; user=u; role=null; profile=null;
     if(u){
       try{
         const t=await getDoc(doc(db,'teachers',u.uid));
@@ -298,9 +299,10 @@ function bootFirebase(cfg){
           if(s.exists()){ role='student'; profile=s.data(); }
           else { await signOut(auth); role=null; }
         }
-      }catch(e){}
+      }catch(e){ lookupErr=e; }
     }
-    route(); busy(false);
+    try{ route(); } finally { busy(false); }
+    if(u && !role && lookupErr){ app.insertAdjacentHTML('afterbegin',`<div class="card" style="max-width:560px;margin:14px auto"><div class="err">Could not reach the server: ${esc(lookupErr.message)}</div></div>`); }
   };
   busy(true);   // wait for Firebase to restore the saved login before drawing any page
   onAuthStateChanged(auth,u=>{ if(!signingUp) authLoad(u); });
