@@ -173,7 +173,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, on
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
          collection, query, where, onSnapshot, serverTimestamp }
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  from "./d1-shim.js";
 
 /* ============================== HELPERS ============================== */
 const $ = s => document.querySelector(s);
@@ -571,7 +571,7 @@ async function stuDash(){
     }
   };
   window.drawStu = () => load().then(renderBody).catch(e=>{ $("#stuBody").innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; });
-  unsubStu=onSnapshot(q, snap=>renderBody(snap.docs.map(d=>({id:d.id,...d.data()}))), ()=>{});
+  unsubStu=onSnapshot(q, ()=>{ load().then(renderBody).catch(()=>{}); }, ()=>{});
   const first=await load().catch(()=>[]);
   renderBody(first);
 }
