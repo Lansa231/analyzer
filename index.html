@@ -148,6 +148,10 @@ canvas{max-height:320px;}
 .crow{display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--line)}
 .crow:last-child{border-bottom:none}.crow .ic{font-size:1.5rem;line-height:1}
 .crow a{color:var(--brand);font-weight:700;text-decoration:none;word-break:break-word}
+.pdfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:10px}
+.pdfcard{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+.pdfcard img,.pdfph{width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--brand-soft);display:grid;place-items:center;font-size:2.6rem}
+.pdfcard .pt{padding:8px 10px;font-weight:700;font-size:.85rem}.pdfcard .pb{display:flex;gap:6px;padding:0 10px 10px}
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>">
 </head>
@@ -337,8 +341,9 @@ const HERO={
 /* ===== EDIT THE CONTACT DETAILS HERE (leave a line as '' to hide it) ===== */
 const CONTACT={
   intro:'Questions about the class, your marks or signing up? Get in touch with us.',
-  phone:'',        // e.g. '077 123 4567'
-  whatsapp:'',     // e.g. '077 123 4567'
+  phone:'+94 70 232 2744',
+  whatsapp:'+94 70 232 2744',
+  telegram:'https://t.me/Wellbiopaper',   // official Telegram channel
   email:'',        // e.g. 'class@example.com'
   address:'',      // class location / centers
   hours:'',        // e.g. 'Mon–Fri 4 PM – 8 PM'
@@ -350,6 +355,7 @@ function contact(){
     ['📞','Phone',CONTACT.phone,v=>'tel:'+v.replace(/[^+\d]/g,'')],
     ['💬','WhatsApp',CONTACT.whatsapp,v=>'https://wa.me/'+v.replace(/\D/g,'').replace(/^0/,'94')],
     ['✉️','Email',CONTACT.email,v=>'mailto:'+v],
+    ['✈️','Official Telegram channel',CONTACT.telegram,v=>v,v=>v.replace(/^https?:\/\//,'')],
     ['📍','Address',CONTACT.address,null],
     ['🕒','Class hours',CONTACT.hours,null],
     ['📘','Facebook',CONTACT.facebook,v=>v],
@@ -359,7 +365,7 @@ function contact(){
     <p><a href="#" id="cBack" style="font-size:.85rem">← Back</a></p>
     <h2 style="margin-top:6px">📞 Contact us</h2>
     <p class="sub">${esc(CONTACT.intro)}</p>
-    ${rows.length?rows.map(([ic,l,v,f])=>`<div class="crow"><span class="ic">${ic}</span><div><div class="sub" style="margin:0">${l}</div>${f?`<a href="${esc(f(v))}" target="_blank" rel="noopener">${esc(v)}</a>`:`<b>${esc(v)}</b>`}</div></div>`).join(''):'<p class="sub" style="margin-top:14px">Contact details will be added soon.</p>'}
+    ${rows.length?rows.map(([ic,l,v,f,dsp])=>`<div class="crow"><span class="ic">${ic}</span><div><div class="sub" style="margin:0">${l}</div>${f?`<a href="${esc(f(v))}" target="_blank" rel="noopener">${esc(dsp?dsp(v):v)}</a>`:`<b>${esc(v)}</b>`}</div></div>`).join(''):'<p class="sub" style="margin-top:14px">Contact details will be added soon.</p>'}
   </div>`;
   $("#cBack").onclick=e=>{ e.preventDefault(); history.length>1?history.back():go('#/'); };
 }
@@ -526,6 +532,7 @@ async function stuDash(){
   $("#subj").onchange=e=>{ state.stuSubject=e.target.value; drawStu(); };
   $("#editMe").onclick=()=>studentEditCard($("#editBox"),profile,false,()=>stuDash());
   $("#reqCh").onclick=()=>studentRequestCard($("#editBox"));
+  { const fd=document.createElement('div'); fd.id='stuFiles'; $("#stuBody").insertAdjacentElement('afterend',fd); loadStuFiles(); }
 
   const q=query(collection(db,'papers'), where('published','==',true));
   const load=async()=>{
@@ -723,7 +730,7 @@ async function teacherDash(){
     <button data-tab="ranks" class="${state.tab==='ranks'?'active':''}">🏅 Rankings</button>
     <button data-tab="allmarks" class="${state.tab==='allmarks'?'active':''}">🌐 All Marks</button>
     ${window.CA.tabs.map(t=>`<button data-tab="x_${t.id}" class="${state.tab==='x_'+t.id?'active':''}">${t.label}</button>`).join('')}
-    ${adm?`<button data-tab="teachers" class="${state.tab==='teachers'?'active':''}">🧑‍🏫 Teachers</button><button data-tab="admin" class="${state.tab==='admin'?'active':''}">⚙️ Centers &amp; Payments</button><button data-tab="requests" class="${state.tab==='requests'?'active':''}">📨 Requests${pendReq?` (${pendReq})`:''}</button>`:''}
+    ${adm?`<button data-tab="teachers" class="${state.tab==='teachers'?'active':''}">🧑‍🏫 Teachers</button><button data-tab="admin" class="${state.tab==='admin'?'active':''}">⚙️ Centers &amp; Payments</button><button data-tab="requests" class="${state.tab==='requests'?'active':''}">📨 Requests${pendReq?` (${pendReq})`:''}</button><button data-tab="files" class="${state.tab==='files'?'active':''}">📚 Marking PDFs</button>`:''}
   </div>
   <div id="tabBody"></div>`;
 
@@ -734,8 +741,8 @@ async function teacherDash(){
   };
   document.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>{ state.batch=b.dataset.batch; state.selPaper=null; state.rankPaper=null; teacherDash(); });
   if($("#ctrSel")) $("#ctrSel").onchange=e=>{ state.center=e.target.value; teacherDash(); };
-  if(!adm && ['teachers','admin','requests'].includes(state.tab)) state.tab='students';
-  const tabs={students:tabStudents,marks:tabMarks,analytics:tabAnalytics,ranks:tabRanks,allmarks:tabAllMarks,requests:tabRequests,teachers:tabTeachers,admin:tabAdmin};
+  if(!adm && ['teachers','admin','requests','files'].includes(state.tab)) state.tab='students';
+  const tabs={students:tabStudents,marks:tabMarks,analytics:tabAnalytics,ranks:tabRanks,allmarks:tabAllMarks,requests:tabRequests,files:tabFiles,teachers:tabTeachers,admin:tabAdmin};
   const ctx={students:roster,roster,rosterAll,pending,papers,papersAll,teachers,adm,admins,requests};
   const xt=window.CA.tabs.find(t=>'x_'+t.id===state.tab);
   if(xt){ try{ xt.render({...ctx,el:$("#tabBody")}); }catch(e){ $("#tabBody").innerHTML=`<div class="card"><div class="err">${esc(e.message)}</div></div>`; } }
@@ -851,15 +858,48 @@ function paperRanks(students,paper){
   let rk=0,prev=null; rows.forEach((x,i)=>{ if(x.m!==prev){rk=i+1;prev=x.m;} x.rank=rk; x.pct=pct(x.m,paper.max); });
   return rows;
 }
-function tabRanks({students,papers}){
-  const sel=papers.find(p=>p.id===state.rankPaper)||papers[0]||null;
-  if(sel) state.rankPaper=sel.id;
-  const rows=sel?paperRanks(students,sel):[];
-  $("#tabBody").innerHTML=`<div class="card"><h2>🏅 Rankings by paper — ${esc(state.batch)}</h2>
-    ${papers.length?`<label>Paper</label><select id="rkSel" style="width:auto">${papers.map(p=>`<option value="${p.id}"${p.id===sel.id?' selected':''}>${esc(p.title)} (${esc(p.date||'no date')})</option>`).join('')}</select>`:'<p class="sub">No papers yet.</p>'}
-    ${rows.length?`<div class="tbl-wrap"><table><tr><th>Rank</th><th>Student</th><th>NIC</th><th>Center</th><th>Marks</th><th>%</th></tr>
-    ${rows.map(x=>{const f=faceOf(x.s.id);return `<tr><td><b>${x.rank}</b></td><td><span class="face" style="background:${f.bg};width:30px;height:30px;font-size:1.1rem;display:inline-grid;margin-right:6px;vertical-align:middle">${f.e}</span><a class="nl" href="#/student/${encodeURIComponent(x.s.nic)}">${esc(x.s.fullName)}</a></td><td class="mono">${esc(x.s.nic)}</td><td>${esc(x.s.center||'—')}</td><td>${x.m} / ${sel.max}</td><td>${x.pct}%</td></tr>`;}).join('')}</table></div>`:(sel?'<p class="sub">No marks entered for this paper yet.</p>':'')}</div>`;
-  if($("#rkSel")) $("#rkSel").onchange=e=>{ state.rankPaper=e.target.value; teacherDash(); };
+/* ---- shared helpers for rankings / analytics (built from the marks records, so all centers are included) ---- */
+const batchKey=b=>String(b).split(' ')[0];
+const avgOf=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length*10)/10:null;
+const GRADE_LEGEND='A 75+ · B 65–74 · C 55–64 · S 35–54 · F below 35';
+function studentsFromMarks(papers){
+  const map={};
+  papers.forEach(p=>Object.entries(p.scores||{}).forEach(([nic,m])=>{
+    const mt=p.meta?.[nic]||{}, s=(map[nic]??={nic,id:nic,fullName:nic,center:'',marks:{}});
+    if(mt.n){ s.fullName=mt.n; s.center=mt.c||''; }
+    s.marks[p.id]=pct(m,p.max);
+  }));
+  const order=[...papers].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  return Object.values(map).map(s=>{
+    const seq=order.filter(p=>s.marks[p.id]!=null).map(p=>s.marks[p.id]);
+    s.n=seq.length; s.avg=avgOf(seq); s.last=s.n?seq[s.n-1]:null; s.prev=s.n>1?seq[s.n-2]:null; return s; });
+}
+function rankRows(rows){ rows.sort((a,b)=>b.v-a.v); let rk=0,pv=null; rows.forEach((x,i)=>{ if(x.v!==pv){rk=i+1;pv=x.v;} x.rank=rk; }); return rows; }
+const canOpen=c=>!!profile.isAdmin||(c||'')===(profile.center||'');
+const nameLink=(nic,name,c)=>canOpen(c==='—'?'':c)?`<a class="nl" href="#/student/${encodeURIComponent(nic)}">${esc(name)}</a>`:esc(name);
+
+/* ---- Rankings tab: by paper or overall, all centers together or center by center ---- */
+function tabRanks({papers}){
+  const view=(state.rkView==='overall'||papers.some(p=>p.id===state.rkView))?state.rkView:(papers[0]?.id||'overall');
+  state.rkView=view; if(view!=='overall') state.rankPaper=view;
+  const grp=state.rkGroup||'all';
+  let rows=[], paper=null;
+  if(view==='overall') rows=studentsFromMarks(papers).filter(s=>s.avg!=null).map(s=>({nic:s.nic,name:s.fullName,center:s.center||'—',v:s.avg,txt:s.avg+'% avg ('+s.n+' papers)',pc:s.avg}));
+  else{ paper=papers.find(p=>p.id===view); rows=Object.entries(paper.scores||{}).map(([nic,m])=>{ const mt=paper.meta?.[nic]||{}, pc=pct(m,paper.max); return {nic,name:mt.n||nic,center:mt.c||'—',v:pc,txt:`${m} / ${paper.max}`,pc}; }); }
+  const tr=x=>{ const f=faceOf(x.nic); return `<tr><td><b>${x.rank}</b></td><td><span class="face" style="background:${f.bg};width:30px;height:30px;font-size:1.1rem;display:inline-grid;margin-right:6px;vertical-align:middle">${f.e}</span>${nameLink(x.nic,x.name,x.center)}</td><td class="mono">${esc(x.nic)}</td><td>${esc(x.center)}</td><td>${esc(x.txt)}</td><td><span class="pill ${gCls(x.pc)}">${x.pc}%</span></td><td><span class="pill ${gCls(x.pc)}">${grade(x.pc)}</span></td></tr>`; };
+  const tbl=a=>`<div class="tbl-wrap"><table><tr><th>Rank</th><th>Student</th><th>NIC</th><th>Center</th><th>Marks</th><th>%</th><th>Grade</th></tr>${a.map(tr).join('')}</table></div>`;
+  let body='';
+  if(!rows.length) body='<p class="sub">No marks entered yet.</p>';
+  else if(grp==='center'){
+    const by={}; rows.forEach(x=>(by[x.center]??=[]).push(x));
+    body=Object.keys(by).sort().map(c=>{ const a=rankRows(by[c]); return `<h2 style="margin-top:18px">🏫 ${esc(c)} <span class="sub" style="display:inline">· ${a.length} students · average ${avgOf(a.map(x=>x.pc))}%</span></h2>${tbl(a)}`; }).join('');
+  } else body=tbl(rankRows(rows));
+  $("#tabBody").innerHTML=`<div class="card"><h2>🏅 Rankings — ${esc(state.batch)}</h2>
+    ${papers.length?`<div class="row"><div><label>Rank by</label><select id="rkV">${papers.map(p=>`<option value="${p.id}"${p.id===view?' selected':''}>${esc(p.title)} (${esc(p.date||'no date')})</option>`).join('')}<option value="overall"${view==='overall'?' selected':''}>Overall (all papers)</option></select></div>
+    <div><label>Show</label><select id="rkG"><option value="all"${grp==='all'?' selected':''}>All centers together</option><option value="center"${grp==='center'?' selected':''}>Center by center</option></select></div></div>
+    <p class="sub" style="margin:8px 0 0">Grades: ${GRADE_LEGEND}</p>`:'<p class="sub">No papers yet.</p>'}
+    ${body}</div>`;
+  if($("#rkV")){ $("#rkV").onchange=e=>{ state.rkView=e.target.value; teacherDash(); }; $("#rkG").onchange=e=>{ state.rkGroup=e.target.value; teacherDash(); }; }
 }
 
 /* ---- Edit student details (student: own contact info; developer: everything) ---- */
@@ -954,6 +994,40 @@ function tabRequests({requests}){
   document.querySelectorAll('[data-rj]').forEach(b=>b.onclick=async()=>{ busy(true); try{ await updateDoc(doc(db,'changeRequests',b.dataset.rj),{status:'rejected'}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
 }
 
+/* ---- Marking PDFs (links to Google Drive files, listed per batch) ---- */
+const driveId=u=>{ const m=String(u).match(/\/d\/([\w-]+)/)||String(u).match(/[?&]id=([\w-]+)/); return m?m[1]:null; };
+const thumbImg=id=>`<img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'pdfph',textContent:'📄'}))">`;
+const fileView=id=>`https://drive.google.com/file/d/${id}/view`, fileDl=id=>`https://drive.google.com/uc?export=download&id=${id}`;
+async function tabFiles(){
+  $("#tabBody").innerHTML='<div class="card"><p class="sub">Loading…</p></div>';
+  const docs=await Promise.all(BATCHES.map(b=>getDoc(doc(db,'fileLists',batchKey(b))).catch(()=>null)));
+  const lists={}; BATCHES.forEach((b,i)=>lists[b]=docs[i]?.exists()?(docs[i].data().items||[]):[]);
+  const save=async(b)=>{ busy(true); try{ await setDoc(doc(db,'fileLists',batchKey(b)),{items:lists[b]}); }catch(e){ alert(friendly(e)); } busy(false); tabFiles(); };
+  $("#tabBody").innerHTML=`<div class="card"><h2>📚 Add a marking PDF</h2>
+    <p class="sub" style="margin:0 0 6px">1) Upload the PDF to Google Drive. 2) Share it as <b>Anyone with the link → Viewer</b>. 3) Paste the link here. Students of the chosen batch see it with a thumbnail and a download button.</p>
+    <div class="row"><div><label>Batch</label><select id="fb">${BATCHES.map(b=>`<option${b===state.batch?' selected':''}>${b}</option>`).join('')}</select></div>
+    <div><label>Title</label><input id="ft" placeholder="e.g. Paper 3 — Marking scheme"></div>
+    <div><label>Google Drive link</label><input id="fl" placeholder="https://drive.google.com/file/d/…"></div>
+    <button class="btn btn-primary" id="fadd" style="width:auto;margin:0">+ Add</button></div><div id="fm"></div></div>
+  ${BATCHES.map(b=>`<div class="card"><h2>${b} files (${lists[b].length})</h2>
+    ${lists[b].length?`<div class="pdfgrid">${lists[b].map(it=>`<div class="pdfcard"><a href="${fileView(it.fileId)}" target="_blank" rel="noopener">${thumbImg(it.fileId)}</a><div class="pt">${esc(it.title)}</div><div class="pb"><button class="btn btn-danger btn-sm" data-rf="${esc(b)}|${it.id}">Remove</button></div></div>`).join('')}</div>`:'<p class="sub">No files yet.</p>'}</div>`).join('')}`;
+  $("#fadd").onclick=()=>{
+    const b=$("#fb").value, t=$("#ft").value.trim(), id=driveId($("#fl").value), m=$("#fm"); m.innerHTML='';
+    if(t.length<2) return m.innerHTML='<div class="err">Please enter a title.</div>';
+    if(!id) return m.innerHTML='<div class="err">That does not look like a Google Drive file link.</div>';
+    lists[b]=[...lists[b],{id:Date.now().toString(36),title:t,fileId:id,at:Date.now()}]; save(b);
+  };
+  document.querySelectorAll('[data-rf]').forEach(x=>x.onclick=()=>{ if(!confirm('Remove this file from the list? (The file stays in your Drive.)')) return; const [b,id]=x.dataset.rf.split('|'); lists[b]=lists[b].filter(i=>i.id!==id); save(b); });
+}
+async function loadStuFiles(){
+  const host=$("#stuFiles"); if(!host) return;
+  try{
+    const d=await getDoc(doc(db,'fileLists',batchKey(profile.batch||BATCHES[0]))), items=d.exists()?(d.data().items||[]):[];
+    if(!items.length){ host.innerHTML=''; return; }
+    host.innerHTML=`<div class="card"><h2>📚 Marking schemes &amp; files</h2><div class="pdfgrid">${items.slice().reverse().map(it=>`<div class="pdfcard"><a href="${fileView(it.fileId)}" target="_blank" rel="noopener">${thumbImg(it.fileId)}</a><div class="pt">${esc(it.title)}</div><div class="pb"><a class="btn btn-primary btn-sm" href="${fileDl(it.fileId)}" target="_blank" rel="noopener" style="width:auto">⬇ Download</a></div></div>`).join('')}</div></div>`;
+  }catch(e){ host.innerHTML=''; }
+}
+
 /* ---- Developer: exam centers & payment methods ---- */
 function tabAdmin(){
   const L=state.lists;
@@ -994,7 +1068,7 @@ function tabMarks({students,papers}){
   const sel = papers.find(p=>p.id===state.selPaper) || papers[0] || null;
   if(sel) state.selPaper=sel.id;
   $("#tabBody").innerHTML = `
-  <div class="card">
+  ${profile.isAdmin?`<div class="card">
     <h2>Create Paper / Exam</h2>
     <div class="row">
       <div style="display:none"><label>Subject</label><select id="cpSubj">${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>
@@ -1004,7 +1078,7 @@ function tabMarks({students,papers}){
       <button class="btn btn-primary" id="cpBtn" style="width:auto;margin:0">+ Create</button>
     </div>
     <div id="cpMsg"></div>
-  </div>
+  </div>`:''}
   <div class="card">
     <h2>Papers (${papers.length})</h2>
     ${papers.length? papers.map(p=>`
@@ -1018,13 +1092,13 @@ function tabMarks({students,papers}){
             <span class="switch"><input type="checkbox" data-pub="${p.id}" ${p.published?'checked':''}><span class="slider"></span></span>
             <span style="font-size:.8rem">${p.published?'Published ✅':'Hidden from students'}</span></label>
           <button class="btn btn-ghost btn-sm" data-open="${p.id}">Enter marks</button>
-          <button class="btn btn-danger btn-sm" data-delp="${p.id}">Delete</button>
+          ${profile.isAdmin?`<button class="btn btn-danger btn-sm" data-delp="${p.id}">Delete</button>`:''}
         </div>
-      </div>`).join('') : '<p class="sub">No papers yet — create one above.</p>'}
+      </div>`).join('') : (profile.isAdmin?'<p class="sub">No papers yet — create one above.</p>':'<p class="sub">No papers yet — the developer creates the papers.</p>')}
   </div>
   <div id="marksPane"></div>`;
 
-  $("#cpBtn").onclick=async()=>{
+  if($("#cpBtn")) $("#cpBtn").onclick=async()=>{
     const title=$("#cpTitle").value.trim(), max=parseInt($("#cpMax").value), date=$("#cpDate").value;
     const m=$("#cpMsg"); m.innerHTML='';
     if(!title) return m.innerHTML='<div class="err">Please give the paper a title.</div>';
@@ -1101,74 +1175,55 @@ function computeStats(students,papers){
   return {per,ranked,subAvg,bins,attention};
 }
 
-function tabAnalytics({students,papers}){
-  const st=computeStats(students,papers);
-  $("#tabBody").innerHTML = `
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px">
-      <h2 style="margin:0">📊 Class Analytics</h2>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost btn-sm" id="xls">⬇ Export Excel</button>
-        <button class="btn btn-ghost btn-sm" id="pdf">⬇ Export PDF</button>
-      </div>
-    </div>
+function tabAnalytics({papers}){
+  const S=studentsFromMarks(papers).filter(s=>s.avg!=null);
+  const order=[...papers].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  const pS=order.map(p=>{ const v=Object.values(p.scores||{}).map(m=>pct(m,p.max)), g={A:0,B:0,C:0,S:0,F:0}; v.forEach(x=>g[grade(x)]++);
+    return {p,n:v.length,avg:avgOf(v),hi:v.length?Math.max(...v):null,lo:v.length?Math.min(...v):null,g}; });
+  const cen={}; order.forEach(p=>Object.entries(p.scores||{}).forEach(([nic,m])=>{ const c=p.meta?.[nic]?.c||'No center'; ((cen[c]??={})[p.id]??=[]).push(pct(m,p.max)); }));
+  const cS=Object.entries(cen).map(([c,o])=>({c,o,avg:avgOf(Object.values(o).flat()),n:S.filter(s=>(s.center||'No center')===c).length})).sort((a,b)=>b.avg-a.avg);
+  const ranked=rankRows(S.map(s=>({...s,v:s.avg})));
+  const att=S.map(s=>{ const r=[]; if(s.avg<35) r.push('overall average below 35%'); if(s.last!=null&&s.last<35&&s.avg>=35) r.push('latest paper below 35%'); if(s.prev!=null&&s.prev-s.last>=15) r.push(`dropped ${Math.round((s.prev-s.last)*10)/10} points in the latest paper`); return {s,r}; }).filter(x=>x.r.length);
+  const overall=avgOf(S.map(s=>s.avg));
+  $("#tabBody").innerHTML=`
+  <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px">
+      <h2 style="margin:0">📊 Analytics — ${esc(state.batch)}</h2>
+      <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" id="xls">⬇ Export Excel</button><button class="btn btn-ghost btn-sm" id="pdf">⬇ Export PDF</button></div></div>
     <div class="grid g4" style="margin-top:10px">
-      ${SUBJECTS.map(x=>`<div class="stat"><div class="num">${st.subAvg[x]!=null?st.subAvg[x]+'%':'—'}</div><div class="lbl">${x} avg</div></div>`).join('')}
-      <div class="stat"><div class="num">${st.ranked.length?st.ranked[0].overall+'%':'—'}</div><div class="lbl">Top overall</div></div>
-    </div>
-  </div>
+      <div class="stat"><div class="num">${papers.length}</div><div class="lbl">Papers</div></div>
+      <div class="stat"><div class="num">${S.length}</div><div class="lbl">Students with marks</div></div>
+      <div class="stat"><div class="num">${overall!=null?overall+'%':'—'}</div><div class="lbl">Overall average</div></div>
+      <div class="stat"><div class="num">${ranked.length?ranked[0].v+'%':'—'}</div><div class="lbl">Top average</div></div></div>
+    <p class="sub" style="margin:10px 0 0">Grades: ${GRADE_LEGEND}</p></div>
+  <div class="card"><h2>📄 Paper-by-paper average</h2>
+    ${pS.length?`<canvas id="cPap" style="max-height:260px"></canvas><div class="tbl-wrap" style="margin-top:12px"><table><tr><th>Paper</th><th>Date</th><th>Students</th><th>Average</th><th>Highest</th><th>Lowest</th><th>A</th><th>B</th><th>C</th><th>S</th><th>F</th></tr>
+    ${pS.map(x=>`<tr><td><b>${esc(x.p.title)}</b></td><td class="mono">${esc(x.p.date||'—')}</td><td>${x.n}</td><td>${x.avg!=null?`<span class="pill ${gCls(x.avg)}">${x.avg}%</span>`:'—'}</td><td>${x.hi??'—'}</td><td>${x.lo??'—'}</td><td>${x.g.A}</td><td>${x.g.B}</td><td>${x.g.C}</td><td>${x.g.S}</td><td>${x.g.F}</td></tr>`).join('')}</table></div>`:'<p class="sub">No papers yet.</p>'}</div>
+  <div class="card"><h2>🏫 Center-by-center average</h2>
+    ${cS.length?`<canvas id="cCen" style="max-height:240px"></canvas><div class="tbl-wrap" style="margin-top:12px"><table><tr><th>Center</th><th>Students</th>${order.map(p=>`<th>${esc(p.title)}</th>`).join('')}<th>Overall</th></tr>
+    ${cS.map(x=>`<tr><td><b>${esc(x.c)}</b></td><td>${x.n}</td>${order.map(p=>`<td>${x.o[p.id]?avgOf(x.o[p.id])+'%':'—'}</td>`).join('')}<td><span class="pill ${gCls(x.avg)}">${x.avg}%</span></td></tr>`).join('')}</table></div>`:'<p class="sub">No marks yet.</p>'}</div>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
-    <div class="card" style="margin:0"><h2>Average per Subject</h2><canvas id="cSubj"></canvas></div>
-    <div class="card" style="margin:0"><h2>Overall Score Distribution</h2><canvas id="cDist"></canvas></div>
-  </div>
-  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
-    <div class="card" style="margin:0">
-      <h2>🏆 Top Performers</h2>
-      ${st.ranked.slice(0,5).map((x,i)=>`<div class="list-item"><span>${['🥇','🥈','🥉','4.','5.'][i]} <b>${esc(x.s.fullName)}</b></span><span class="pill ${gCls(x.overall)}">${x.overall}%</span></div>`).join('')||'<p class="sub">No marks yet.</p>'}
-    </div>
-    <div class="card" style="margin:0">
-      <h2>⚠️ Needs Attention</h2>
-      ${st.attention.map(x=>{
-        const weak=SUBJECTS.filter(s=>x.subP[s]!=null&&x.subP[s]<40);
-        return `<div class="list-item"><span><b>${esc(x.s.fullName)}</b> <span class="sub" style="display:inline">${weak.length?'· weak in '+weak.join(', '):'· overall below 40%'}</span></span><span class="pill bad">${x.overall}%</span></div>`;
-      }).join('')||'<p class="sub">🎉 Everyone is above 40% — great job!</p>'}
-    </div>
-  </div>
-  <div class="card">
-    <h2>📋 Class Rankings</h2>
-    ${st.ranked.length?`<div class="tbl-wrap"><table><tr><th>Rank</th><th>Name</th><th>NIC</th>${SUBJECTS.map(x=>`<th>${x}</th>`).join('')}<th>Overall</th><th>Grade</th></tr>
-      ${st.ranked.map(x=>`<tr><td><b>#${x.rank}</b></td><td>${esc(x.s.fullName)}</td><td class="mono">${esc(x.s.nic)}</td>
-        ${SUBJECTS.map(s2=>`<td>${x.subP[s2]!=null?x.subP[s2]+'%':'—'}</td>`).join('')}
-        <td><span class="pill ${gCls(x.overall)}">${x.overall}%</span></td>
-        <td><span class="pill ${gCls(x.overall)}">${grade(x.overall)}</span></td></tr>`).join('')}
-    </table></div>`:'<p class="sub">No marks entered yet.</p>'}
-  </div>`;
-
-  charts.c1=new Chart($("#cSubj"),{type:'bar',data:{labels:SUBJECTS,datasets:[{label:'Class average %',
-    data:SUBJECTS.map(x=>st.subAvg[x]??0),backgroundColor:['#15803d','#22a06b','#65a30d'],borderRadius:10}]},
-    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.parsed.y}%`}}},scales:{y:{min:0,max:100}}}});
-  charts.c2=new Chart($("#cDist"),{type:'bar',data:{labels:['0–20%','21–40%','41–60%','61–80%','81–100%'],
-    datasets:[{label:'Students',data:st.bins,backgroundColor:['#b91c1c','#b45309','#15803d','#22a06b','#0f766e'],borderRadius:10}]},
-    options:{plugins:{legend:{display:false}},scales:{y:{ticks:{stepSize:1}}}}});
-
+    <div class="card" style="margin:0"><h2>🏆 Top performers</h2>
+      ${ranked.slice(0,5).map(x=>`<div class="list-item"><span><b>${x.rank}.</b> ${nameLink(x.nic,x.fullName,x.center)} <span class="sub" style="display:inline">· ${esc(x.center||'—')}</span></span><span class="pill ${gCls(x.v)}">${x.v}% · ${grade(x.v)}</span></div>`).join('')||'<p class="sub">No marks yet.</p>'}</div>
+    <div class="card" style="margin:0"><h2>⚠️ Needs attention</h2>
+      ${att.map(x=>`<div class="list-item"><span>${nameLink(x.s.nic,x.s.fullName,x.s.center)} <span class="sub" style="display:inline">· ${esc(x.s.center||'—')} · ${esc(x.r.join('; '))}</span></span><span class="pill ${gCls(x.s.avg)}">${x.s.avg}%</span></div>`).join('')||'<p class="sub">🎉 Nobody needs attention right now.</p>'}</div></div>
+  <div class="card"><h2>📋 Class rankings (overall average)</h2>
+    ${ranked.length?`<div class="tbl-wrap"><table><tr><th>Rank</th><th>Name</th><th>NIC</th><th>Center</th><th>Papers</th><th>Average</th><th>Grade</th></tr>
+    ${ranked.map(x=>`<tr><td><b>#${x.rank}</b></td><td>${nameLink(x.nic,x.fullName,x.center)}</td><td class="mono">${esc(x.nic)}</td><td>${esc(x.center||'—')}</td><td>${x.n}</td><td><span class="pill ${gCls(x.v)}">${x.v}%</span></td><td><span class="pill ${gCls(x.v)}">${grade(x.v)}</span></td></tr>`).join('')}</table></div>`:'<p class="sub">No marks entered yet.</p>'}</div>`;
+  if($("#cPap")) charts.c1=new Chart($("#cPap"),{type:'bar',data:{labels:pS.map(x=>x.p.title),datasets:[{label:'Average %',data:pS.map(x=>x.avg??0),backgroundColor:'#22a06b',borderRadius:8}]},options:{plugins:{legend:{display:false}},scales:{y:{min:0,max:100}}}});
+  if($("#cCen")) charts.c2=new Chart($("#cCen"),{type:'bar',data:{labels:cS.map(x=>x.c),datasets:[{label:'Average %',data:cS.map(x=>x.avg),backgroundColor:'#15803d',borderRadius:8}]},options:{plugins:{legend:{display:false}},scales:{y:{min:0,max:100}}}});
   $("#xls").onclick=()=>{
-    const rankAoa=[['Rank','Name','NIC',...SUBJECTS.map(x=>x+' %'),'Overall %','Grade'],
-      ...st.ranked.map(x=>[x.rank,x.s.fullName,x.s.nic,...SUBJECTS.map(s2=>x.subP[s2]??''),x.overall,grade(x.overall)])];
-    const papAoa=[['Name','NIC',...papers.map(p=>`${p.subject} | ${p.title} (${p.date||'-'})`),'Overall %'],
-      ...st.per.filter(x=>x.overall!=null).map(x=>[x.s.fullName,x.s.nic,
-        ...papers.map(p=>p.scores?.[x.s.id]??''),x.overall])];
     const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rankAoa),'Rankings');
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(papAoa),'Paper-wise Marks');
-    XLSX.writeFile(wb,'class-analyzer-results.xlsx');
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Rank','Name','NIC','Center','Papers','Average %','Grade'],...ranked.map(x=>[x.rank,x.fullName,x.nic,x.center,x.n,x.v,grade(x.v)])]),'Rankings');
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Paper','Date','Students','Average %','Highest','Lowest','A','B','C','S','F'],...pS.map(x=>[x.p.title,x.p.date||'',x.n,x.avg,x.hi,x.lo,x.g.A,x.g.B,x.g.C,x.g.S,x.g.F])]),'Paper averages');
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Center','Students',...order.map(p=>p.title),'Overall %'],...cS.map(x=>[x.c,x.n,...order.map(p=>x.o[p.id]?avgOf(x.o[p.id]):''),x.avg])]),'Center averages');
+    XLSX.writeFile(wb,'class-analytics.xlsx');
   };
   $("#pdf").onclick=()=>{
     const { jsPDF }=window.jspdf; const d=new jsPDF();
-    d.setFontSize(15); d.text('S.K. Wellala Biology Paper Class — Class Rankings',14,16);
-    d.setFontSize(9); d.setTextColor(120); d.text(`Generated ${new Date().toLocaleString()}`,14,22); d.setTextColor(0);
-    d.autoTable({startY:28,head:[['Rank','Name','NIC',...SUBJECTS,'Overall %','Grade']],
-      body:st.ranked.map(x=>[String(x.rank),x.s.fullName,x.s.nic,...SUBJECTS.map(s2=>x.subP[s2]!=null?x.subP[s2]+'%':'—'),x.overall+'%',grade(x.overall)])});
-    d.save('class-analyzer-rankings.pdf');
+    d.setFontSize(15); d.text('S.K. Wellala Biology Paper Class — '+state.batch+' Rankings',14,16);
+    d.setFontSize(9); d.setTextColor(120); d.text(`Generated ${new Date().toLocaleString()}  |  ${GRADE_LEGEND}`,14,22); d.setTextColor(0);
+    d.autoTable({startY:28,head:[['Rank','Name','NIC','Center','Papers','Average','Grade']],body:ranked.map(x=>[String(x.rank),x.fullName,x.nic,x.center||'—',String(x.n),x.v+'%',grade(x.v)])});
+    d.save('class-rankings.pdf');
   };
 }
 
