@@ -2,7 +2,7 @@
    Firebase Authentication is still used for logins. EDIT API_URL below. */
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-export const API_URL = "https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev/api";   // <-- put your Worker address here
+export const API_URL = "https://odd-paper-03f0.tm936763.workers.dev/api";   // <-- put your Worker address here
 
 const TS = { __ts: true };
 export const serverTimestamp = () => TS;
