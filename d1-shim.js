@@ -2,7 +2,7 @@
    Firebase Authentication is still used for logins. EDIT API_URL below. */
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-export const API_URL = "https://odd-paper-03f0.tm936763.workers.dev/api";   // <-- put your Worker address here
+export const API_URL = "/api";   // same address as the website (needs functions/api.js). To use a separate Worker instead, put its full address here.
 
 const TS = { __ts: true };
 export const serverTimestamp = () => TS;
@@ -48,3 +48,6 @@ export const onSnapshot = (q, cb, err) => {
   const iv = setInterval(tick, 90000); tick();
   return () => { stop = true; clearInterval(iv); };
 };
+
+/* the student's own rank per paper (only if in the top 100 across all centers) */
+export const myRanks = async () => (await call({ op: 'myranks' })).ranks || {};

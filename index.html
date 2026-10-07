@@ -172,7 +172,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, on
          signOut, sendPasswordResetEmail, updateProfile }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-         collection, query, where, onSnapshot, serverTimestamp }
+         collection, query, where, onSnapshot, serverTimestamp, myRanks }
   from "./d1-shim.js";
 
 /* ============================== HELPERS ============================== */
@@ -186,6 +186,8 @@ const BATCHES = ["2027 A/L","2028 A/L"];
 const grade = p => p>=75?'A':p>=65?'B':p>=55?'C':p>=35?'S':'F';
 const gCls  = p => p>=75?'good':p>=55?'brand':p>=35?'warn':'bad';
 const NIC_RE = /^(\d{9}[VvXx]|\d{12})$/;
+const BC_RE = /^[A-Za-z0-9-]{3,20}$/;
+const skeyOf = p => String((p && (p.skey || p.nic)) || '').toUpperCase();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const busy = on => $("#loading").classList.toggle('show', !!on);
 let charts = {};
@@ -224,7 +226,7 @@ const routes = () => ({
 window.addEventListener('hashchange', route);
 
 function go(h){ if(location.hash===h) route(); else location.hash=h; }
-window.CA={esc,pct,grade,gCls,SUBJECTS,BATCHES,app,go,busy,friendly,state,
+window.CA={myRanks,esc,pct,grade,gCls,SUBJECTS,BATCHES,app,go,busy,friendly,state,
   get role(){return role}, get user(){return user}, get profile(){return profile}, get db(){return db},
   fs:{doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,addDoc,collection,query,where,serverTimestamp},
   tabs:[],                                   // add-on files push {id,label,render(ctx)} here to add teacher tabs
@@ -238,6 +240,7 @@ function route(){
   if(r==='teacherDash' && !(user && role==='teacher')) return go('#/teacher');
   if(r==='studentView' && !(user && role==='teacher' && (profile.isAdmin||profile.verified===true))) return go('#/teacher');
   if(['landing','login','signup','forgot'].includes(r) && user && role==='student') return go('#/dashboard');
+  if(['login','signup','forgot'].includes(r) && user && role==='teacher') return go('#/teacher/dashboard');
   if(r==='teacherAuth' && user && role==='teacher') return go('#/teacher/dashboard');
   renderHdr(r);
   { const fail=e=>{ busy(false); app.innerHTML=`<div class="card" style="max-width:560px;margin:28px auto"><h2>⚠️ Something went wrong</h2><div class="err">${esc(friendly(e))}</div><p class="sub" style="margin-top:8px">Technical detail: ${esc(e&&e.message||String(e))}</p><button class="btn btn-primary" onclick="location.reload()" style="width:auto">Reload</button></div>`; };
@@ -396,8 +399,8 @@ function landing(){
 function login(){
   app.innerHTML = `<div class="card auth-card">
     <h2>🎓 Student Login</h2>
-    <label>Email or NIC number</label>
-    <input id="idf" placeholder="you@email.com or 200012345678" autocomplete="username">
+    <label>Email, NIC or barcode number</label>
+    <input id="idf" placeholder="you@email.com, NIC or barcode" autocomplete="username">
     <label>Password</label>
     <input id="pw" type="password" placeholder="Your password" autocomplete="current-password">
     <div style="text-align:right;margin-top:8px"><a href="#/forgot" style="font-size:.82rem">Forgot password?</a></div>
@@ -409,12 +412,13 @@ function login(){
     const msg=$("#msg"); msg.innerHTML=''; busy(true);
     try{
       let ident=$("#idf").value.trim(), email=ident;
-      if(!ident) throw {message:'Please enter your email or NIC.'};
+      if(!ident) throw {message:'Please enter your email, NIC or barcode number.'};
       if(!EMAIL_RE.test(ident)){
-        if(!NIC_RE.test(ident)) throw {message:'That does not look like a valid email or NIC number.'};
-        const n=await getDoc(doc(db,'nics',ident.toUpperCase()));
-        if(!n.exists()) throw {message:'No account found for this NIC. Please sign up first.'};
-        email=n.data().email;
+        const id=ident.toUpperCase(); let found=null;
+        if(NIC_RE.test(id)){ const n=await getDoc(doc(db,'nics',id)); if(n.exists()) found=n.data(); }
+        if(!found && BC_RE.test(id)){ const b=await getDoc(doc(db,'barcodes',id)); if(b.exists()) found=b.data(); }
+        if(!found) throw {message:'No account found for this NIC or barcode. Please sign up first.'};
+        email=found.email;
       }
       await signInWithEmailAndPassword(auth, email, $("#pw").value);
     }catch(e){ busy(false); msg.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
@@ -434,8 +438,10 @@ async function signup(){
     <h2>🎓 Student Sign Up</h2>
     <label>Full Name</label><input id="nm" placeholder="e.g. Kasun Perera">
     <div class="field-err" id="e-nm"></div>
+    <label>Gender</label><select id="gen"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select><div class="field-err" id="e-gen"></div>
     <label>NIC Number</label><input id="nic" placeholder="e.g. 123456789V or 200012345678" maxlength="12">
     <div class="field-err" id="e-nic"></div>
+    <label>Barcode Number</label><input id="bc" placeholder="Your class barcode number" maxlength="20"><div class="field-err" id="e-bc"></div>
     <label>Email</label><input id="em" type="email" placeholder="you@email.com" autocomplete="email">
     <div class="field-err" id="e-em"></div>
     <label>Mobile Number</label><input id="mob" type="tel" placeholder="07X XXX XXXX"><div class="field-err" id="e-mob"></div>
@@ -460,11 +466,14 @@ async function signup(){
     f.style.background=['#b91c1c','#b45309','#15803d','#0f766e'][s];
   };
   $("#btn").onclick=async()=>{
-    ["nm","nic","em","pw","pw2","mob","wa","sch","ctr","pay"].forEach(x=>$("#e-"+x).textContent='');
+    ["nm","nic","bc","gen","em","pw","pw2","mob","wa","sch","ctr","pay"].forEach(x=>$("#e-"+x).textContent='');
     $("#msg").innerHTML='';
     const nm=$("#nm").value.trim(), nic=$("#nic").value.trim().toUpperCase(),
           em=$("#em").value.trim().toLowerCase(), pw=$("#pw").value, pw2=$("#pw2").value;
+    const bc=$("#bc").value.trim().toUpperCase(), gen=$("#gen").value;
     let bad=false;
+    if(!BC_RE.test(bc)){$("#e-bc").textContent='Enter your barcode number (letters or numbers, 3-20 characters).';bad=true;}
+    if(!gen){$("#e-gen").textContent='Please select your gender.';bad=true;}
     if(nm.length<3){$("#e-nm").textContent='Please enter your full name.';bad=true;}
     if(!NIC_RE.test(nic)){$("#e-nic").textContent='Invalid NIC. Use 9 digits + V/X (old) or 12 digits (new).';bad=true;}
     if(!EMAIL_RE.test(em)){$("#e-em").textContent='Please enter a valid email address.';bad=true;}
@@ -482,12 +491,17 @@ async function signup(){
     try{
       const nicDoc=await getDoc(doc(db,'nics',nic));
       if(nicDoc.exists()){ busy(false); $("#msg").innerHTML=`<div class="err">An account with this NIC already exists. If you want to use a new email, please contact us and ask us to delete the previous account, then sign up again.<br><a class="foot-contact" href="#/contact" style="margin-top:10px">📞 Contact us</a> &nbsp;<a href="#/login">Log in instead</a></div>`; return; }
+      const bcDoc=await getDoc(doc(db,'barcodes',bc));
+      if(bcDoc.exists()){ busy(false); $("#msg").innerHTML=`<div class="err">An account with this barcode already exists. If you need a new account, please contact us and ask us to delete the previous one, then sign up again.<br><a class="foot-contact" href="#/contact" style="margin-top:10px">📞 Contact us</a> &nbsp;<a href="#/login">Log in instead</a></div>`; return; }
+      let pk=nic; { const p1=await getDoc(doc(db,'pending',nic)); if(!p1.exists()){ const p2=await getDoc(doc(db,'pending','BC'+bc)); if(p2.exists()) pk='BC'+bc; } }
       signingUp=true;
       const cred=await createUserWithEmailAndPassword(auth, em, pw);
       await updateProfile(cred.user,{displayName:nm});
-      await setDoc(doc(db,'students',cred.user.uid),{fullName:nm, nic, email:em, mobile:mob, whatsapp:wa, school:sch, batch:bat, center:ctr, payMethod:pay, verified:false, createdAt:serverTimestamp()});
-      await setDoc(doc(db,'nics',nic),{uid:cred.user.uid, email:em});
+      await setDoc(doc(db,'students',cred.user.uid),{fullName:nm, nic, barcode:bc, skey:pk, gender:gen, email:em, mobile:mob, whatsapp:wa, school:sch, batch:bat, center:ctr, payMethod:pay, verified:false, createdAt:serverTimestamp()});
+      await setDoc(doc(db,'nics',nic),{uid:cred.user.uid, email:em, skey:pk});
+      await setDoc(doc(db,'barcodes',bc),{uid:cred.user.uid, email:em, skey:pk});
       try{ await deleteDoc(doc(db,'pending',nic)); }catch(e){}
+      try{ await deleteDoc(doc(db,'pending','BC'+bc)); }catch(e){}
       signingUp=false; await authLoad(auth.currentUser); busy(false); go('#/dashboard');
     }catch(e){ signingUp=false; busy(false); $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
@@ -538,14 +552,14 @@ async function stuDash(){
 
   const q=query(collection(db,'papers'), where('published','==',true));
   const load=async()=>{
-    const snap=await getDocs(q), ps=snap.docs.map(d=>({id:d.id,...d.data()})), nic=String(profile.nic||'').toUpperCase();
+    const snap=await getDocs(q), ps=snap.docs.map(d=>({id:d.id,...d.data()})), nic=skeyOf(profile);
     await Promise.all(ps.map(async p=>{ p.scores={}; try{ const m=await getDoc(doc(db,'marks',p.id+'_'+nic)); if(m.exists()) p.scores[nic]=m.data().mark; }catch(e){} }));
     return ps; };
   const renderBody=papers=>{
     const rowsP=papers
       .filter(p=>(p.batch||BATCHES[0])===(profile.batch||BATCHES[0]))
       .filter(p=>state.stuSubject==='All'||p.subject===state.stuSubject)
-      .map(p=>({p, m:p.scores?.[String(profile.nic||'').toUpperCase()]}))
+      .map(p=>({p, m:p.scores?.[skeyOf(profile)]}))
       .filter(r=>r.m!=null)
       .sort((a,b)=>String(a.p.date||'').localeCompare(String(b.p.date||'')));
     let inner='';
@@ -562,7 +576,7 @@ async function stuDash(){
     }
     $("#stuBody").innerHTML=inner;
     try{ document.dispatchEvent(new CustomEvent('ca:student-marks',{detail:{name:profile.fullName,nic:profile.nic,email:profile.email,subject:state.stuSubject,
-      rows:rowsP.map(r=>({title:r.p.title,subject:r.p.subject,date:r.p.date,mark:r.m,max:r.p.max,pct:pct(r.m,r.p.max)}))}})); }catch(e){}
+      rows:rowsP.map(r=>({pid:r.p.id,title:r.p.title,subject:r.p.subject,date:r.p.date,mark:r.m,max:r.p.max,pct:pct(r.m,r.p.max)}))}})); }catch(e){}
     if(rowsP.length){
       const dark=document.documentElement.dataset.theme==='dark';
       charts.s1=new Chart($("#c1"),{type:'line',data:{labels:rowsP.map(r=>r.p.title),
@@ -593,6 +607,7 @@ function teacherAuth(){
     </div>
     <div id="fUp" style="display:none">
       <label>Full Name</label><input id="unm" placeholder="e.g. Mrs. Fernando">
+      <label>Gender</label><select id="ugen"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select>
       <label>Email</label><input id="uem" type="email" placeholder="you@school.lk">
       <label>Password (min 8 chars)</label><input id="upw" type="password" placeholder="Choose a strong password">
       <label>Exam Center</label><select id="uct"><option value="">Select center</option></select>
@@ -621,6 +636,7 @@ function teacherAuth(){
     if(nm.length<3) return $("#msg").innerHTML=`<div class="err">Please enter your name.</div>`;
     if(!EMAIL_RE.test(em)) return $("#msg").innerHTML=`<div class="err">Please enter a valid email.</div>`;
     if(pw.length<8) return $("#msg").innerHTML=`<div class="err">Password must be at least 8 characters.</div>`;
+    if(!$("#ugen").value) return $("#msg").innerHTML=`<div class="err">Please select your gender.</div>`;
     if(TL.centers.length&&!$("#uct").value) return $("#msg").innerHTML=`<div class="err">Please select your exam center.</div>`;
     busy(true);
     try{
@@ -630,7 +646,7 @@ function teacherAuth(){
       }
       signingUp=true;
       const cred=await createUserWithEmailAndPassword(auth, em, pw);
-      await setDoc(doc(db,'teachers',cred.user.uid),{fullName:nm, email:em, center:$("#uct").value, verified:false, createdAt:serverTimestamp()});
+      await setDoc(doc(db,'teachers',cred.user.uid),{fullName:nm, email:em, gender:$("#ugen").value, center:$("#uct").value, verified:false, createdAt:serverTimestamp()});
       signingUp=false; await authLoad(auth.currentUser); busy(false);
     }catch(e){ signingUp=false; busy(false); $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
@@ -660,15 +676,14 @@ function teacherProfile(){
     <label>Full Name</label><input id="pn" value="${esc(p.fullName||'')}">
     <label>Phone Number</label><input id="pp" type="tel" placeholder="07X XXX XXXX" value="${esc(p.phone||'')}">
     <label>Institute / School</label><input id="pi" placeholder="e.g. ABC Tuition Class" value="${esc(p.institute||'')}">
-    <label>Class / Batch Name</label><input id="pc" placeholder="e.g. 2027 A/L Biology" value="${esc(p.className||'')}">
-    <label>Qualification</label><input id="pq" placeholder="e.g. BSc (Hons), PGDE" value="${esc(p.qualification||'')}">
+    <label>Attended Class</label><input id="pc" placeholder="e.g. 2027 A/L Biology" value="${esc(p.className||'')}">
     <label style="display:none">Subjects you teach</label>
     <div style="display:none">${SUBJECTS.map(x=>`<label class="chk"><input type="checkbox" class="psub" value="${x}" checked>${x}</label>`).join('')}</div>
     <button class="btn btn-primary" id="psave" style="margin-top:12px">Save & Continue</button>
     <div id="pmsg"></div></div>`;
   $("#psave").onclick=async()=>{
     const d={fullName:$("#pn").value.trim(), phone:$("#pp").value.trim(), institute:$("#pi").value.trim(),
-      className:$("#pc").value.trim(), qualification:$("#pq").value.trim(),
+      className:$("#pc").value.trim(),
       subjects:[...document.querySelectorAll('.psub:checked')].map(c=>c.value)};
     if(d.fullName.length<3||!d.phone||!d.institute) return $("#pmsg").innerHTML='<div class="err">Please fill in your name, phone and institute.</div>';
     busy(true);
@@ -695,7 +710,7 @@ async function teacherDash(){
   ]).catch(e=>{ app.innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; return [null]; });
   if(!stuSnap) return;
   const students=stuSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.fullName.localeCompare(b.fullName));
-  const pending=penSnap.docs.map(d=>({nic:d.id,...d.data()}));
+  const pending=penSnap.docs.map(d=>({...d.data(),key:d.id}));
   const papersAll=papSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   const adm=!!profile.isAdmin;
   const admins={}; if(admSnap) admSnap.docs.forEach(d=>admins[d.id]=d.data());
@@ -704,8 +719,8 @@ async function teacherDash(){
   const mkAll=mkSnap.docs.map(d=>d.data());
   papersAll.forEach(p=>{ p.scores={...(p.scores||{})}; p.meta={}; mkAll.forEach(m=>{ if(m.pid===p.id){ p.scores[m.nic]=m.mark; p.meta[m.nic]={n:m.name,c:m.center||''}; } }); });
   const papers=papersAll.filter(p=>(p.batch||BATCHES[0])===state.batch);
-  const rosterAll=students.map(x=>({id:String(x.nic||'').toUpperCase(),uid:x.id,fullName:x.fullName,nic:String(x.nic||'').toUpperCase(),email:x.email,mobile:x.mobile,whatsapp:x.whatsapp,school:x.school,batch:x.batch||BATCHES[0],center:x.center||'',payMethod:x.payMethod,verified:!!x.verified,signedUp:true}));
-  pending.forEach(x=>{ if(!rosterAll.some(r=>r.id===x.nic)) rosterAll.push({id:x.nic,fullName:x.fullName,nic:x.nic,email:x.email||'',batch:x.batch||BATCHES[0],center:x.center||'',verified:false,signedUp:false}); });
+  const rosterAll=students.map(x=>({id:skeyOf(x),uid:x.id,fullName:x.fullName,nic:skeyOf(x),realNic:String(x.nic||'').toUpperCase(),barcode:String(x.barcode||'').toUpperCase(),gender:x.gender||'',email:x.email,mobile:x.mobile,whatsapp:x.whatsapp,school:x.school,batch:x.batch||BATCHES[0],center:x.center||'',payMethod:x.payMethod,verified:!!x.verified,signedUp:true}));
+  pending.forEach(x=>{ if(!rosterAll.some(r=>r.id===x.key)) rosterAll.push({id:x.key,fullName:x.fullName,nic:x.key,realNic:String(x.nic||'').toUpperCase(),barcode:String(x.barcode||'').toUpperCase(),email:x.email||'',batch:x.batch||BATCHES[0],center:x.center||'',verified:false,signedUp:false}); });
   rosterAll.sort((a,b)=>a.fullName.localeCompare(b.fullName));
   const roster=rosterAll.filter(r=>r.batch===state.batch&&(!adm||state.center==='All'||r.center===state.center));
   const lsd=lstSnap?.exists()?lstSnap.data():{};
@@ -761,6 +776,7 @@ async function studentView(){
     let s=null;
     const nd=await getDoc(doc(db,'nics',nic));
     if(nd.exists()){ const sd=await getDoc(doc(db,'students',nd.data().uid)); if(sd.exists()) s={id:sd.id,signedUp:true,...sd.data()}; }
+    if(!s){ const bd=await getDoc(doc(db,'barcodes',nic.startsWith('BC')?nic.slice(2):nic)); if(bd.exists()){ const sd=await getDoc(doc(db,'students',bd.data().uid)); if(sd.exists()) s={id:sd.id,signedUp:true,...sd.data()}; } }
     if(!s){ const pd=await getDoc(doc(db,'pending',nic)); if(pd.exists()) s={signedUp:false,nic,...pd.data()}; }
     if(!s || (!adm && (s.center||'')!==(profile.center||''))){ app.innerHTML=`${back}<div class="card"><p class="sub">Student not found${adm?'':' in your center'}.</p></div>`; return; }
     const papersAll=(await getDocs(collection(db,'papers'))).docs.map(d=>({id:d.id,...d.data()}));
@@ -776,7 +792,7 @@ async function studentView(){
     <div class="card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center">
       <div><b style="font-size:1.15rem">🎓 ${esc(s.fullName)}</b> ${s.verified?'<span class="vbadge">✔ Verified</span>':'<span class="sub" style="display:inline">· not verified</span>'}${s.signedUp?'':' <span class="sub" style="display:inline">· has not signed up</span>'}</div>
       <div>${adm&&s.signedUp?`<button class="btn btn-ghost btn-sm" id="svEdit">✏️ Edit</button> <button class="btn btn-ghost btn-sm" id="svVer">${s.verified?'Unverify':'Verify'}</button> `:''}<button class="btn btn-danger btn-sm" id="svDel">Remove student</button></div></div>
-      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:12px">${info('NIC',nic)}${info('Batch',batch)}${info('Center',s.center)}${info('Mobile',s.mobile)}${info('WhatsApp',s.whatsapp)}${info('School',s.school)}${info('Email',s.email)}${info('Paid via',s.payMethod)}</div></div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:12px">${info('NIC',s.nic)}${info('Barcode',s.barcode)}${info('Gender',s.gender)}${info('Batch',batch)}${info('Center',s.center)}${info('Mobile',s.mobile)}${info('WhatsApp',s.whatsapp)}${info('School',s.school)}${info('Email',s.email)}${info('Paid via',s.payMethod)}</div></div>
     ${rows.length?`<div class="card"><h2>📈 Progress</h2><canvas id="svC"></canvas></div>
     <div class="card"><h2>📄 Paper-by-paper</h2><div class="tbl-wrap"><table><tr><th>Date</th><th>Paper</th><th>Marks</th><th>%</th><th>Grade</th><th>Rank</th><th>Status</th></tr>
     ${rows.map(r=>`<tr><td class="mono">${esc(r.p.date||'—')}</td><td>${esc(r.p.title)}</td><td class="mono"><b>${r.m}</b> / ${r.p.max}</td><td><span class="pill ${gCls(r.pc)}">${r.pc}%</span></td><td><span class="pill ${gCls(r.pc)}">${grade(r.pc)}</span></td><td>${r.rank} / ${r.n}</td><td>${r.p.published?'Published':'Hidden'}</td></tr>`).join('')}</table></div></div>`
@@ -790,7 +806,8 @@ async function studentView(){
       try{
         for(const d of papersAll){ await deleteDoc(doc(db,'marks',d.id+'_'+nic)).catch(()=>{}); }
         if(s.signedUp) await deleteDoc(doc(db,'students',s.id));
-        await deleteDoc(doc(db,'nics',nic)).catch(()=>{}); await deleteDoc(doc(db,'pending',nic)).catch(()=>{});
+        if(s.signedUp){ if(s.nic) await deleteDoc(doc(db,'nics',s.nic)).catch(()=>{}); if(s.barcode) await deleteDoc(doc(db,'barcodes',s.barcode)).catch(()=>{}); }
+        await deleteDoc(doc(db,'pending',nic)).catch(()=>{});
         busy(false); go('#/teacher/dashboard');
       }catch(e){ busy(false); alert(friendly(e)); }
     };
@@ -802,19 +819,19 @@ function tabStudents({roster,rosterAll}){
   const adm=profile.isAdmin, L=state.lists;
   const opt=(a,sel)=>a.map(x=>`<option${x===sel?' selected':''}>${esc(x)}</option>`).join('');
   const vb=s=>s.verified?' <span class="vbadge">✔ Verified</span>':'';
-  const row=s=>`<tr><td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b>${vb(s)}${s.signedUp?'':' <span class="sub">(not signed up)</span>'}</td><td class="mono">${esc(s.nic)}</td><td>${esc(s.batch)}</td><td>${esc(s.center||'—')}</td>
+  const row=s=>`<tr><td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b>${vb(s)}${s.signedUp?'':' <span class="sub">(not signed up)</span>'}</td><td class="mono">${esc(s.realNic||'—')}</td><td class="mono">${esc(s.barcode||'—')}</td><td>${esc(s.batch)}</td><td>${esc(s.center||'—')}</td>
     <td>${esc(s.mobile||'—')}${s.whatsapp?`<br><span class="sub" style="margin:0">WA ${esc(s.whatsapp)}</span>`:''}</td><td>${esc(s.school||'—')}</td><td>${esc(s.payMethod||'—')}</td>
     <td style="text-align:right;white-space:nowrap">${adm&&s.signedUp?`<button class="btn btn-ghost btn-sm" data-ver="${s.uid}" data-v="${s.verified?1:0}">${s.verified?'Unverify':'Verify'}</button> `:''}
     ${s.signedUp?`<button class="btn btn-ghost btn-sm" data-edit="${s.uid}" data-name="${esc(s.fullName)}">Edit</button> `:''}
-    <button class="btn btn-danger btn-sm" data-rm="${esc(s.nic)}" data-uid="${s.uid||''}">Remove</button></td></tr>`;
-  const table=a=>a.length?`<div class="tbl-wrap"><table><tr><th>Name</th><th>NIC</th><th>Batch</th><th>Center</th><th>Contact</th><th>School</th><th>Paid via</th><th></th></tr>${a.map(row).join('')}</table></div>`:'<p class="sub">No students found.</p>';
+    <button class="btn btn-danger btn-sm" data-rm="${esc(s.nic)}" data-rnic="${esc(s.realNic||'')}" data-rbc="${esc(s.barcode||'')}" data-uid="${s.uid||''}">Remove</button></td></tr>`;
+  const table=a=>a.length?`<div class="tbl-wrap"><table><tr><th>Name</th><th>NIC</th><th>Barcode</th><th>Batch</th><th>Center</th><th>Contact</th><th>School</th><th>Paid via</th><th></th></tr>${a.map(row).join('')}</table></div>`:'<p class="sub">No students found.</p>';
   $("#tabBody").innerHTML=`
   <div class="card"><h2>🔎 Find a student</h2>
-    <input id="q" placeholder="Search by NIC or name (all batches &amp; centers)"><div id="qres"></div></div>
+    <input id="q" placeholder="Search by NIC, barcode or name"><div id="qres"></div></div>
   <div class="card"><h2>Add Student to ${esc(state.batch)}</h2>
-    <p class="sub" style="margin:0 0 4px">Add a student with their NIC and enter marks straight away — they can sign up later with the same NIC.</p>
+    <p class="sub" style="margin:0 0 4px">Add a student with their barcode or NIC (either one) and enter marks straight away — they can sign up later with the same NIC and barcode.</p>
     <div class="row">
-      <div><label>Full name</label><input id="an"></div><div><label>NIC</label><input id="anic" maxlength="12"></div>
+      <div><label>Full name</label><input id="an"></div><div><label>NIC (optional)</label><input id="anic" maxlength="12"></div><div><label>Barcode (optional)</label><input id="abc" maxlength="20"></div>
       <div><label>Center</label>${adm?`<select id="act"><option value="">—</option>${opt(L.centers,state.center)}</select>`:`<input id="act" value="${esc(profile.center||'')}" disabled>`}</div>
       <button class="btn btn-primary" id="addStu" style="width:auto;margin:0">+ Add</button></div>
     <div id="addMsg"></div></div>
@@ -831,24 +848,27 @@ function tabStudents({roster,rosterAll}){
         const nic=b.dataset.rm, ps=await getDocs(collection(db,'papers'));
         for(const d of ps.docs){ await deleteDoc(doc(db,'marks',d.id+'_'+nic)).catch(()=>{}); }
         if(b.dataset.uid) await deleteDoc(doc(db,'students',b.dataset.uid));
-        await deleteDoc(doc(db,'nics',nic)).catch(()=>{}); await deleteDoc(doc(db,'pending',nic)).catch(()=>{});
+        if(b.dataset.rnic) await deleteDoc(doc(db,'nics',b.dataset.rnic)).catch(()=>{}); if(b.dataset.rbc) await deleteDoc(doc(db,'barcodes',b.dataset.rbc)).catch(()=>{}); await deleteDoc(doc(db,'pending',nic)).catch(()=>{});
         busy(false); teacherDash();
       }catch(e){ busy(false); alert(friendly(e)); } });
   };
   wire();
   $("#q").oninput=e=>{
     const v=e.target.value.trim().toUpperCase();
-    $("#qres").innerHTML=v.length<2?'':table(rosterAll.filter(s=>s.nic.includes(v)||s.fullName.toUpperCase().includes(v)).slice(0,25));
+    $("#qres").innerHTML=v.length<2?'':table(rosterAll.filter(s=>s.nic.includes(v)||String(s.realNic||'').includes(v)||String(s.barcode||'').includes(v)||s.fullName.toUpperCase().includes(v)).slice(0,25));
     wire();
   };
   $("#addStu").onclick=async()=>{
-    const nm=$("#an").value.trim(), nic=$("#anic").value.trim().toUpperCase(), m=$("#addMsg"); m.innerHTML='';
+    const nm=$("#an").value.trim(), nic=$("#anic").value.trim().toUpperCase(), bc=$("#abc").value.trim().toUpperCase(), m=$("#addMsg"); m.innerHTML='';
     if(nm.length<3) return m.innerHTML='<div class="err">Please enter the student\'s name.</div>';
-    if(!NIC_RE.test(nic)) return m.innerHTML='<div class="err">Invalid NIC format.</div>';
+    if(!nic&&!bc) return m.innerHTML='<div class="err">Enter the barcode number or the NIC.</div>';
+    if(nic&&!NIC_RE.test(nic)) return m.innerHTML='<div class="err">Invalid NIC format.</div>';
+    if(bc&&!BC_RE.test(bc)) return m.innerHTML='<div class="err">Invalid barcode (letters or numbers, 3-20 characters).</div>';
     busy(true);
     try{
-      if((await getDoc(doc(db,'nics',nic))).exists()){ busy(false); return m.innerHTML='<div class="err">A student with this NIC is already registered.</div>'; }
-      await setDoc(doc(db,'pending',nic),{fullName:nm,email:'',batch:state.batch,center:$("#act").value,addedAt:serverTimestamp()});
+      if(nic && (await getDoc(doc(db,'nics',nic))).exists()){ busy(false); return m.innerHTML='<div class="err">A student with this NIC is already registered.</div>'; }
+      if(bc && (await getDoc(doc(db,'barcodes',bc))).exists()){ busy(false); return m.innerHTML='<div class="err">A student with this barcode is already registered.</div>'; }
+      await setDoc(doc(db,'pending',nic||('BC'+bc)),{fullName:nm,nic,barcode:bc,email:'',batch:state.batch,center:$("#act").value,addedAt:serverTimestamp()});
       busy(false); teacherDash();
     }catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
@@ -932,7 +952,7 @@ async function studentEditCard(host,s,admin,onDone){
     busy(true);
     try{
       await updateDoc(doc(db,'students',uid),d);
-      if(admin && (d.center||'')!==(s.center||'')) await moveMarksCenter(String(s.nic).toUpperCase(),d.center||'');
+      if(admin && (d.center||'')!==(s.center||'')) await moveMarksCenter(skeyOf(s),d.center||'');
       if(!admin) profile={...profile,...d};
       busy(false); onDone();
     }catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
@@ -956,7 +976,7 @@ async function studentRequestCard(host){
     if(why.length<3) return m.innerHTML='<div class="err">Please give a short reason.</div>';
     busy(true);
     try{
-      await setDoc(doc(db,'changeRequests',user.uid),{uid:user.uid,nic:String(profile.nic||'').toUpperCase(),name:profile.fullName,fromCenter:profile.center||'',fromBatch:profile.batch||BATCHES[0],toCenter:toC,toBatch:toB,reason:why,status:'pending',createdAt:serverTimestamp()});
+      await setDoc(doc(db,'changeRequests',user.uid),{uid:user.uid,nic:skeyOf(profile),name:profile.fullName,fromCenter:profile.center||'',fromBatch:profile.batch||BATCHES[0],toCenter:toC,toBatch:toB,reason:why,status:'pending',createdAt:serverTimestamp()});
       busy(false); host.innerHTML='<div class="card"><div class="ok">✅ Request sent. The developer will review it.</div></div>';
     }catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
@@ -1135,7 +1155,7 @@ function drawMarksPane(students,papers){
     ${students.length?`<div class="tbl-wrap"><table><tr><th>Student</th><th>NIC</th><th>Marks / ${sel.max}</th><th>%</th><th>Grade</th></tr>
       ${students.map(s=>{
         const sc=sel.scores?.[s.id]; const p=sc!=null?pct(sc,sel.max):null;
-        return `<tr><td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b></td><td class="mono">${esc(s.nic)}</td>
+        return `<tr><td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b></td><td class="mono">${esc(s.realNic||s.barcode||s.nic)}</td>
           <td style="max-width:120px"><input type="number" min="0" max="${sel.max}" value="${sc??''}" data-mk="${s.id}"></td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${p}%</span>`:'—'}</td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${grade(p)}</span>`:'—'}</td></tr>`;
