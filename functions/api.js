@@ -96,23 +96,51 @@ async function canDelete(c, col, id, ex) {
     case 'admins': return adm && !(ex && ex.owner === true) && c.uid !== id;
     case 'students': return ex ? await c.sameCenter(ex.center) : false;
     case 'changeRequests': case 'papers': case 'fileLists': case 'settings': return adm;
+            case 'teachers': return adm && c.uid !== id && !(await c.get('admins', id));
     case 'nics': case 'barcodes': return await c.isTeacher();
     case 'pending': return c.signedIn;
     case 'marks': return ex ? await c.sameCenter(ex.center) : c.signedIn;
   }
   return false;
 }
-
+/* ---------- delete a Firebase login (needs the FIREBASE_SERVICE_ACCOUNT secret) ---------- */
+const b64 = b => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64s = s => b64(new TextEncoder().encode(s));
+async function googleToken(env) {
+  const sa = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT), now = Math.floor(Date.now() / 1000);
+  const head = b64s(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const claim = b64s(JSON.stringify({ iss: sa.client_email, scope: 'https://www.googleapis.com/auth/identitytoolkit https://www.googleapis.com/auth/cloud-platform', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3000 }));
+  const der = Uint8Array.from(atob(sa.private_key.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '')), c => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(head + '.' + claim));
+  const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=' + head + '.' + claim + '.' + b64(sig) });
+  const j = await r.json(); if (!j.access_token) throw new Error('Google refused the service account key');
+  return j.access_token;
+}
+async function deleteLogin(env, uid) {
+  const token = await googleToken(env);
+  const r = await fetch(`https://identitytoolkit.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/accounts:delete`, { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ localId: uid }) });
+  if (!r.ok && r.status !== 400) throw new Error('Firebase answered HTTP ' + r.status);   // 400 = login already gone
+}
 const clean = d => { const o = {}; for (const [k, v] of Object.entries(d || {})) o[k] = (v && typeof v === 'object' && v.__ts) ? Date.now() : v; return o; };
 
 /* ---------- request handler ---------- */
 async function handle(b, uid, env) {
   const c = ctxOf(env, uid), { op, col } = b; let id = b.id;
-  if (op !== 'myranks' && !COLS.includes(col)) deny('Unknown collection');
+    if (op !== 'myranks' && op !== 'deleteuser' && !COLS.includes(col)) deny('Unknown collection');
   if (op === 'get') {
     const d = await c.get(col, String(id));
     if (!(await canRead(c, col, String(id), d))) deny();
     return { data: d };
+  }
+     if (op === 'deleteuser') {
+    if (!(await c.isAdmin())) deny();
+    const target = String(b.uid || '');
+    if (!target || target === c.uid || (await c.get('admins', target))) deny('Developers cannot be removed this way.');
+    if ((await c.get('students', target)) || (await c.get('teachers', target))) deny('Remove the records first.');
+    if (!env.FIREBASE_SERVICE_ACCOUNT) deny('FIREBASE_SERVICE_ACCOUNT is not set in Cloudflare.');
+    try { await deleteLogin(env, target); } catch (e) { deny('Could not delete the Firebase login: ' + e.message); }
+    return { ok: true };
   }
   if (op === 'myranks') {
     /* each student sees only their OWN rank, and only if they are in the top 100 of that paper across all centers (Online center ignored) */
