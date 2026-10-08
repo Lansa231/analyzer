@@ -172,7 +172,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, on
          signOut, sendPasswordResetEmail, updateProfile }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-         collection, query, where, onSnapshot, serverTimestamp, myRanks }
+         collection, query, where, onSnapshot, serverTimestamp, myRanks, deleteAuthUser }
   from "./d1-shim.js";
 
 /* ============================== HELPERS ============================== */
@@ -806,6 +806,7 @@ async function studentView(){
       try{
         for(const d of papersAll){ await deleteDoc(doc(db,'marks',d.id+'_'+nic)).catch(()=>{}); }
         if(s.signedUp) await deleteDoc(doc(db,'students',s.id));
+                if(s.signedUp && adm) await deleteAuthUser(s.id).catch(()=>{});
         if(s.signedUp){ if(s.nic) await deleteDoc(doc(db,'nics',s.nic)).catch(()=>{}); if(s.barcode) await deleteDoc(doc(db,'barcodes',s.barcode)).catch(()=>{}); }
         await deleteDoc(doc(db,'pending',nic)).catch(()=>{});
         busy(false); go('#/teacher/dashboard');
@@ -848,6 +849,7 @@ function tabStudents({roster,rosterAll}){
         const nic=b.dataset.rm, ps=await getDocs(collection(db,'papers'));
         for(const d of ps.docs){ await deleteDoc(doc(db,'marks',d.id+'_'+nic)).catch(()=>{}); }
         if(b.dataset.uid) await deleteDoc(doc(db,'students',b.dataset.uid));
+                if(b.dataset.uid && profile.isAdmin) await deleteAuthUser(b.dataset.uid).catch(()=>{});
         if(b.dataset.rnic) await deleteDoc(doc(db,'nics',b.dataset.rnic)).catch(()=>{}); if(b.dataset.rbc) await deleteDoc(doc(db,'barcodes',b.dataset.rbc)).catch(()=>{}); await deleteDoc(doc(db,'pending',nic)).catch(()=>{});
         busy(false); teacherDash();
       }catch(e){ busy(false); alert(friendly(e)); } });
@@ -993,12 +995,14 @@ function tabTeachers({teachers,admins}){
     <td>${a?'<span class="pill brand">Developer</span>':'Teacher'}</td>
     <td style="white-space:nowrap;text-align:right">
       <button class="btn btn-ghost btn-sm" data-nick="${t.id}" data-cur="${esc(t.nickname||'')}">Nickname</button>
+            ${a||self?'':`<button class="btn btn-danger btn-sm" data-rmt="${t.id}">Remove</button>`}
       ${a?'':`<button class="btn btn-ghost btn-sm" data-tv="${t.id}" data-v="${t.verified?1:0}">${t.verified?'Unverify':'Verify'}</button>`}
       ${a?(isOwner||self?'':`<button class="btn btn-danger btn-sm" data-demote="${t.id}">Remove developer</button>`):`<button class="btn btn-primary btn-sm" data-promote="${t.id}" style="width:auto">Make developer</button>`}</td></tr>`; }).join('')}</table></div>`:'<p class="sub">No teachers yet.</p>'}
   <p class="sub" style="margin-top:10px">Developers can see every center and student, verify people, manage centers and promote other teachers. The original developer can't be removed.</p></div>`;
   document.querySelectorAll('[data-tv]').forEach(b=>b.onclick=async()=>{ busy(true); await updateDoc(doc(db,'teachers',b.dataset.tv),{verified:b.dataset.v!=='1'}); busy(false); teacherDash(); });
   document.querySelectorAll('[data-nick]').forEach(b=>b.onclick=async()=>{ const n=prompt('Nickname for this teacher (leave empty to clear):',b.dataset.cur); if(n===null) return; busy(true); try{ await updateDoc(doc(db,'teachers',b.dataset.nick),{nickname:n.trim()}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
   document.querySelectorAll('[data-promote]').forEach(b=>b.onclick=async()=>{ if(!confirm('Make this teacher a developer? They will be able to see everything and manage the site.')) return; busy(true); try{ await setDoc(doc(db,'admins',b.dataset.promote),{promotedBy:user.uid,at:serverTimestamp()}); await updateDoc(doc(db,'teachers',b.dataset.promote),{verified:true}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
+    document.querySelectorAll('[data-rmt]').forEach(b=>b.onclick=async()=>{ if(!confirm('Remove this teacher? Their login will also be deleted.')) return; busy(true); try{ await deleteDoc(doc(db,'teachers',b.dataset.rmt)); await deleteAuthUser(b.dataset.rmt).catch(()=>{}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
   document.querySelectorAll('[data-demote]').forEach(b=>b.onclick=async()=>{ if(!confirm('Remove developer access from this person?')) return; busy(true); try{ await deleteDoc(doc(db,'admins',b.dataset.demote)); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
 }
 
