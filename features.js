@@ -60,6 +60,16 @@ function addWelcome(name, n, body) {
     ${n ? '' : '<p class="sub" style="margin:6px 0 0">📌 No marks yet. When your teacher publishes a paper, your progress chart, summary and paper-by-paper marks will appear here automatically.</p>'}`;
   body.prepend(card);
 }
+/* ---- Blue and white theme (delete this block to go back to the green theme) ---- */
+{
+  const blue = document.createElement('style');
+  blue.textContent = `
+:root[data-theme="light"]{--bg:#f3f8fd;--ink:#0f2438;--muted:#5b7186;--line:#dde8f3;--brand:#1d4ed8;--brand2:#0ea5e9;--brand-soft:#e6f0fd;--brand-bg:#e6f0fd;--shadow:0 8px 28px rgba(30,70,140,.10)}
+[data-theme="dark"]{--bg:#09121f;--card:#101e33;--ink:#e6eef8;--muted:#8fa6c0;--line:#1d3350;--brand:#60a5fa;--brand2:#38bdf8;--brand-soft:#17325a;--brand-bg:#17325a}
+.hero.photo{background:linear-gradient(rgba(8,30,70,var(--tint-a)),rgba(8,30,70,var(--tint-b))),url('hero-photo.jpg') center/cover no-repeat,linear-gradient(135deg,#1d4ed8,#0ea5e9)}
+.side{background:linear-gradient(rgba(8,30,70,var(--tint-a)),rgba(8,30,70,var(--tint-b))),url('signup-photo.jpg') center/cover no-repeat,linear-gradient(135deg,#1d4ed8,#0ea5e9)}`;
+  document.head.appendChild(blue);
+}
 
 /* ---- HOW TO ADD A NEW TEACHER TAB (example, remove the comment marks to try it) ----
 window.CA.tabs.push({
