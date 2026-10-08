@@ -51,3 +51,4 @@ export const onSnapshot = (q, cb, err) => {
 
 /* the student's own rank per paper (only if in the top 100 across all centers) */
 export const myRanks = async () => (await call({ op: 'myranks' })).ranks || {};
+export const deleteAuthUser = uid => call({ op: 'deleteuser', uid });
