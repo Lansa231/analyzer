@@ -81,3 +81,14 @@ window.CA.tabs.push({
    Other things available in add-on files: window.CA.db, CA.fs (database functions), CA.profile, CA.user,
    CA.state, CA.go('#/...'), CA.busy(true/false), CA.refresh(), CA.myRanks(), and the events 'ca:view', 'ca:teacher-view', 'ca:student-marks'. */
 { const h = document.createElement('style'); h.textContent = '[data-ver],#svVer{display:none!important}'; document.head.appendChild(h); }
+/* ---- remove every student Verify / Unverify button (teacher verification keeps its buttons) ---- */
+{
+  const strip = () => document.querySelectorAll('button').forEach(b => {
+    const t = b.textContent.trim();
+    if ((t === 'Verify' || t === 'Unverify') && !b.hasAttribute('data-tv')) b.remove();
+  });
+  let q = false;
+  new MutationObserver(() => { if (q) return; q = true; requestAnimationFrame(() => { q = false; strip(); }); })
+    .observe(document.body, { childList: true, subtree: true });
+  strip();
+}
