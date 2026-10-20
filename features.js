@@ -80,15 +80,26 @@ window.CA.tabs.push({
 });
    Other things available in add-on files: window.CA.db, CA.fs (database functions), CA.profile, CA.user,
    CA.state, CA.go('#/...'), CA.busy(true/false), CA.refresh(), CA.myRanks(), and the events 'ca:view', 'ca:teacher-view', 'ca:student-marks'. */
-{ const h = document.createElement('style'); h.textContent = '[data-ver],#svVer{display:none!important}'; document.head.appendChild(h); }
-/* ---- remove every student Verify / Unverify button (teacher verification keeps its buttons) ---- */
+/* ---- remove student verification (buttons and labels); teacher verification stays ---- */
 {
-  const strip = () => document.querySelectorAll('button').forEach(b => {
-    const t = b.textContent.trim();
-    if ((t === 'Verify' || t === 'Unverify') && !b.hasAttribute('data-tv')) b.remove();
-  });
-  let q = false;
-  new MutationObserver(() => { if (q) return; q = true; requestAnimationFrame(() => { q = false; strip(); }); })
-    .observe(document.body, { childList: true, subtree: true });
-  strip();
+  const clean = () => {
+    document.querySelectorAll('button').forEach(b => {
+      const t = b.textContent.trim();
+      if ((t === 'Verify' || t === 'Unverify') && !b.hasAttribute('data-tv')) b.remove();
+    });
+    document.querySelectorAll('span').forEach(el => {
+      const t = el.textContent.trim();
+      if (t === '· not verified' || t === '· pending verification') { el.remove(); return; }
+      if (!el.classList.contains('vbadge')) return;
+      const inStudentRow = el.closest('td')?.querySelector('a.nl');
+      const del = document.getElementById('svDel');
+      const prev = el.previousElementSibling;
+      const ownHeader = prev && prev.classList.contains('pill') && /Student/.test(prev.textContent);
+      if (inStudentRow || ownHeader || (del && el.closest('.card')?.contains(del))) el.remove();
+    });
+  };
+  let queued = false;
+  new MutationObserver(() => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; clean(); }); })
+    .observe(document.documentElement, { childList: true, subtree: true });
+  clean();
 }
