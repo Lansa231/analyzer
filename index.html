@@ -819,7 +819,7 @@ async function studentView(){
 function tabStudents({roster,rosterAll}){
   const adm=profile.isAdmin, L=state.lists;
   const opt=(a,sel)=>a.map(x=>`<option${x===sel?' selected':''}>${esc(x)}</option>`).join('');
-  const vb=s=>s.verified?' <span class="vbadge">✔ Verified</span>':'';
+  const vb=s=>'';
   const row=s=>`<tr><td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b>${vb(s)}${s.signedUp?'':' <span class="sub">(not signed up)</span>'}</td><td class="mono">${esc(s.realNic||'—')}</td><td class="mono">${esc(s.barcode||'—')}</td><td>${esc(s.batch)}</td><td>${esc(s.center||'—')}</td>
     <td>${esc(s.mobile||'—')}${s.whatsapp?`<br><span class="sub" style="margin:0">WA ${esc(s.whatsapp)}</span>`:''}</td><td>${esc(s.school||'—')}</td><td>${esc(s.payMethod||'—')}</td>
     <td style="text-align:right;white-space:nowrap">${adm&&s.signedUp?`<button class="btn btn-ghost btn-sm" data-ver="${s.uid}" data-v="${s.verified?1:0}">${s.verified?'Unverify':'Verify'}</button> `:''}
