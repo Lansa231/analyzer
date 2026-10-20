@@ -1,4 +1,4 @@
-/* features.js — add-on file for Class Analyzer. Upload next to index.html.
+/* features.js \u2014 add-on file for Class Analyzer. Upload next to index.html.
    index.html announces events; this file listens and adds things to the page. */
 
 const greet = () => { const h = new Date().getHours(); return h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21 ? 'Good evening' : 'Good night'; };
@@ -24,16 +24,16 @@ function addSummary(rows, body) {
   const sorted = rows.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
   const last = sorted[sorted.length - 1], prev = sorted[sorted.length - 2];
   const diff = prev ? Math.round((last.pct - prev.pct) * 10) / 10 : null;
-  const trend = diff == null ? '—' : diff > 0 ? `▲ +${diff}%` : diff < 0 ? `▼ ${diff}%` : '＝ no change';
+  const trend = diff == null ? '\u2014' : diff > 0 ? `\u25b2 +${diff}%` : diff < 0 ? `\u25bc ${diff}%` : '\uff1d no change';
   const tile = (label, value, sub) => `<div style="flex:1;min-width:150px;padding:12px;border:1px solid var(--line);border-radius:12px">
     <div class="sub" style="margin:0">${label}</div><div style="font-size:1.35rem;font-weight:800;margin:2px 0">${value}</div>
     <div class="sub" style="margin:0">${sub}</div></div>`;
   const card = document.createElement('div');
   card.className = 'card'; card.id = 'sumCard';
-  card.innerHTML = `<h2>⭐ Your Summary</h2><div style="display:flex;gap:10px;flex-wrap:wrap">
+  card.innerHTML = `<h2>\u2b50 Your Summary</h2><div style="display:flex;gap:10px;flex-wrap:wrap">
     ${tile('Average', avg + '%', `<span class="pill ${gCls(avg)}">Grade ${grade(avg)}</span>`)}
     ${tile('Papers sat', rows.length, 'published so far')}
-    ${tile('Latest paper', last.pct + '%', esc(last.title) + ' · ' + trend)}
+    ${tile('Latest paper', last.pct + '%', esc(last.title) + ' \u00b7 ' + trend)}
   </div>`;
   body.prepend(card);
 }
@@ -47,7 +47,7 @@ async function addRanks(rows) {
   if (!list.length || !sum) return;
   const card = document.createElement('div');
   card.className = 'card'; card.id = 'ranksCard';
-  card.innerHTML = `<h2>🏅 Your ranks</h2><p class="sub" style="margin:0 0 8px">Shown for papers where you are in the top 100 across all centers.</p>
+  card.innerHTML = `<h2>\ud83c\udfc5 Your ranks</h2><p class="sub" style="margin:0 0 8px">Shown for papers where you are in the top 100 across all centers.</p>
     ${list.map(x => `<div class="list-item"><span>${esc(x.title)}</span><span class="pill brand">Rank #${r[x.pid]}</span></div>`).join('')}`;
   sum.insertAdjacentElement('afterend', card);
 }
@@ -56,10 +56,21 @@ function addWelcome(name, n, body) {
   const { esc } = window.CA;
   const card = document.createElement('div');
   card.className = 'card';
-  card.innerHTML = `<h2>👋 ${greet()}, ${esc(name)}!</h2>
-    ${n ? '' : '<p class="sub" style="margin:6px 0 0">📌 No marks yet. When your teacher publishes a paper, your progress chart, summary and paper-by-paper marks will appear here automatically.</p>'}`;
+  card.innerHTML = `<h2>\ud83d\udc4b ${greet()}, ${esc(name)}!</h2>
+    ${n ? '' : '<p class="sub" style="margin:6px 0 0">\ud83d\udccc No marks yet. When your teacher publishes a paper, your progress chart, summary and paper-by-paper marks will appear here automatically.</p>'}`;
   body.prepend(card);
 }
+
+/* ---- HOW TO ADD A NEW TEACHER TAB (example, remove the comment marks to try it) ----
+window.CA.tabs.push({
+  id: 'hello', label: '\ud83d\udc4b Hello',
+  render: ({ el, roster, papers, adm }) => {
+    el.innerHTML = `<div class="card"><h2>Hello!</h2><p class="sub">${roster.length} students, ${papers.length} papers.</p></div>`;
+  }
+});
+   Other things available in add-on files: window.CA.db, CA.fs (database functions), CA.profile, CA.user,
+   CA.state, CA.go('#/...'), CA.busy(true/false), CA.refresh(), CA.myRanks(), and the events 'ca:view', 'ca:teacher-view', 'ca:student-marks'. */
+
 /* ---- Blue and white theme (delete this block to go back to the green theme) ---- */
 {
   const blue = document.createElement('style');
@@ -71,17 +82,11 @@ function addWelcome(name, n, body) {
   document.head.appendChild(blue);
 }
 
-/* ---- HOW TO ADD A NEW TEACHER TAB (example, remove the comment marks to try it) ----
-window.CA.tabs.push({
-  id: 'hello', label: '👋 Hello',
-  render: ({ el, roster, papers, adm }) => {
-    el.innerHTML = `<div class="card"><h2>Hello!</h2><p class="sub">${roster.length} students, ${papers.length} papers.</p></div>`;
-  }
-});
-   Other things available in add-on files: window.CA.db, CA.fs (database functions), CA.profile, CA.user,
-   CA.state, CA.go('#/...'), CA.busy(true/false), CA.refresh(), CA.myRanks(), and the events 'ca:view', 'ca:teacher-view', 'ca:student-marks'. */
 /* ---- remove student verification (buttons and labels); teacher verification stays ---- */
 {
+  const hide = document.createElement('style');
+  hide.textContent = '[data-ver],#svVer{display:none!important}';
+  document.head.appendChild(hide);
   const clean = () => {
     document.querySelectorAll('button').forEach(b => {
       const t = b.textContent.trim();
@@ -89,7 +94,7 @@ window.CA.tabs.push({
     });
     document.querySelectorAll('span').forEach(el => {
       const t = el.textContent.trim();
-      if (t === '· not verified' || t === '· pending verification') { el.remove(); return; }
+      if (t === '\u00b7 not verified' || t === '\u00b7 pending verification') { el.remove(); return; }
       if (!el.classList.contains('vbadge')) return;
       const inStudentRow = el.closest('td')?.querySelector('a.nl');
       const del = document.getElementById('svDel');
