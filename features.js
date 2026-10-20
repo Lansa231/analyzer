@@ -80,3 +80,4 @@ window.CA.tabs.push({
 });
    Other things available in add-on files: window.CA.db, CA.fs (database functions), CA.profile, CA.user,
    CA.state, CA.go('#/...'), CA.busy(true/false), CA.refresh(), CA.myRanks(), and the events 'ca:view', 'ca:teacher-view', 'ca:student-marks'. */
+{ const h = document.createElement('style'); h.textContent = '[data-ver],#svVer{display:none!important}'; document.head.appendChild(h); }
