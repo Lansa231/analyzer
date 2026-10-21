@@ -61,8 +61,8 @@ function addWelcome(name, n, body) {
   body.prepend(card);
 }
 
-/* ---- HOW TO ADD A NEW TEACHER TAB (example, remove the comment marks to try it) ----
-window.CA.tabs.push({
+/* ---- HOW TO ADD A NEW TEACHER TAB (example. window.CA exists only after the page is ready, so wrap it like this) ----
+document.addEventListener('DOMContentLoaded', () => window.CA.tabs.push({
   id: 'hello', label: '\ud83d\udc4b Hello',
   render: ({ el, roster, papers, adm }) => {
     el.innerHTML = `<div class="card"><h2>Hello!</h2><p class="sub">${roster.length} students, ${papers.length} papers.</p></div>`;
@@ -104,7 +104,11 @@ window.CA.tabs.push({
     });
   };
   let queued = false;
-   
+  new MutationObserver(() => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; clean(); }); })
+    .observe(document.documentElement, { childList: true, subtree: true });
+  clean();
+}
+
 /* ---- Teacher sidebar, Profile page and custom loading animation ---- */
 {
   /* styles */
@@ -209,8 +213,4 @@ main#app.wide{max-width:1280px}
     if (prof) nav.prepend(prof);
     aside.append(who, nav); layout.append(aside, main); app.appendChild(layout); app.classList.add('wide');
   });
-}
-  new MutationObserver(() => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; clean(); }); })
-    .observe(document.documentElement, { childList: true, subtree: true });
-  clean();
 }
