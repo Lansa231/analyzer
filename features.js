@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => window.CA.tabs.push({
   clean();
 }
 
-/* ---- Teacher sidebar, Profile page and custom loading animation ---- */
+/* ---- Teacher / developer sidebar, Profile page and custom loading animation ---- */
 {
   /* styles */
   const st = document.createElement('style');
@@ -132,7 +132,6 @@ main#app.wide{max-width:1280px}
   .sidebar .tabs button{width:auto;white-space:nowrap;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px}
   .side-user{display:none}
 }
-/* loading animation: a DNA helix */
 #loading{background:rgba(8,30,70,.55)}
 #loading .spinner{display:none}
 .ld-box{display:flex;flex-direction:column;align-items:center;gap:14px}
@@ -147,17 +146,8 @@ main#app.wide{max-width:1280px}
 @keyframes ldpulse{50%{opacity:.45}}`;
   document.head.appendChild(st);
 
-  /* loader markup */
-  const initLoader = () => {
-    const L = document.getElementById('loading');
-    if (!L || L.querySelector('.dna')) return;
-    L.insertAdjacentHTML('beforeend', '<div class="ld-box"><div class="dna">' +
-      Array.from({ length: 12 }, (_, i) => '<i style="--i:' + i + '"></i>').join('') + '</div><div class="ld-txt">LOADING</div></div>');
-  };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initLoader); else initLoader();
-
-  /* Profile tab (appears in the sidebar). The site object window.CA is created after this file loads, so we wait for the page to be ready. */
-  const addProfileTab = () => window.CA.tabs.push({
+  /* the Profile page */
+  const profileTab = {
     id: 'profile', label: '\ud83d\udc64 Profile',
     render: ({ el }) => {
       const { esc } = window.CA, p = window.CA.profile || {};
@@ -191,39 +181,39 @@ main#app.wide{max-width:1280px}
       };
       show();
     }
-  });
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addProfileTab); else addProfileTab();
+  };
 
-  /* build the sidebar layout every time the teacher dashboard is drawn */
-  document.addEventListener('ca:view', () => { const a = document.getElementById('app'); if (a) a.classList.remove('wide'); });
-  document.addEventListener('ca:teacher-view', () => {
-    const app = document.getElementById('app'), first = app && app.querySelector('[data-tab]');
-    if (!first) return;
-    const nav = first.parentElement;
-    if (nav.closest('.dash-layout')) return;
-    const p = window.CA.profile || {}, esc = window.CA.esc;
-    const layout = document.createElement('div'); layout.className = 'dash-layout';
-    const aside = document.createElement('aside'); aside.className = 'sidebar';
-    const main = document.createElement('div'); main.className = 'dash-main';
-    Array.from(app.children).forEach(c => { if (c !== nav) main.appendChild(c); });
-    const who = document.createElement('div'); who.className = 'side-user';
-    who.innerHTML = '<div class="av">' + esc((p.fullName || '?').trim().charAt(0).toUpperCase()) + '</div><div><b>' + esc(p.fullName || '') + '</b><small>' + (p.isAdmin ? 'Developer' : 'Teacher') + (p.center ? ' \u00b7 ' + esc(p.center) : '') + '</small></div>';
-    const prof = nav.querySelector('[data-tab="x_profile"]');
-    who.onclick = () => { if (prof) prof.click(); };
-    if (prof) nav.prepend(prof);
-    aside.append(who, nav); layout.append(aside, main); app.appendChild(layout); app.classList.add('wide');
-  });
-}
+  /* a small watcher that runs 3 times a second, so it works for every account no matter when the page is drawn */
+  const watch = () => {
+    try {
+      /* loader */
+      const L = document.getElementById('loading');
+      if (L && !L.querySelector('.dna')) L.insertAdjacentHTML('beforeend', '<div class="ld-box"><div class="dna">' +
+        Array.from({ length: 12 }, (_, i) => '<i style="--i:' + i + '"></i>').join('') + '</div><div class="ld-txt">LOADING</div></div>');
 
-/* ---- make sure the sidebar is built for every account, even if the dashboard signal was missed ---- */
-{
-  let q = false;
-  new MutationObserver(() => {
-    if (q) return; q = true;
-    requestAnimationFrame(() => {
-      q = false;
-      const f = document.querySelector('#app [data-tab]');
-      if (f && !f.closest('.dash-layout')) document.dispatchEvent(new CustomEvent('ca:teacher-view'));
-    });
-  }).observe(document.documentElement, { childList: true, subtree: true });
+      const CA = window.CA; if (!CA || !CA.tabs) return;
+      /* profile tab (added once; if the dashboard is already on screen, redraw it so the button appears) */
+      if (!CA.tabs.some(t => t.id === 'profile')) { CA.tabs.push(profileTab); if (document.getElementById('tabBody') && CA.refresh) CA.refresh(); return; }
+
+      const app = document.getElementById('app'); if (!app) return;
+      const first = document.getElementById('tabBody') && app.querySelector('[data-tab]');
+      if (!first) { app.classList.remove('wide'); return; }
+      const nav = first.parentElement;
+      if (nav.closest('.dash-layout')) { app.classList.add('wide'); return; }
+
+      const p = CA.profile || {}, esc = CA.esc;
+      const layout = document.createElement('div'); layout.className = 'dash-layout';
+      const aside = document.createElement('aside'); aside.className = 'sidebar';
+      const main = document.createElement('div'); main.className = 'dash-main';
+      Array.from(app.children).forEach(c => { if (c !== nav) main.appendChild(c); });
+      const who = document.createElement('div'); who.className = 'side-user';
+      who.innerHTML = '<div class="av">' + esc((p.fullName || '?').trim().charAt(0).toUpperCase()) + '</div><div><b>' + esc(p.fullName || '') + '</b><small>' + (p.isAdmin ? 'Developer' : 'Teacher') + (p.center ? ' \u00b7 ' + esc(p.center) : '') + '</small></div>';
+      const prof = nav.querySelector('[data-tab="x_profile"]');
+      who.onclick = () => { if (prof) prof.click(); };
+      if (prof) nav.prepend(prof);
+      aside.append(who, nav); layout.append(aside, main); app.appendChild(layout); app.classList.add('wide');
+      console.log('[sidebar] built for', p.isAdmin ? 'developer' : 'teacher');
+    } catch (e) { console.error('[sidebar] failed:', e); }
+  };
+  setInterval(watch, 300);
 }
