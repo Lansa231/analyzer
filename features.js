@@ -104,6 +104,112 @@ window.CA.tabs.push({
     });
   };
   let queued = false;
+   
+/* ---- Teacher sidebar, Profile page and custom loading animation ---- */
+{
+  /* styles */
+  const st = document.createElement('style');
+  st.textContent = `
+main#app.wide{max-width:1280px}
+.dash-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:20px;align-items:start}
+.sidebar{position:sticky;top:84px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+.sidebar .tabs{flex-direction:column;flex-wrap:nowrap;margin:0;gap:4px}
+.sidebar .tabs button{border:0;background:transparent;border-radius:12px;text-align:left;padding:11px 14px;width:100%}
+.sidebar .tabs button:hover{background:var(--brand-soft);color:var(--brand)}
+.sidebar .tabs button.active{background:var(--brand);color:#fff}
+.side-user{display:flex;gap:10px;align-items:center;padding:6px 6px 14px;margin-bottom:10px;border-bottom:1px solid var(--line);cursor:pointer}
+.side-user .av{width:42px;height:42px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:800;font-size:1.1rem;flex:none}
+.side-user b{display:block;font-size:.9rem;line-height:1.2}.side-user small{color:var(--muted);font-size:.74rem}
+.dash-main{min-width:0}
+@media (max-width:900px){
+  .dash-layout{display:block}
+  .sidebar{position:static;margin-bottom:14px;padding:10px}
+  .sidebar .tabs{flex-direction:row;overflow-x:auto;padding-bottom:4px}
+  .sidebar .tabs button{width:auto;white-space:nowrap;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px}
+  .side-user{display:none}
+}
+/* loading animation: a DNA helix */
+#loading{background:rgba(8,30,70,.55)}
+#loading .spinner{display:none}
+.ld-box{display:flex;flex-direction:column;align-items:center;gap:14px}
+.dna{display:flex;gap:7px;height:70px;align-items:stretch}
+.dna i{position:relative;width:10px}
+.dna i::before,.dna i::after{content:'';position:absolute;left:0;width:10px;height:10px;border-radius:50%;animation:helixA 1.3s ease-in-out infinite}
+.dna i::before{top:0;background:#38bdf8;animation-delay:calc(var(--i)*-.13s)}
+.dna i::after{bottom:0;background:#fff;animation-name:helixB;animation-delay:calc(var(--i)*-.13s)}
+@keyframes helixA{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(60px) scale(.55)}}
+@keyframes helixB{0%,100%{transform:translateY(0) scale(.55)}50%{transform:translateY(-60px) scale(1)}}
+.ld-txt{color:#fff;font-weight:700;letter-spacing:.12em;font-size:.8rem;animation:ldpulse 1.3s ease-in-out infinite}
+@keyframes ldpulse{50%{opacity:.45}}`;
+  document.head.appendChild(st);
+
+  /* loader markup */
+  const initLoader = () => {
+    const L = document.getElementById('loading');
+    if (!L || L.querySelector('.dna')) return;
+    L.insertAdjacentHTML('beforeend', '<div class="ld-box"><div class="dna">' +
+      Array.from({ length: 12 }, (_, i) => '<i style="--i:' + i + '"></i>').join('') + '</div><div class="ld-txt">LOADING</div></div>');
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initLoader); else initLoader();
+
+  /* Profile tab (appears in the sidebar). The site object window.CA is created after this file loads, so we wait for the page to be ready. */
+  const addProfileTab = () => window.CA.tabs.push({
+    id: 'profile', label: '\ud83d\udc64 Profile',
+    render: ({ el }) => {
+      const { esc } = window.CA, p = window.CA.profile || {};
+      const row = (k, v) => '<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div class="sub" style="margin:0">' + k + '</div><b>' + esc(v || '-') + '</b></div>';
+      const show = () => {
+        el.innerHTML = '<div class="card" style="max-width:640px"><div style="display:flex;gap:14px;align-items:center;margin-bottom:8px">' +
+          '<div class="side-user" style="border:0;padding:0;margin:0;cursor:default"><div class="av" style="width:64px;height:64px;font-size:1.6rem">' + esc((p.fullName || '?').trim().charAt(0).toUpperCase()) + '</div></div>' +
+          '<div><h2 style="margin:0">' + esc(p.fullName || '') + '</h2><span class="pill brand">' + (p.isAdmin ? 'Developer' : 'Teacher') + '</span>' +
+          (p.nickname ? ' <span class="sub" style="display:inline">"' + esc(p.nickname) + '"</span>' : '') + '</div></div>' +
+          row('Email', p.email) + row('Gender', p.gender) + row('Phone', p.phone) + row('Institute / School', p.institute) +
+          row('Attended Class', p.className) + row('Exam center', p.center) +
+          '<button class="btn btn-primary" id="pfEdit" style="width:auto;margin-top:14px">Edit details</button></div>';
+        document.getElementById('pfEdit').onclick = edit;
+      };
+      const edit = () => {
+        el.innerHTML = '<div class="card" style="max-width:640px"><h2>Edit my details</h2>' +
+          '<label>Full name</label><input id="pf_n" value="' + esc(p.fullName || '') + '">' +
+          '<label>Phone number</label><input id="pf_p" type="tel" value="' + esc(p.phone || '') + '">' +
+          '<label>Institute / School</label><input id="pf_i" value="' + esc(p.institute || '') + '">' +
+          '<label>Attended Class</label><input id="pf_c" value="' + esc(p.className || '') + '">' +
+          '<div class="row" style="margin-top:14px"><button class="btn btn-primary" id="pf_s" style="width:auto">Save</button><button class="btn btn-ghost" id="pf_x" style="width:auto">Cancel</button></div><div id="pf_m"></div></div>';
+        document.getElementById('pf_x').onclick = show;
+        document.getElementById('pf_s').onclick = async () => {
+          const d = { fullName: document.getElementById('pf_n').value.trim(), phone: document.getElementById('pf_p').value.trim(),
+                      institute: document.getElementById('pf_i').value.trim(), className: document.getElementById('pf_c').value.trim() };
+          if (d.fullName.length < 3) { document.getElementById('pf_m').innerHTML = '<div class="err">Please enter your full name.</div>'; return; }
+          window.CA.busy(true);
+          try { await window.CA.fs.updateDoc(window.CA.fs.doc(window.CA.db, 'teachers', window.CA.user.uid), d); Object.assign(p, d); window.CA.busy(false); show(); }
+          catch (e) { window.CA.busy(false); document.getElementById('pf_m').innerHTML = '<div class="err">' + esc(window.CA.friendly(e)) + '</div>'; }
+        };
+      };
+      show();
+    }
+  });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addProfileTab); else addProfileTab();
+
+  /* build the sidebar layout every time the teacher dashboard is drawn */
+  document.addEventListener('ca:view', () => { const a = document.getElementById('app'); if (a) a.classList.remove('wide'); });
+  document.addEventListener('ca:teacher-view', () => {
+    const app = document.getElementById('app'), first = app && app.querySelector('[data-tab]');
+    if (!first) return;
+    const nav = first.parentElement;
+    if (nav.closest('.dash-layout')) return;
+    const p = window.CA.profile || {}, esc = window.CA.esc;
+    const layout = document.createElement('div'); layout.className = 'dash-layout';
+    const aside = document.createElement('aside'); aside.className = 'sidebar';
+    const main = document.createElement('div'); main.className = 'dash-main';
+    Array.from(app.children).forEach(c => { if (c !== nav) main.appendChild(c); });
+    const who = document.createElement('div'); who.className = 'side-user';
+    who.innerHTML = '<div class="av">' + esc((p.fullName || '?').trim().charAt(0).toUpperCase()) + '</div><div><b>' + esc(p.fullName || '') + '</b><small>' + (p.isAdmin ? 'Developer' : 'Teacher') + (p.center ? ' \u00b7 ' + esc(p.center) : '') + '</small></div>';
+    const prof = nav.querySelector('[data-tab="x_profile"]');
+    who.onclick = () => { if (prof) prof.click(); };
+    if (prof) nav.prepend(prof);
+    aside.append(who, nav); layout.append(aside, main); app.appendChild(layout); app.classList.add('wide');
+  });
+}
   new MutationObserver(() => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; clean(); }); })
     .observe(document.documentElement, { childList: true, subtree: true });
   clean();
