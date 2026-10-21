@@ -214,3 +214,16 @@ main#app.wide{max-width:1280px}
     aside.append(who, nav); layout.append(aside, main); app.appendChild(layout); app.classList.add('wide');
   });
 }
+
+/* ---- make sure the sidebar is built for every account, even if the dashboard signal was missed ---- */
+{
+  let q = false;
+  new MutationObserver(() => {
+    if (q) return; q = true;
+    requestAnimationFrame(() => {
+      q = false;
+      const f = document.querySelector('#app [data-tab]');
+      if (f && !f.closest('.dash-layout')) document.dispatchEvent(new CustomEvent('ca:teacher-view'));
+    });
+  }).observe(document.documentElement, { childList: true, subtree: true });
+}
