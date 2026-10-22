@@ -1117,6 +1117,9 @@ function tabMarks({students,papers}){
           <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
             <span class="switch"><input type="checkbox" data-pub="${p.id}" ${p.published?'checked':''}><span class="slider"></span></span>
             <span style="font-size:.8rem">${p.published?'Published ✅':'Hidden from students'}</span></label>
+                      <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
+            <span class="switch"><input type="checkbox" data-rank="${p.id}" ${p.ranksPublished?'checked':''}><span class="slider"></span></span>
+            <span style="font-size:.8rem">${p.ranksPublished?'Ranks released':'Ranks hidden'}</span></label>
           <button class="btn btn-ghost btn-sm" data-open="${p.id}">Enter marks</button>
           ${profile.isAdmin?`<button class="btn btn-danger btn-sm" data-delp="${p.id}">Delete</button>`:''}
         </div>
@@ -1139,6 +1142,11 @@ function tabMarks({students,papers}){
     busy(true);
     await updateDoc(doc(db,'papers',t.dataset.pub),{published:t.checked});
     busy(false); tabMarks({students,papers:papers.map(p=>p.id===t.dataset.pub?{...p,published:t.checked}:p)});
+  });
+    document.querySelectorAll('[data-rank]').forEach(t=>t.onchange=async()=>{
+    busy(true);
+    try{ await updateDoc(doc(db,'papers',t.dataset.rank),{ranksPublished:t.checked}); }catch(e){ alert(friendly(e)); }
+    busy(false); tabMarks({students,papers:papers.map(p=>p.id===t.dataset.rank?{...p,ranksPublished:t.checked}:p)});
   });
   document.querySelectorAll('[data-delp]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Delete this paper and all its marks?')) return;
