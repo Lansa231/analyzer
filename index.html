@@ -1168,14 +1168,14 @@ function drawMarksPane(students,papers){
       ${students.map(s=>{
         const sc=sel.scores?.[s.id]; const p=sc!=null?pct(sc,sel.max):null;
         return `<tr><td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b></td><td class="mono">${esc(s.realNic||s.barcode||s.nic)}</td>
-          <td style="max-width:120px"><input type="number" min="0" max="${sel.max}" value="${sc??''}" data-mk="${s.id}"></td>
+          <td style="max-width:120px"><input type="number" step="0.01" min="0" max="${sel.max}" value="${sc??''}" data-mk="${s.id}"></td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${p}%</span>`:'—'}</td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${grade(p)}</span>`:'—'}</td></tr>`;
       }).join('')}</table></div>`:'<p class="sub">No students yet — add them in the Students tab using their NIC.</p>'}
   </div>`;
   document.querySelectorAll('[data-mk]').forEach(inp=>inp.onchange=async()=>{
     const nic=inp.dataset.mk, st=students.find(x=>x.id===nic);
-    const v=inp.value===''?null:Math.max(0,Math.min(sel.max,parseInt(inp.value)||0));
+    const v=inp.value===''?null:Math.max(0,Math.min(sel.max,Math.round((parseFloat(inp.value)||0)*100)/100));
     $("#svLbl").textContent='○ saving…';
     try{
       if(v==null){ delete sel.scores[nic]; await deleteDoc(doc(db,'marks',sel.id+'_'+nic)); }
