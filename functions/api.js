@@ -85,7 +85,7 @@ async function canWrite(c, col, id, ex, patch, final) {
     case 'changeRequests': return adm || (s && c.uid === id && final.uid === c.uid && final.status === 'pending');
     case 'nics': case 'barcodes': return isNew && s && final.uid === c.uid;
     case 'pending': return await c.sameCenter(final.center || '');
-    case 'papers': if (adm) return true; return !isNew && (await c.isTeacher()) && changed.every(k => k === 'published');
+    case 'papers': if (adm) return true; return !isNew && (await c.isTeacher()) && changed.every(k => k === 'published' || k === 'ranksPublished');
     case 'marks': return id === final.pid + '_' + final.nic && await c.sameCenter(final.center || '');
   }
   return false;
@@ -150,7 +150,7 @@ async function handle(b, uid, env) {
     const papers = (await env.DB.prepare("SELECT id,data FROM docs WHERE col='papers'").all()).results || [];
     for (const r of papers) {
       const p = JSON.parse(r.data);
-      if (p.published !== true || (p.batch || '2027 A/L') !== batch) continue;
+      if (p.published !== true || p.ranksPublished !== true || (p.batch || '2027 A/L') !== batch) continue;
       const rows = ((await env.DB.prepare("SELECT data FROM docs WHERE col='marks' AND COALESCE(json_extract(data,'$.pid'),'')=?1").bind(r.id).all()).results || []).map(x => JSON.parse(x.data));
       const mine = rows.find(x => x.nic === key);
       if (!mine || ONLINE_RE.test(s.center || '')) { ranks[r.id] = null; continue; }
