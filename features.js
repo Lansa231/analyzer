@@ -218,3 +218,65 @@ main#app.wide{max-width:1280px}
   setInterval(watch, 300);
 }
 
+/* ---- Marks tab: choose a paper from a list, and search students to add marks quickly ---- */
+{
+  const watchMarks = () => {
+    try {
+      const pane = document.getElementById('marksPane'), body = document.getElementById('tabBody');
+      if (!pane || !body) return;
+
+      /* 1) "Choose paper" list at the top of the Marks tab */
+      const rows = Array.from(body.querySelectorAll('.paper-row'));
+      if (rows.length && !document.getElementById('paperPick')) {
+        const opts = rows.map(r => {
+          const btn = r.querySelector('[data-open]'); if (!btn) return '';
+          const name = (r.querySelector('b') || {}).textContent || 'Paper', sub = (r.querySelector('.sub') || {}).textContent || '';
+          const d = (sub.split('\u00b7')[0] || '').trim();
+          return '<option value="' + btn.dataset.open + '">' + name.replace(/</g, '&lt;') + (d ? '  (' + d.replace(/</g, '&lt;') + ')' : '') + '</option>';
+        }).join('');
+        const card = document.createElement('div');
+        card.className = 'card'; card.id = 'paperPickCard';
+        card.innerHTML = '<label style="margin-top:0">Choose paper to enter marks</label><select id="paperPick"><option value="">- Select a paper -</option>' + opts + '</select>';
+        body.prepend(card);
+        const pick = document.getElementById('paperPick');
+        if (window.CA && window.CA.state && window.CA.state.selPaper) pick.value = window.CA.state.selPaper;
+        pick.onchange = () => { const b = body.querySelector('[data-open="' + pick.value + '"]'); if (b) b.click(); else pane.innerHTML = ''; };
+      }
+
+      /* 2) search box above the marks table */
+      const wrap = pane.querySelector('.tbl-wrap');
+      if (wrap && !document.getElementById('mkSearch')) {
+        const bar = document.createElement('div');
+        bar.style.cssText = 'display:flex;gap:10px;align-items:center;margin:4px 0 12px;flex-wrap:wrap';
+        bar.innerHTML = '<input id="mkSearch" placeholder="Search by name, NIC or barcode - press Enter to type the mark" style="flex:1;min-width:220px" autocomplete="off"><span id="mkCount" class="sub" style="margin:0"></span>';
+        wrap.parentNode.insertBefore(bar, wrap);
+        const input = document.getElementById('mkSearch'), count = document.getElementById('mkCount');
+        const trs = () => Array.from(pane.querySelectorAll('tr')).filter(tr => tr.querySelector('[data-mk]'));
+        const filter = () => {
+          const q = input.value.trim().toLowerCase(); let n = 0;
+          trs().forEach(tr => { const show = !q || tr.textContent.toLowerCase().includes(q); tr.style.display = show ? '' : 'none'; if (show) n++; });
+          count.textContent = q ? n + (n === 1 ? ' match' : ' matches') : '';
+        };
+        input.addEventListener('input', filter);
+        input.addEventListener('keydown', e => {
+          if (e.key !== 'Enter') return;
+          e.preventDefault();
+          const first = trs().find(tr => tr.style.display !== 'none');
+          const m = first && first.querySelector('[data-mk]');
+          if (m) { m.focus(); m.select(); }
+        });
+        /* after typing a mark, Enter saves it and jumps back to the search box for the next student */
+        trs().forEach(tr => {
+          const m = tr.querySelector('[data-mk]');
+          if (!m || m.dataset.ent) return; m.dataset.ent = '1';
+          m.addEventListener('keydown', e => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault(); m.blur(); input.value = ''; filter(); input.focus();
+          });
+        });
+        input.focus();
+      }
+    } catch (e) { console.error('[marks] helper failed:', e); }
+  };
+  setInterval(watchMarks, 300);
+}
