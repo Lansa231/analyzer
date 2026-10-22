@@ -1167,7 +1167,7 @@ function drawMarksPane(students,papers){
     ${students.length?`<div class="tbl-wrap"><table><tr><th>Student</th><th>NIC</th><th>Marks / ${sel.max}</th><th>%</th><th>Grade</th></tr>
       ${students.map(s=>{
         const sc=sel.scores?.[s.id]; const p=sc!=null?pct(sc,sel.max):null;
-        return `<tr><td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b></td><td class="mono">${esc(s.realNic||s.barcode||s.nic)}</td>
+        return `<tr><td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b></td><td class="mono">${esc(s.realNic||'-')}${s.barcode?'<br><span class="sub" style="margin:0">'+esc(s.barcode)+'</span>':''}</td>
           <td style="max-width:120px"><input type="number" step="0.01" min="0" max="${sel.max}" value="${sc??''}" data-mk="${s.id}"></td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${p}%</span>`:'—'}</td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${grade(p)}</span>`:'—'}</td></tr>`;
