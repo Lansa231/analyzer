@@ -440,21 +440,3 @@ main#app.wide{max-width:1280px}
   });
 }
 
-/* ---- feed the teacher/developer student page into the Marks Analyze view (no index.html edit needed) ---- */
-{
-  setInterval(() => {
-    try {
-      const canvas = document.getElementById('svC');
-      if (!canvas) return;
-      const card = Array.from(document.querySelectorAll('#app .card')).find(c => /Paper-by-paper/.test((c.querySelector('h2') || {}).textContent || ''));
-      if (!card) return;
-      const rows = Array.from(card.querySelectorAll('tr')).slice(1).map(tr => {
-        const td = tr.querySelectorAll('td');
-        const m = ((td[2] || {}).textContent || '').match(/([\d.]+)\s*\/\s*([\d.]+)/);
-        const pc = parseFloat((td[3] || {}).textContent);
-        return m ? { date: td[0].textContent.trim(), title: td[1].textContent.trim(), mark: +m[1], max: +m[2], pct: isNaN(pc) ? 0 : pc } : null;
-      }).filter(Boolean);
-      if (rows.length) document.dispatchEvent(new CustomEvent('ca:student-view-marks', { detail: { rows } }));
-    } catch (e) { console.error('[student page] failed:', e); }
-  }, 400);
-}
