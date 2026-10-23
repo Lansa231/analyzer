@@ -79,7 +79,7 @@ async function canWrite(c, col, id, ex, patch, final) {
       return (final.verified ?? false) === (ex.verified ?? false) && (final.nickname ?? '') === (ex.nickname ?? '');
     case 'students':
       if (adm) return true;
-      if (isNew) return s && c.uid === id && final.verified === false;
+        if (isNew) return s && c.uid === id && final.verified === false && /^[A-Za-z0-9]{8}$/.test(String(final.barcode || ''));
       if (s && c.uid === id && changed.every(k => ['mobile', 'whatsapp', 'school', 'payMethod'].includes(k))) return true;
       return (await c.sameCenter(ex.center)) && (final.verified ?? false) === (ex.verified ?? false);
     case 'changeRequests': return adm || (s && c.uid === id && final.uid === c.uid && final.status === 'pending');
