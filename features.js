@@ -280,3 +280,109 @@ main#app.wide{max-width:1280px}
   };
   setInterval(watchMarks, 300);
 }
+/* ================================================================
+   Student view — reference-style "Paper Marks Analyze"
+   Gradient area chart + "My Best" card (no Z-score / A/L estimate)
+   ================================================================ */
+{
+  /* ---- styles ---- */
+  const css = document.createElement('style');
+  css.textContent = `
+  .ma-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:22px;align-items:stretch}
+  @media(max-width:820px){.ma-grid{grid-template-columns:1fr}}
+  .ma-best{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:6px 0}
+  .ma-trophy{font-size:4.2rem;line-height:1;animation:maBounce 1.8s ease-in-out infinite;filter:drop-shadow(0 10px 18px rgba(255,190,0,.45))}
+  @keyframes maBounce{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-10px) scale(1.06)}}
+  @media (prefers-reduced-motion:reduce){.ma-trophy{animation:none}}
+  .ma-best-title{font-weight:800;font-size:1rem}
+  .ma-best-mark{font-size:1.7rem;font-weight:800;color:var(--brand)}
+  .ma-mini{display:flex;gap:10px;width:100%;margin-top:10px}
+  .ma-mini>div{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 6px}
+  .ma-mini .n{font-weight:800;font-size:1.02rem}
+  .ma-mini .l{font-size:.7rem;color:var(--muted);margin-top:2px}`;
+  document.head.appendChild(css);
+
+  let maChartInst = null;
+
+  document.addEventListener('ca:student-marks', e => {
+    const { rows } = e.detail;
+    const body = document.getElementById('stuBody');
+    if (!body || !rows.length) return;
+    const { esc, grade, gCls } = window.CA;
+
+    /* remove the old plain chart card (the one with canvas#c1) and any previous card */
+    body.querySelectorAll('.card').forEach(c => { if (c.querySelector('#c1')) c.remove(); });
+    document.getElementById('maCard')?.remove();
+
+    const sorted = rows.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+    const best = sorted.reduce((a, b) => (b.pct > a.pct ? b : a), sorted[0]);
+    const avg = Math.round(rows.reduce((s, r) => s + r.pct, 0) / rows.length * 10) / 10;
+    const latest = sorted[sorted.length - 1], prev = sorted[sorted.length - 2];
+    const diff = prev ? Math.round((latest.pct - prev.pct) * 10) / 10 : null;
+    const trend = diff == null ? '—' : diff > 0 ? `▲ +${diff}%` : diff < 0 ? `▼ ${Math.abs(diff)}%` : '＝';
+
+    const card = document.createElement('div');
+    card.className = 'card'; card.id = 'maCard';
+    card.innerHTML = `
+      <div class="ma-grid">
+        <div>
+          <h2>📊 Paper Marks Analyze</h2>
+          <canvas id="maChart"></canvas>
+          <p class="sub" style="margin:8px 0 0">A 75+ · B 65–74 · C 55–64 · S 35–54 · F below 35</p>
+        </div>
+        <div class="ma-best">
+          <div class="ma-trophy">🏆</div>
+          <div class="ma-best-title">${esc(best.title)}</div>
+          <div class="sub" style="margin:0">${esc(best.date || '')}</div>
+          <div class="ma-best-mark">${best.mark} <span style="color:var(--muted);font-size:1rem">/ ${best.max}</span></div>
+          <span class="pill ${gCls(best.pct)}">${best.pct}% · Grade ${grade(best.pct)}</span>
+          <div class="ma-mini">
+            <div><div class="n">${avg}%</div><div class="l">Average</div></div>
+            <div><div class="n">${latest.pct}%</div><div class="l">Latest</div></div>
+            <div><div class="n" style="color:${diff>0?'var(--good)':diff<0?'var(--bad)':'inherit'}">${trend}</div><div class="l">Trend</div></div>
+          </div>
+        </div>
+      </div>`;
+    const sum = document.getElementById('sumCard');
+    sum ? sum.insertAdjacentElement('afterend', card) : body.prepend(card);
+
+    if (maChartInst) { try { maChartInst.destroy(); } catch (_) {} }
+    const LINE = '#3e8df3';
+    maChartInst = new Chart(document.getElementById('maChart'), {
+      type: 'line',
+      data: {
+        labels: sorted.map(r => r.title),
+        datasets: [{
+          label: 'Total',
+          data: sorted.map(r => r.pct),
+          borderColor: LINE, borderWidth: 2.5, tension: .4,
+          pointRadius: 4, pointHoverRadius: 6,
+          pointBackgroundColor: LINE, pointBorderColor: '#fff', pointBorderWidth: 1.5,
+          fill: true,
+          backgroundColor: (ctx) => {
+            const { chart } = ctx, { ctx: c, chartArea } = chart;
+            if (!chartArea) return 'rgba(62,141,243,.15)';
+            const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+            g.addColorStop(0, 'rgba(62,141,243,.35)');
+            g.addColorStop(1, 'rgba(62,141,243,.02)');
+            return g;
+          }
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { min: 0, max: 100, title: { display: true, text: 'Percentage' } },
+          x: { ticks: { font: { size: 10 }, maxRotation: 45, autoSkip: false } }
+        },
+        plugins: {
+          legend: { display: true, labels: { usePointStyle: true } },
+          tooltip: { callbacks: { label: (t) => {
+            const r = sorted[t.dataIndex];
+            return ` ${r.mark}/${r.max} — ${r.pct}% (Grade ${grade(r.pct)})`;
+          } } }
+        }
+      }
+    });
+  });
+}
