@@ -386,3 +386,56 @@ main#app.wide{max-width:1280px}
     });
   });
 }
+/* ================================================================
+   Student view — grade-colored marks bars
+   Each paper = one bar that fills to its %, colored by grade
+   ================================================================ */
+{
+  const css = document.createElement('style');
+  css.textContent = `
+  .gb-row{padding:12px 0;border-bottom:1px solid var(--line)}
+  .gb-row:last-child{border-bottom:none}
+  .gb-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:6px}
+  .gb-title{font-weight:700;font-size:.9rem}
+  .gb-date{color:var(--muted);font-size:.74rem;white-space:nowrap}
+  .gb-track{height:14px;border-radius:999px;background:var(--bg);border:1px solid var(--line);overflow:hidden}
+  .gb-fill{height:100%;border-radius:999px;width:0;transition:width 1.1s cubic-bezier(.22,1,.36,1)}
+  .gb-foot{display:flex;justify-content:space-between;margin-top:5px;font-size:.76rem;color:var(--muted)}`;
+  document.head.appendChild(css);
+
+  const GCOL = { A:'#16a34a', B:'#2563eb', C:'#d97706', S:'#ca8a04', F:'#dc2626' };
+
+  document.addEventListener('ca:student-marks', e => {
+    const { rows } = e.detail;
+    const body = document.getElementById('stuBody');
+    if (!body || !rows.length) return;
+    const { esc, grade } = window.CA;
+    document.getElementById('gbCard')?.remove();
+
+    const sorted = rows.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+    const card = document.createElement('div');
+    card.className = 'card'; card.id = 'gbCard';
+    card.innerHTML = `<h2>📊 Marks by Paper</h2>
+      <p class="sub" style="margin:0 0 4px">Bar color = grade:
+        <b style="color:#16a34a">A</b> · <b style="color:#2563eb">B</b> ·
+        <b style="color:#d97706">C</b> · <b style="color:#ca8a04">S</b> ·
+        <b style="color:#dc2626">F</b></p>`
+      + sorted.map(r => {
+          const g = grade(r.pct), col = GCOL[g];
+          return `<div class="gb-row">
+            <div class="gb-head"><span class="gb-title">${esc(r.title)}</span><span class="gb-date">${esc(r.date || '')}</span></div>
+            <div class="gb-track"><div class="gb-fill" data-w="${r.pct}" style="background:${col}"></div></div>
+            <div class="gb-foot"><span>${r.mark} / ${r.max}</span><b style="color:${col}">${r.pct}% · Grade ${g}</b></div>
+          </div>`;
+        }).join('');
+
+    /* place it right under the analyze chart card (or summary if chart not present) */
+    const anchor = document.getElementById('maCard') || document.getElementById('sumCard');
+    anchor ? anchor.insertAdjacentElement('afterend', card) : body.appendChild(card);
+
+    /* animate the fills after insertion */
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      card.querySelectorAll('.gb-fill').forEach(f => f.style.width = f.dataset.w + '%');
+    }));
+  });
+}
