@@ -186,7 +186,7 @@ const BATCHES = ["2027 A/L","2028 A/L"];
 const grade = p => p>=75?'A':p>=65?'B':p>=55?'C':p>=35?'S':'F';
 const gCls  = p => p>=75?'good':p>=55?'brand':p>=35?'warn':'bad';
 const NIC_RE = /^(\d{9}[VvXx]|\d{12})$/;
-const BC_RE = /^[A-Za-z0-9-]{3,20}$/;
+const BC_RE = /^[A-Za-z0-9]{8}$/;
 const skeyOf = p => String((p && (p.skey || p.nic)) || '').toUpperCase();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const busy = on => $("#loading").classList.toggle('show', !!on);
@@ -441,7 +441,7 @@ async function signup(){
     <label>Gender</label><select id="gen"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select><div class="field-err" id="e-gen"></div>
     <label>NIC Number</label><input id="nic" placeholder="e.g. 123456789V or 200012345678" maxlength="12">
     <div class="field-err" id="e-nic"></div>
-    <label>Barcode Number</label><input id="bc" placeholder="Your class barcode number" maxlength="20"><div class="field-err" id="e-bc"></div>
+    <label>Barcode Number</label><input id="bc" placeholder="8-character barcode number" maxlength="8"><div class="field-err" id="e-bc"></div>
     <label>Email</label><input id="em" type="email" placeholder="you@email.com" autocomplete="email">
     <div class="field-err" id="e-em"></div>
     <label>Mobile Number</label><input id="mob" type="tel" placeholder="07X XXX XXXX"><div class="field-err" id="e-mob"></div>
@@ -472,7 +472,7 @@ async function signup(){
           em=$("#em").value.trim().toLowerCase(), pw=$("#pw").value, pw2=$("#pw2").value;
     const bc=$("#bc").value.trim().toUpperCase(), gen=$("#gen").value;
     let bad=false;
-    if(!BC_RE.test(bc)){$("#e-bc").textContent='Enter your barcode number (letters or numbers, 3-20 characters).';bad=true;}
+    if(!BC_RE.test(bc)){$("#e-bc").textContent='Enter your 8-character barcode number.';bad=true;}
     if(!gen){$("#e-gen").textContent='Please select your gender.';bad=true;}
     if(nm.length<3){$("#e-nm").textContent='Please enter your full name.';bad=true;}
     if(!NIC_RE.test(nic)){$("#e-nic").textContent='Invalid NIC. Use 9 digits + V/X (old) or 12 digits (new).';bad=true;}
@@ -833,7 +833,7 @@ function tabStudents({roster,rosterAll}){
   <div class="card"><h2>Add Student to ${esc(state.batch)}</h2>
     <p class="sub" style="margin:0 0 4px">Add a student with their barcode or NIC (either one) and enter marks straight away — they can sign up later with the same NIC and barcode.</p>
     <div class="row">
-      <div><label>Full name</label><input id="an"></div><div><label>NIC (optional)</label><input id="anic" maxlength="12"></div><div><label>Barcode (optional)</label><input id="abc" maxlength="20"></div>
+      <div><label>Full name</label><input id="an"></div><div><label>NIC (optional)</label><input id="anic" maxlength="12"></div><div><label>Barcode (optional)</label><input id="abc" maxlength="8"></div>
       <div><label>Center</label>${adm?`<select id="act"><option value="">—</option>${opt(L.centers,state.center)}</select>`:`<input id="act" value="${esc(profile.center||'')}" disabled>`}</div>
       <button class="btn btn-primary" id="addStu" style="width:auto;margin:0">+ Add</button></div>
     <div id="addMsg"></div></div>
@@ -866,7 +866,7 @@ function tabStudents({roster,rosterAll}){
     if(nm.length<3) return m.innerHTML='<div class="err">Please enter the student\'s name.</div>';
     if(!nic&&!bc) return m.innerHTML='<div class="err">Enter the barcode number or the NIC.</div>';
     if(nic&&!NIC_RE.test(nic)) return m.innerHTML='<div class="err">Invalid NIC format.</div>';
-    if(bc&&!BC_RE.test(bc)) return m.innerHTML='<div class="err">Invalid barcode (letters or numbers, 3-20 characters).</div>';
+    if(bc&&!BC_RE.test(bc)) return m.innerHTML='<div class="err">Invalid barcode (it must be 8 characters).</div>';
     busy(true);
     try{
       if(nic && (await getDoc(doc(db,'nics',nic))).exists()){ busy(false); return m.innerHTML='<div class="err">A student with this NIC is already registered.</div>'; }
