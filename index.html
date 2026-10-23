@@ -798,6 +798,7 @@ async function studentView(){
     ${rows.map(r=>`<tr><td class="mono">${esc(r.p.date||'—')}</td><td>${esc(r.p.title)}</td><td class="mono"><b>${r.m}</b> / ${r.p.max}</td><td><span class="pill ${gCls(r.pc)}">${r.pc}%</span></td><td><span class="pill ${gCls(r.pc)}">${grade(r.pc)}</span></td><td>${r.rank} / ${r.n}</td><td>${r.p.published?'Published':'Hidden'}</td></tr>`).join('')}</table></div></div>`
     :'<div class="card"><p class="sub">No marks entered for this student yet.</p></div>'}`;
     if(rows.length) charts.sv=new Chart($("#svC"),{type:'line',data:{labels:rows.map(r=>r.p.title),datasets:[{label:'Score %',data:rows.map(r=>r.pc),borderColor:'#15803d',backgroundColor:'rgba(21,128,61,.12)',fill:true,tension:.35,pointRadius:5,pointBackgroundColor:'#22a06b'}]},options:{scales:{y:{min:0,max:100}}}});
+       try{ document.dispatchEvent(new CustomEvent('ca:student-view-marks',{detail:{nic, rows:rows.map(r=>({pid:r.p.id,title:r.p.title,date:r.p.date,mark:r.m,max:r.p.max,pct:r.pc}))}})); }catch(e){}
     if($("#svEdit")) $("#svEdit").onclick=()=>studentEditCard($("#svEditBox"),s,true,()=>studentView());
     if($("#svVer")) $("#svVer").onclick=async()=>{ busy(true); await updateDoc(doc(db,'students',s.id),{verified:!s.verified}); busy(false); studentView(); };
     $("#svDel").onclick=async()=>{
