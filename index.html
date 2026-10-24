@@ -937,31 +937,15 @@ async function stuDash(){
     const nic = skeyOf(profile);
     const snap = await getDocs(q);
     const ps = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    let ranks = {};
+    try { ranks = (await myRanks()) || {}; } catch(e){ ranks = {}; }
     await Promise.all(ps.map(async p => {
       p.scores = {};
-      p._all = [];
+      p._rank = (p.ranksPublished && ranks[p.id]) ? ranks[p.id] : null;
       try {
         const myDoc = await getDoc(doc(db,'marks', p.id + '_' + nic));
         if (myDoc.exists()) p.scores[nic] = myDoc.data().mark;
       } catch(e){ /* not found is fine */ }
-      if (p.ranksPublished) {
-        try {
-          const snapAll = await getDocs(query(collection(db,'marks'), where('pid','==',p.id)));
-          p._all = snapAll.docs.map(d => d.data());
-        } catch(e){
-          p._all = [];
-        }
-        // Fallback when the pid query returns nothing (old marks saved without
-        // a `pid` field). Doc ids are always "pid_nic", so filter by prefix.
-        if (!p._all.length) {
-          try {
-            const snap2 = await getDocs(collection(db,'marks'));
-            p._all = snap2.docs
-              .filter(d => d.id.startsWith(p.id + '_'))
-              .map(d => ({ ...d.data(), pid: d.data().pid || p.id }));
-          } catch(e2){}
-        }
-      }
     }));
     return ps;
   };
@@ -987,10 +971,10 @@ async function stuDash(){
 
     // RANK WIDGET
     let rankWidget = '';
-    const rankedPapers = rowsP.filter(r => r.p.ranksPublished && Array.isArray(r.p._all) && r.p._all.length > 0);
+    const rankedPapers = rowsP.filter(r => r.p._rank);
     if(rankedPapers.length){
       const lastRanked = rankedPapers[rankedPapers.length - 1];
-      const myRank = 1 + lastRanked.p._all.filter(d => d.mark > lastRanked.m).length;
+      const myRank = lastRanked.p._rank;
       if(myRank <= 100){
         rankWidget = `
           <div class="card" style="background:linear-gradient(135deg,#fef08a,#fde047);border:none;color:#422006;display:flex;align-items:center;gap:16px;padding:18px;margin-bottom:20px">
@@ -1057,12 +1041,7 @@ async function stuDash(){
                        p>=35?'linear-gradient(90deg,#f97316,#fb923c)':
                              'linear-gradient(90deg,#ef4444,#f87171)';
 
-      let rankCol = '—';
-      if(r.p.ranksPublished && Array.isArray(r.p._all) && r.p._all.length > 0){
-        const rank = 1 + r.p._all.filter(d => d.mark > r.m).length;
-        rankCol = `<b>#${rank}</b>`;
-      }
-
+           const rankCol = r.p._rank ? `<b>#${r.p._rank}</b>` : '—';
       return `<tr>
         <td class="mono">${esc(r.p.date||'—')}</td>
         <td>${esc(r.p.title)}</td>
