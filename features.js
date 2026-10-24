@@ -14,7 +14,7 @@ async function getRanks() {
 document.addEventListener('ca:student-marks', e => {
   const { rows, name } = e.detail, body = document.getElementById('stuBody');
   if (!body) return;
-  if (rows.length) { addSummary(rows, body); addRanks(rows); }
+  if (rows.length) { addSummary(rows, body); }
   addWelcome(name, rows.length, body);
 });
 
