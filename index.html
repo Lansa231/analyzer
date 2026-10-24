@@ -929,27 +929,54 @@ async function stuDash(){
 
   const q=query(collection(db,'papers'), where('published','==',true));
   const load=async()=>{
-    const snap=await getDocs(q), ps=snap.docs.map(d=>({id:d.id,...d.data()})), nic=skeyOf(profile);
-    // For each paper: read its own "scores" field OR fall back to fetching that paper's marks document
-    await Promise.all(ps.map(async p=>{ 
-      p.scores = p.scores || {}; 
-      try{ const m=await getDoc(doc(db,'marks',p.id+'_'+nic)); if(m.exists()) p.scores[nic]=m.data().mark; }catch(e){}
-      // Also fetch all scores for rank calculation if ranks are published
-      if(p.ranksPublished){
-        try{
-          const all=await getDocs(query(collection(db,'marks'),where('pid','==',p.id)));
-          all.docs.forEach(d=>{ const md=d.data(); p.scores[md.nic]=md.mark; });
-        }catch(e){}
+    const nic = skeyOf(profile);
+    const snap = await getDocs(q);
+    const ps = snap.docs.map(d=>({id:d.id,...d.data()}));
+
+    // For EVERY published paper, fetch its own mark doc (my mark).
+    // Additionally, for papers with ranksPublished, fetch ALL marks for that paper
+    // so we can compute my rank.
+    await Promise.all(ps.map(async p => {
+      // 1. Always fetch my own mark
+      p.myScore = null;
+      try {
+        const myDoc = await getDoc(doc(db,'marks', p.id + '_' + nic));
+        if (myDoc.exists()) p.myScore = myDoc.data().mark;
+      } catch(e){ /* ignore */ }
+
+      // 2. Fetch all marks for this paper (needed only if ranks are published,
+      //    but we also need a fallback: some old marks docs may not have pid,
+      //    so try both a query on pid and a scan of the collection filtered by
+      //    the paper id prefix).
+      p.allMarks = [];
+      if (p.ranksPublished) {
+        let all = [];
+        try {
+          const qAll = query(collection(db,'marks'), where('pid','==',p.id));
+          const snapAll = await getDocs(qAll);
+          all = snapAll.docs.map(d=>d.data());
+        } catch(e){ /* rules blocked */ }
+        // Fallback: if the pid query came back empty, scan all marks and filter
+        // by doc ID prefix "paperId_"
+        if (!all.length) {
+          try {
+            const snap2 = await getDocs(collection(db,'marks'));
+            all = snap2.docs
+              .filter(d => d.id.startsWith(p.id + '_'))
+              .map(d => d.data());
+          } catch(e){ /* ignore */ }
+        }
+        p.allMarks = all;
       }
     }));
-    return ps; 
-  };
 
+    return ps;
+  };
   const renderBody=papers=>{
-    const rowsP=papers
+       const rowsP=papers
       .filter(p=>(p.batch||BATCHES[0])===(profile.batch||BATCHES[0]))
       .filter(p=>state.stuSubject==='All'||p.subject===state.stuSubject)
-      .map(p=>({p, m:p.scores?.[skeyOf(profile)]}))
+      .map(p=>({p, m:p.myScore}))
       .filter(r=>r.m!=null)
       .sort((a,b)=>String(a.p.date||'').localeCompare(String(b.p.date||'')));
 
@@ -965,12 +992,12 @@ async function stuDash(){
     const bestRow = rowsP[marks.indexOf(best)];
 
     // Rank widget
+     // Rank widget
     let rankWidget = '';
-    const rankedPapers = rowsP.filter(r => r.p.ranksPublished);
+    const rankedPapers = rowsP.filter(r => r.p.ranksPublished && Array.isArray(r.p.allMarks) && r.p.allMarks.length > 0);
     if(rankedPapers.length){
       const lastRanked = rankedPapers[rankedPapers.length - 1];
-      const scores = Object.values(lastRanked.p.scores || {});
-      const myRank = 1 + scores.filter(v => v > lastRanked.m).length;
+      const myRank = 1 + lastRanked.p.allMarks.filter(d => d.mark > lastRanked.m).length;
       if(myRank <= 100){
         rankWidget = `
           <div class="card" style="background:linear-gradient(135deg,#fef08a,#fde047);border:none;color:#422006;display:flex;align-items:center;gap:16px;padding:18px;margin-bottom:20px">
@@ -1038,9 +1065,8 @@ async function stuDash(){
                              'linear-gradient(90deg,#ef4444,#f87171)';
 
       let rankCol = '—';
-      if(r.p.ranksPublished){
-        const all = Object.values(r.p.scores || {});
-        const rank = 1 + all.filter(v => v > r.m).length;
+      if(r.p.ranksPublished && Array.isArray(r.p.allMarks) && r.p.allMarks.length > 0){
+        const rank = 1 + r.p.allMarks.filter(d => d.mark > r.m).length;
         rankCol = `<b>#${rank}</b>`;
       }
 
