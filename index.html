@@ -315,21 +315,32 @@ canvas{max-height:320px;}
   linear-gradient(105deg,rgba(6,42,24,.28) 0%,rgba(6,42,24,.42) 62%,rgba(6,42,24,.58) 100%),
   url('hero-photo.jpg') center/cover no-repeat,
   linear-gradient(135deg,#0c4a27,#15803d 55%,#22a06b)}
+.nav-link:hover { 
+  background: var(--brand-soft); 
+  color: var(--brand) !important; 
+}
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>">
 </head>
 <body>
 
-<header>
-  <a class="logo" href="#/"><span>S.K. Wellala Biology Paper Class</span></a>
-  <nav class="main" id="mainNav" aria-label="Main">
-    <a href="#classes">Classes</a>
-    <a href="#teacher">Your Teacher</a>
-    <a href="#course">Our Course</a>
-    <a href="#portal">Marks Portal</a>
-    <a href="#contact">Contact</a>
-    <a class="btn btn-gold" href="#/login">Student Login</a>
+<header style="position:sticky;top:0;z-index:100;background:rgba(255,255,255,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;justify-content:space-between;align-items:center;transition:background .3s">
+  <a class="logo" href="#/" style="text-decoration:none;font-weight:800;font-size:1.05rem;color:var(--ink);display:flex;align-items:center;gap:8px">
+    <span style="background:linear-gradient(120deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent">S.K. Wellala Paper Class</span>
+  </a>
+  
+  <nav style="display:flex;align-items:center;gap:6px">
+    <div class="nav-pill" style="display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 6px">
+      <a href="#classes" class="nav-link" style="text-decoration:none;color:var(--muted);font-weight:600;font-size:.85rem;padding:8px 14px;border-radius:999px;transition:.2s">Classes</a>
+      <a href="#teacher" class="nav-link" style="text-decoration:none;color:var(--muted);font-weight:600;font-size:.85rem;padding:8px 14px;border-radius:999px;transition:.2s">Teacher</a>
+      <a href="#course" class="nav-link" style="text-decoration:none;color:var(--muted);font-weight:600;font-size:.85rem;padding:8px 14px;border-radius:999px;transition:.2s">Course</a>
+      <a href="#portal" class="nav-link" style="text-decoration:none;color:var(--muted);font-weight:600;font-size:.85rem;padding:8px 14px;border-radius:999px;transition:.2s">Portal</a>
+      <a href="#centers" class="nav-link" style="text-decoration:none;color:var(--muted);font-weight:600;font-size:.85rem;padding:8px 14px;border-radius:999px;transition:.2s">Centers</a>
+    </div>
+    
+    <a class="btn btn-gold" href="#/login" style="margin-left:12px;padding:9px 20px;font-size:.85rem;border-radius:999px;background:linear-gradient(135deg,#d9a93a,#c99a2e);color:#fff;font-weight:700;text-decoration:none;box-shadow:0 4px 12px rgba(201,154,46,.3)">Login</a>
   </nav>
+  
   <div class="hdr-actions" id="hdrActions"></div>
 </header>
 <main id="app"></main>
@@ -758,10 +769,17 @@ function landing(){
 
   document.querySelectorAll('.lp a[href^="#"]').forEach(a => {
     a.addEventListener('click', (e) => {
-      const id = a.getAttribute('href').slice(1);
-      if(!id) return;
+      const href = a.getAttribute('href');
+      // If it's a route (like #/login), let the router handle it
+      if(href.startsWith('#/') || href === '#/' || href === '#') return; 
+      
+      // Otherwise, it's a section scroll
+      const id = href.slice(1);
       const el = document.getElementById(id);
-      if(el){ e.preventDefault(); el.scrollIntoView({behavior:'smooth', block:'start'}); }
+      if(el){ 
+        e.preventDefault(); // Stop the router from interfering
+        el.scrollIntoView({behavior:'smooth', block:'start'}); 
+      }
     });
   });
 }
