@@ -309,9 +309,7 @@ canvas{max-height:320px;}
     <span style="background:linear-gradient(120deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent">S.K. Wellala Paper Class</span>
   </a>
   
-  <nav style="display:flex;align-items:center;gap:6px" id="topNav">
-    <!-- Navigation will be injected by JS based on the route -->
-  </nav>
+  <nav style="display:flex;align-items:center;gap:6px" id="topNav"></nav>
   
   <div class="hdr-actions" id="hdrActions"></div>
 </header>
@@ -323,7 +321,7 @@ canvas{max-height:320px;}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged,
-         signOut, sendPasswordResetEmail, updateProfile }
+         signOut, sendPasswordResetEmail, updateProfile, deleteUser }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
          collection, query, where, onSnapshot, serverTimestamp, myRanks, deleteAuthUser }
@@ -352,7 +350,8 @@ function friendly(e){
     'auth/weak-password':'Password is too weak — use at least 8 characters with letters and numbers.',
     'auth/too-many-requests':'Too many attempts. Please wait a minute and try again.',
     'auth/network-request-failed':'Network error — check your internet connection.',
-    'auth/missing-email':'Please enter your email address.'};
+    'auth/missing-email':'Please enter your email address.',
+    'permission-denied':'Permission denied by server. Contact us if this keeps happening.'};
   return m[e.code] || e.message || 'Something went wrong. Please try again.';
 }
 function setTheme(t){ document.documentElement.dataset.theme=t; localStorage.setItem('ca_theme',t); chartDefaults(); }
@@ -404,8 +403,6 @@ function route(){
 function renderHdr(r){
   const h=$("#hdrActions");
   const nav=$("#topNav");
-  
-  // 1. Header Tabs ONLY visible on landing page
   if(r === 'landing'){
     nav.innerHTML = `
     <div class="nav-pill" style="display:flex;align-items:center;gap:4px;border-radius:999px;padding:4px 6px">
@@ -418,9 +415,8 @@ function renderHdr(r){
     <a class="btn btn-gold" href="#/login" style="margin-left:12px;padding:9px 20px;font-size:.85rem;border-radius:999px;background:linear-gradient(135deg,#d9a93a,#c99a2e);color:#fff;font-weight:700;text-decoration:none;box-shadow:0 4px 12px rgba(201,154,46,.3)">Login</a>
     `;
   } else {
-    nav.innerHTML = ''; // Hide nav pills on other pages
+    nav.innerHTML = '';
   }
-
   if(user && (r==='stuDash'||r==='teacherDash'||r==='studentView')){
     h.innerHTML = `<span class="pill brand">${role==='teacher'?(profile&&profile.isAdmin?'🛠 Developer':'👩‍🏫 Teacher'):'🎓 Student'}</span> ${themeBtn()} <button class="btn btn-danger btn-sm" id="logoutBtn">Log out</button>`;
     $("#logoutBtn").onclick = async ()=>{ if(unsubStu){unsubStu();unsubStu=null;} await signOut(auth); };
@@ -446,13 +442,13 @@ function parseCfg(txt){
 function setupScreen(msg){
   app.innerHTML = `<div class="card auth-card">
     <h2>🔧 One-time Setup</h2>
-    <p class="sub">Paste your Firebase web config (from Firebase console → Project settings → Your apps → web app). It looks like <code>{"apiKey":"...","projectId":"...",...}</code></p>
+    <p class="sub">Paste your Firebase web config.</p>
     <textarea id="cfgIn" rows="6" style="width:100%;padding:10px;border:1.5px solid var(--line);border-radius:11px;font-family:monospace;font-size:.78rem;background:var(--bg);color:var(--ink)"></textarea>
     <button class="btn btn-primary" id="cfgBtn">Save &amp; Connect</button>
     <div class="err" id="cfgMsg" style="display:${msg?'block':'none'}">${esc(msg||'')}</div>
   </div>`;
   $("#cfgBtn").onclick=()=>{
-    let cfg; try{ cfg=parseCfg($("#cfgIn").value); }catch(e){ $("#cfgMsg").style.display='block'; $("#cfgMsg").textContent='Could not read that config. Paste the whole { ... } block from Firebase.'; return; }
+    let cfg; try{ cfg=parseCfg($("#cfgIn").value); }catch(e){ $("#cfgMsg").style.display='block'; $("#cfgMsg").textContent='Could not read that config.'; return; }
     if(!cfg.apiKey||!cfg.projectId){ $("#cfgMsg").style.display='block'; $("#cfgMsg").textContent='Config needs at least apiKey and projectId.'; return; }
     localStorage.setItem('ca_fb_config', JSON.stringify(cfg));
     bootFirebase(cfg);
@@ -466,29 +462,29 @@ function bootFirebase(cfg){
     if(u){
       try{
         const t=await getDoc(doc(db,'teachers',u.uid));
-        if(t.exists()){ 
-          role='teacher'; 
-          profile=t.data(); 
+        if(t.exists()){
+          role='teacher';
+          profile=t.data();
           try{ profile.isAdmin=(await getDoc(doc(db,'admins',u.uid))).exists(); }catch(e){ profile.isAdmin=false; }
         } else {
           const s=await getDoc(doc(db,'students',u.uid));
           if(s.exists()){ role='student'; profile=s.data(); }
-          else { 
-            // DON'T sign out silently — show error so they can contact you
-            lookupErr = new Error('We found your login but your profile is missing. Please contact the admin to fix this, then try logging in again.');
-            try { await signOut(auth); } catch(e2) {}
+          else {
+            // Auth user exists but no profile — this shouldn't happen if signup works.
+            // Don't sign out; show a friendly message so they can retry or contact you.
+            lookupErr = new Error('Your login exists but your profile is missing. Please try signing up again with a different email, or contact us.');
+            try { await signOut(auth); } catch(e2){}
+            role=null; profile=null;
           }
         }
       }catch(e){ lookupErr=e; }
     }
     try{ route(); } finally { busy(false); }
-    if(lookupErr){ 
-      app.innerHTML = `<div class="card auth-card"><div class="err">${esc(lookupErr.message)}</div><p class="sub" style="margin-top:12px"><a href="#/contact">📞 Contact us</a> · <a href="#/login">Try logging in again</a></p></div>`;
+    if(lookupErr){
+      app.innerHTML = `<div class="card auth-card"><h2>⚠️ Account not found</h2><div class="err">${esc(lookupErr.message)}</div><p class="sub" style="margin-top:12px"><a href="#/contact">📞 Contact us</a> · <a href="#/login">Try logging in</a> · <a href="#/signup">Sign up</a></p></div>`;
     }
   };
-  // Render landing immediately — don't wait for Firebase
   try{ route(); }catch(e){ console.error(e); }
-  // Only show loader on auth-protected routes; never block the landing page
   onAuthStateChanged(auth,u=>{
     if(signingUp) return;
     const h = location.hash || '#/';
@@ -556,11 +552,9 @@ const PAPER_CENTERS = [
   {n:'Matale'}, {n:'Nawalapitiya'}, {n:'Nuwaraeliya'}, {n:'Rikillagaskada'},
   {n:'Polonnaruwa'}
 ];
-
 function landing(){
   app.innerHTML = `
   <div class="lp">
-
     <section class="lp-hero">
       <div class="lp-hero-bg"></div>
       <div class="lp-hero-in">
@@ -626,7 +620,6 @@ function landing(){
       <div class="kicker"><span class="idx">02</span><span class="lbl">Paper Centers · Island-wide</span></div>
       <h2 class="sec">Where you can <em>face the paper</em></h2>
       <p class="sec-sub">Papers are held across 17 centres in Sri Lanka.</p>
-      
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;max-width:800px">
         ${PAPER_CENTERS.map(c=>`
           <div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;font-weight:600;color:var(--ink);font-size:.9rem;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow)">
@@ -745,22 +738,15 @@ function landing(){
         <span>Made with Love for future doctors</span>
       </div>
     </footer>
-
   </div>`;
 
-  // Instant one-click smooth scroll
   document.querySelectorAll('.lp a[href^="#"]').forEach(a => {
     a.addEventListener('click', (e) => {
       const href = a.getAttribute('href');
-      if(href.startsWith('#/') || href === '#/' || href === '#') return; 
-      
+      if(href.startsWith('#/') || href === '#/' || href === '#') return;
       const id = href.slice(1);
       const el = document.getElementById(id);
-      if(el){ 
-        e.preventDefault(); 
-        e.stopPropagation();
-        el.scrollIntoView({behavior:'smooth', block:'start'}); 
-      }
+      if(el){ e.preventDefault(); e.stopPropagation(); el.scrollIntoView({behavior:'smooth', block:'start'}); }
     });
   });
 }
@@ -800,6 +786,7 @@ async function getLists(){
   const x=await getDoc(doc(db,'settings','lists')).catch(()=>null), d=x?.exists()?x.data():{};
   return {centers:d.centers||[],payMethods:d.payMethods||[]};
 }
+
 async function signup(){
   const L=await getLists();
   const O=a=>a.map(x=>`<option>${esc(x)}</option>`).join('');
@@ -858,49 +845,47 @@ async function signup(){
     if(L.payMethods.length&&!pay){$("#e-pay").textContent='Please select how you pay.';bad=true;}
     if(bad) return;
     busy(true);
+    $("#btn").disabled = true;
     try{
       const nicDoc=await getDoc(doc(db,'nics',nic));
-      if(nicDoc.exists()){ busy(false); $("#msg").innerHTML=`<div class="err">An account with this NIC already exists. If you want to use a new email, please contact us and ask us to delete the previous account, then sign up again.<br><a class="foot-contact" href="#/contact" style="margin-top:10px">📞 Contact us</a> &nbsp;<a href="#/login">Log in instead</a></div>`; return; }
+      if(nicDoc.exists()){ busy(false); $("#btn").disabled=false; $("#msg").innerHTML=`<div class="err">An account with this NIC already exists. Please contact us to delete the previous account, then sign up again.<br><a class="foot-contact" href="#/contact" style="margin-top:10px">📞 Contact us</a> &nbsp;<a href="#/login">Log in instead</a></div>`; return; }
       const bcDoc=await getDoc(doc(db,'barcodes',bc));
-      if(bcDoc.exists()){ busy(false); $("#msg").innerHTML=`<div class="err">An account with this barcode already exists. If you need a new account, please contact us and ask us to delete the previous one, then sign up again.<br><a class="foot-contact" href="#/contact" style="margin-top:10px">📞 Contact us</a> &nbsp;<a href="#/login">Log in instead</a></div>`; return; }
-      
-      let pk=nic; 
-      { 
-        const p1=await getDoc(doc(db,'pending',nic)); 
-        if(!p1.exists()){ 
-          const p2=await getDoc(doc(db,'pending','BC'+bc)); 
-          if(p2.exists()) pk='BC'+bc; 
-        } 
-      }
-      
+      if(bcDoc.exists()){ busy(false); $("#btn").disabled=false; $("#msg").innerHTML=`<div class="err">An account with this barcode already exists. Please contact us to delete the previous one, then sign up again.<br><a class="foot-contact" href="#/contact" style="margin-top:10px">📞 Contact us</a> &nbsp;<a href="#/login">Log in instead</a></div>`; return; }
+
+      let pk=nic;
+      { const p1=await getDoc(doc(db,'pending',nic));
+        if(!p1.exists()){ const p2=await getDoc(doc(db,'pending','BC'+bc)); if(p2.exists()) pk='BC'+bc; } }
+
       signingUp=true;
       const cred=await createUserWithEmailAndPassword(auth, em, pw);
-      
-      // TRY BLOCK FOR FIRESTORE WRITES — ROLLBACK IF IT FAILS
+
       try {
         await updateProfile(cred.user,{displayName:nm});
-        await setDoc(doc(db,'students',cred.user.uid),{fullName:nm, nic, barcode:bc, skey:pk, gender:gen, email:em, mobile:mob, whatsapp:wa, school:sch, batch:bat, center:ctr, payMethod:pay, verified:true, createdAt:serverTimestamp()});
+        // IMPORTANT: verified must be false to match your Firestore rules
+        await setDoc(doc(db,'students',cred.user.uid),{
+          fullName:nm, nic, barcode:bc, skey:pk, gender:gen, email:em,
+          mobile:mob, whatsapp:wa, school:sch, batch:bat, center:ctr,
+          payMethod:pay, verified:false, createdAt:serverTimestamp()
+        });
         await setDoc(doc(db,'nics',nic),{uid:cred.user.uid, email:em, skey:pk});
         await setDoc(doc(db,'barcodes',bc),{uid:cred.user.uid, email:em, skey:pk});
         try{ await deleteDoc(doc(db,'pending',nic)); }catch(e){}
         try{ await deleteDoc(doc(db,'pending','BC'+bc)); }catch(e){}
-      } catch(writeErr) {
-        // ROLLBACK: delete the Auth user so they can try again
-        try { await cred.user.delete(); } catch(e2) { console.error('Rollback failed:', e2); }
-        signingUp = false;
-        busy(false);
-        $("#msg").innerHTML = `<div class="err">Account setup failed: ${esc(friendly(writeErr))}. Your account was not created. Please try again or contact us.</div>`;
+      } catch(writeErr){
+        // Rollback: delete the just-created auth user so the email is freed
+        try { await deleteUser(cred.user); } catch(e2){ console.error('Rollback deleteUser failed:', e2); }
+        signingUp=false; busy(false); $("#btn").disabled=false;
+        $("#msg").innerHTML = `<div class="err">Setup failed: ${esc(friendly(writeErr))}. Your account was not created. Please try again or contact us.</div>`;
         return;
       }
-      
-      signingUp=false; 
-      await authLoad(auth.currentUser); 
-      busy(false); 
+
+      signingUp=false;
+      await authLoad(auth.currentUser);
+      busy(false);
       go('#/dashboard');
-    }catch(e){ 
-      signingUp=false; 
-      busy(false); 
-      $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; 
+    }catch(e){
+      signingUp=false; busy(false); $("#btn").disabled=false;
+      $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`;
     }
   };
 }
@@ -961,18 +946,16 @@ async function stuDash(){
       .sort((a,b)=>String(a.p.date||'').localeCompare(String(b.p.date||'')));
 
     if(!rowsP.length){
-      $("#stuBody").innerHTML=`<div class="card"><p class="sub">📭 No published marks yet${state.stuSubject!=='All'?' for '+esc(state.stuSubject):''}. Your teacher will publish them here after each paper.</p></div>`;
+      $("#stuBody").innerHTML=`<div class="card"><p class="sub">📭 No published marks yet. Your teacher will publish them here after each paper.</p></div>`;
       return;
     }
 
-    // Compute the stats
     const marks = rowsP.map(r=>pct(r.m, r.p.max));
     const best = Math.max(...marks);
     const avg = Math.round(marks.reduce((a,b)=>a+b,0)/marks.length*10)/10;
     const latest = marks[marks.length-1];
     const bestRow = rowsP[marks.indexOf(best)];
 
-    // Build the "best mark with trophy" card + progress bars
     const bestCard = `
       <div class="ma-grid" style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:22px;align-items:stretch">
         <div class="card" style="margin:0;display:flex;flex-direction:column">
@@ -1019,7 +1002,6 @@ async function stuDash(){
         @media(max-width:760px){.ma-grid{grid-template-columns:1fr!important}}
       </style>`;
 
-    // Paper-by-paper with gradient fill bars
     const rows = rowsP.map(r=>{
       const p = pct(r.m, r.p.max);
       const barColor = p>=75?'linear-gradient(90deg,#22a06b,#4ade80)':p>=55?'linear-gradient(90deg,#15803d,#22a06b)':p>=35?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#b91c1c,#f87171)';
@@ -1048,7 +1030,6 @@ async function stuDash(){
         </div>
       </div>`;
 
-    // Draw the line chart
     charts.s1 = new Chart($("#c1"), {
       type:'line',
       data:{
@@ -1102,9 +1083,9 @@ function teacherAuth(){
   $("#tUp").onclick=()=>{ $("#tUp").classList.add('active');$("#tIn").classList.remove('active');$("#fUp").style.display='block';$("#fIn").style.display='none'; };
   $("#tForgot").onclick=async e=>{
     e.preventDefault(); const m=$("#msg"), em=$("#em").value.trim(); m.innerHTML='';
-    if(!EMAIL_RE.test(em)) return m.innerHTML='<div class="err">Type your email in the Email box above first, then click Forgot password.</div>';
+    if(!EMAIL_RE.test(em)) return m.innerHTML='<div class="err">Type your email above first, then click Forgot password.</div>';
     busy(true);
-    try{ await sendPasswordResetEmail(auth,em); busy(false); m.innerHTML='<div class="ok">✅ Reset link sent! Check your inbox (and spam folder), set a new password, then sign in.</div>'; }
+    try{ await sendPasswordResetEmail(auth,em); busy(false); m.innerHTML='<div class="ok">✅ Reset link sent!</div>'; }
     catch(err){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(err))}</div>`; }
   };
   $("#inBtn").onclick=async()=>{
@@ -1124,11 +1105,18 @@ function teacherAuth(){
     try{
       const s=await getDoc(doc(db,'settings','registration')).catch(()=>null);
       if(s?.exists() && s.data().teacherSignupOpen===false){
-        busy(false); $("#msg").innerHTML=`<div class="err">Instructor registration is closed. Ask the administrator to enable it.</div>`; return;
+        busy(false); $("#msg").innerHTML=`<div class="err">Instructor registration is closed.</div>`; return;
       }
       signingUp=true;
       const cred=await createUserWithEmailAndPassword(auth, em, pw);
-      await setDoc(doc(db,'teachers',cred.user.uid),{fullName:nm, email:em, gender:$("#ugen").value, center:$("#uct").value, verified:false, createdAt:serverTimestamp()});
+      try {
+        await setDoc(doc(db,'teachers',cred.user.uid),{fullName:nm, email:em, gender:$("#ugen").value, center:$("#uct").value, verified:false, createdAt:serverTimestamp()});
+      } catch(writeErr){
+        try { await deleteUser(cred.user); } catch(e2){}
+        signingUp=false; busy(false);
+        $("#msg").innerHTML=`<div class="err">Setup failed: ${esc(friendly(writeErr))}. Try again.</div>`;
+        return;
+      }
       signingUp=false; await authLoad(auth.currentUser); busy(false);
     }catch(e){ signingUp=false; busy(false); $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
@@ -1141,7 +1129,7 @@ function faceOf(id){ let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0)
 function rankMarquee(students,papers){
   const paper=papers.find(p=>p.id===state.rankPaper)||papers[0];
   const r=paper?paperRanks(students,paper):[];
-  if(!r.length) return `<div class="marq"><div class="marq-h">🏆 PAPER RANKINGS</div><p class="sub" style="padding:0 14px">Rankings for the latest paper will scroll here once you enter marks.</p></div>`;
+  if(!r.length) return `<div class="marq"><div class="marq-h">🏆 PAPER RANKINGS</div><p class="sub" style="padding:0 14px">Rankings will scroll here once you enter marks.</p></div>`;
   const medal=n=>n===1?'🥇':n===2?'🥈':n===3?'🥉':'#'+n;
   const items=r.map(x=>{ const f=faceOf(x.s.id);
     return `<div class="marq-item"><span class="face" style="background:${f.bg}">${f.e}</span><span><b>${medal(x.rank)} <a class="nl" href="#/student/${encodeURIComponent(x.s.nic)}">${esc(x.s.fullName)}</a></b><small>${x.m}/${paper.max} · ${x.pct}%</small></span></div>`; }).join('');
@@ -1262,8 +1250,8 @@ async function studentView(){
     const info=(k,v)=>`<div><span class="sub">${k}</span><br><b>${esc(v||'—')}</b></div>`;
     app.innerHTML=`${back}<div id="svEditBox"></div>
     <div class="card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center">
-      <div><b style="font-size:1.15rem">🎓 ${esc(s.fullName)}</b> ${s.verified?'<span class="vbadge">✔ Verified</span>':'<span class="sub" style="display:inline">· not verified</span>'}${s.signedUp?'':' <span class="sub" style="display:inline">· has not signed up</span>'}</div>
-      <div>${adm&&s.signedUp?`<button class="btn btn-ghost btn-sm" id="svEdit">✏️ Edit</button> <button class="btn btn-ghost btn-sm" id="svVer">${s.verified?'Unverify':'Verify'}</button> `:''}<button class="btn btn-danger btn-sm" id="svDel">Remove student</button></div></div>
+      <div><b style="font-size:1.15rem">🎓 ${esc(s.fullName)}</b>${s.signedUp?'':' <span class="sub" style="display:inline">· has not signed up</span>'}</div>
+      <div>${adm&&s.signedUp?`<button class="btn btn-ghost btn-sm" id="svEdit">✏️ Edit</button> `:''}<button class="btn btn-danger btn-sm" id="svDel">Remove student</button></div></div>
       <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:12px">${info('NIC',s.nic)}${info('Barcode',s.barcode)}${info('Gender',s.gender)}${info('Batch',batch)}${info('Center',s.center)}${info('Mobile',s.mobile)}${info('WhatsApp',s.whatsapp)}${info('School',s.school)}${info('Email',s.email)}${info('Paid via',s.payMethod)}</div></div>
     ${rows.length?`<div class="card"><h2>📈 Progress</h2><canvas id="svC"></canvas></div>
     <div class="card"><h2>📄 Paper-by-paper</h2><div class="tbl-wrap"><table><tr><th>Date</th><th>Paper</th><th>Marks</th><th>%</th><th>Grade</th><th>Rank</th><th>Status</th></tr>
@@ -1271,7 +1259,6 @@ async function studentView(){
     :'<div class="card"><p class="sub">No marks entered for this student yet.</p></div>'}`;
     if(rows.length) charts.sv=new Chart($("#svC"),{type:'line',data:{labels:rows.map(r=>r.p.title),datasets:[{label:'Score %',data:rows.map(r=>r.pc),borderColor:'#15803d',backgroundColor:'rgba(21,128,61,.12)',fill:true,tension:.35,pointRadius:5,pointBackgroundColor:'#22a06b'}]},options:{scales:{y:{min:0,max:100}}}});
     if($("#svEdit")) $("#svEdit").onclick=()=>studentEditCard($("#svEditBox"),s,true,()=>studentView());
-    if($("#svVer")) $("#svVer").onclick=async()=>{ busy(true); await updateDoc(doc(db,'students',s.id),{verified:!s.verified}); busy(false); studentView(); };
     $("#svDel").onclick=async()=>{
       if(!confirm('Remove this student? Their marks will be deleted.')) return;
       busy(true);
@@ -1291,8 +1278,7 @@ function tabStudents({roster,rosterAll}){
   const opt=(a,sel)=>a.map(x=>`<option${x===sel?' selected':''}>${esc(x)}</option>`).join('');
   const row=s=>`<tr><td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b>${s.signedUp?'':' <span class="sub">(not signed up)</span>'}</td><td class="mono">${esc(s.realNic||'—')}</td><td class="mono">${esc(s.barcode||'—')}</td><td>${esc(s.batch)}</td><td>${esc(s.center||'—')}</td>
     <td>${esc(s.mobile||'—')}${s.whatsapp?`<br><span class="sub" style="margin:0">WA ${esc(s.whatsapp)}</span>`:''}</td><td>${esc(s.school||'—')}</td><td>${esc(s.payMethod||'—')}</td>
-    <td style="text-align:right;white-space:nowrap">${adm&&s.signedUp?`<button class="btn btn-ghost btn-sm" data-ver="${s.uid}" data-v="${s.verified?1:0}">${s.verified?'Unverify':'Verify'}</button> `:''}
-    ${s.signedUp?`<button class="btn btn-ghost btn-sm" data-edit="${s.uid}" data-name="${esc(s.fullName)}">Edit</button> `:''}
+    <td style="text-align:right;white-space:nowrap">${adm&&s.signedUp?`<button class="btn btn-ghost btn-sm" data-edit="${s.uid}" data-name="${esc(s.fullName)}">Edit</button> `:''}
     <button class="btn btn-danger btn-sm" data-rm="${esc(s.nic)}" data-rnic="${esc(s.realNic||'')}" data-rbc="${esc(s.barcode||'')}" data-uid="${s.uid||''}">Remove</button></td></tr>`;
   const table=a=>a.length?`<div class="tbl-wrap"><table><tr><th>Name</th><th>NIC</th><th>Barcode</th><th>Batch</th><th>Center</th><th>Contact</th><th>School</th><th>Paid via</th><th></th></tr>${a.map(row).join('')}</table></div>`:'<p class="sub">No students found.</p>';
   $("#tabBody").innerHTML=`
@@ -1307,7 +1293,6 @@ function tabStudents({roster,rosterAll}){
     <div id="addMsg"></div></div>
   <div class="card"><h2>${esc(state.batch)} students (${roster.length})</h2>${table(roster)}</div>`;
   const wire=()=>{
-    document.querySelectorAll('[data-ver]').forEach(b=>b.onclick=async()=>{ busy(true); await updateDoc(doc(db,'students',b.dataset.ver),{verified:b.dataset.v!=='1'}); busy(false); teacherDash(); });
     document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{
       const n=prompt('Edit student name:',b.dataset.name);
       if(n&&n.trim().length>=3){ busy(true); await updateDoc(doc(db,'students',b.dataset.edit),{fullName:n.trim()}); busy(false); teacherDash(); } });
@@ -1460,10 +1445,10 @@ function tabTeachers({teachers,admins}){
       ${a?(isOwner||self?'':`<button class="btn btn-danger btn-sm" data-demote="${t.id}">Remove developer</button>`):`<button class="btn btn-primary btn-sm" data-promote="${t.id}" style="width:auto">Make developer</button>`}</td></tr>`; }).join('')}</table></div>`:'<p class="sub">No teachers yet.</p>'}
   <p class="sub" style="margin-top:10px">Developers can see every center and student, verify people, manage centers and promote other teachers. The original developer can't be removed.</p></div>`;
   document.querySelectorAll('[data-tv]').forEach(b=>b.onclick=async()=>{ busy(true); await updateDoc(doc(db,'teachers',b.dataset.tv),{verified:b.dataset.v!=='1'}); busy(false); teacherDash(); });
-  document.querySelectorAll('[data-nick]').forEach(b=>b.onclick=async()=>{ const n=prompt('Nickname for this teacher (leave empty to clear):',b.dataset.cur); if(n===null) return; busy(true); try{ await updateDoc(doc(db,'teachers',b.dataset.nick),{nickname:n.trim()}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
-  document.querySelectorAll('[data-promote]').forEach(b=>b.onclick=async()=>{ if(!confirm('Make this teacher a developer? They will be able to see everything and manage the site.')) return; busy(true); try{ await setDoc(doc(db,'admins',b.dataset.promote),{promotedBy:user.uid,at:serverTimestamp()}); await updateDoc(doc(db,'teachers',b.dataset.promote),{verified:true}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
-  document.querySelectorAll('[data-rmt]').forEach(b=>b.onclick=async()=>{ if(!confirm('Remove this teacher? Their login will also be deleted.')) return; busy(true); try{ await deleteDoc(doc(db,'teachers',b.dataset.rmt)); await deleteAuthUser(b.dataset.rmt).catch(()=>{}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
-  document.querySelectorAll('[data-demote]').forEach(b=>b.onclick=async()=>{ if(!confirm('Remove developer access from this person?')) return; busy(true); try{ await deleteDoc(doc(db,'admins',b.dataset.demote)); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
+  document.querySelectorAll('[data-nick]').forEach(b=>b.onclick=async()=>{ const n=prompt('Nickname for this teacher:',b.dataset.cur); if(n===null) return; busy(true); try{ await updateDoc(doc(db,'teachers',b.dataset.nick),{nickname:n.trim()}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
+  document.querySelectorAll('[data-promote]').forEach(b=>b.onclick=async()=>{ if(!confirm('Make this teacher a developer?')) return; busy(true); try{ await setDoc(doc(db,'admins',b.dataset.promote),{promotedBy:user.uid,at:serverTimestamp()}); await updateDoc(doc(db,'teachers',b.dataset.promote),{verified:true}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
+  document.querySelectorAll('[data-rmt]').forEach(b=>b.onclick=async()=>{ if(!confirm('Remove this teacher?')) return; busy(true); try{ await deleteDoc(doc(db,'teachers',b.dataset.rmt)); await deleteAuthUser(b.dataset.rmt).catch(()=>{}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
+  document.querySelectorAll('[data-demote]').forEach(b=>b.onclick=async()=>{ if(!confirm('Remove developer access?')) return; busy(true); try{ await deleteDoc(doc(db,'admins',b.dataset.demote)); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
 }
 function tabRequests({requests}){
   const pend=requests.filter(r=>r.status==='pending');
@@ -1486,7 +1471,7 @@ async function tabFiles(){
   const lists={}; BATCHES.forEach((b,i)=>lists[b]=docs[i]?.exists()?(docs[i].data().items||[]):[]);
   const save=async(b)=>{ busy(true); try{ await setDoc(doc(db,'fileLists',batchKey(b)),{items:lists[b]}); }catch(e){ alert(friendly(e)); } busy(false); tabFiles(); };
   $("#tabBody").innerHTML=`<div class="card"><h2>📚 Add a marking PDF</h2>
-    <p class="sub" style="margin:0 0 6px">1) Upload the PDF to Google Drive. 2) Share it as <b>Anyone with the link → Viewer</b>. 3) Paste the link here.</p>
+    <p class="sub" style="margin:0 0 6px">1) Upload PDF to Drive. 2) Share "Anyone with link → Viewer". 3) Paste link here.</p>
     <div class="row"><div><label>Batch</label><select id="fb">${BATCHES.map(b=>`<option${b===state.batch?' selected':''}>${b}</option>`).join('')}</select></div>
     <div><label>Title</label><input id="ft" placeholder="e.g. Paper 3 — Marking scheme"></div>
     <div><label>Google Drive link</label><input id="fl" placeholder="https://drive.google.com/file/d/…"></div>
@@ -1496,10 +1481,10 @@ async function tabFiles(){
   $("#fadd").onclick=()=>{
     const b=$("#fb").value, t=$("#ft").value.trim(), id=driveId($("#fl").value), m=$("#fm"); m.innerHTML='';
     if(t.length<2) return m.innerHTML='<div class="err">Please enter a title.</div>';
-    if(!id) return m.innerHTML='<div class="err">That does not look like a Google Drive file link.</div>';
+    if(!id) return m.innerHTML='<div class="err">That doesn\'t look like a Drive link.</div>';
     lists[b]=[...lists[b],{id:Date.now().toString(36),title:t,fileId:id,at:Date.now()}]; save(b);
   };
-  document.querySelectorAll('[data-rf]').forEach(x=>x.onclick=()=>{ if(!confirm('Remove this file from the list? (The file stays in your Drive.)')) return; const [b,id]=x.dataset.rf.split('|'); lists[b]=lists[b].filter(i=>i.id!==id); save(b); });
+  document.querySelectorAll('[data-rf]').forEach(x=>x.onclick=()=>{ if(!confirm('Remove this file from the list?')) return; const [b,id]=x.dataset.rf.split('|'); lists[b]=lists[b].filter(i=>i.id!==id); save(b); });
 }
 async function loadStuFiles(){
   const host=$("#stuFiles"); if(!host) return;
@@ -1582,7 +1567,7 @@ function tabMarks({students,papers}){
     if(!max||max<1) return m.innerHTML='<div class="err">Max marks must be at least 1.</div>';
     busy(true);
     try{
-      await addDoc(collection(db,'papers'),{subject:'Biology', batch:state.batch, title, date, max, published:false, scores:{}});
+      await addDoc(collection(db,'papers'),{subject:'Biology', batch:state.batch, title, date, max, published:false, ranksPublished:false, scores:{}});
       busy(false); teacherDash();
     }catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
