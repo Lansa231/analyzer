@@ -439,8 +439,13 @@ async function addRankColumn(rows) {
   if (table && !table.dataset.rk) {
     table.dataset.rk = '1';
     const trs = Array.from(table.querySelectorAll('tr'));
-    trs[0].insertAdjacentHTML('beforeend', '<th>Rank</th>');
-    trs.slice(1).forEach((tr, i) => { if (rows[i]) tr.insertAdjacentHTML('beforeend', '<td>' + rk(rows[i]) + '</td>'); });
+    // If the table already has a Rank column (stuDash draws one), don't add a second.
+    const head = trs[0];
+    const hasRankTh = head && Array.from(head.children).some(th => /rank/i.test(th.textContent||''));
+    if (!hasRankTh) {
+      head && head.insertAdjacentHTML('beforeend', '<th>Rank</th>');
+      trs.slice(1).forEach((tr, i) => { if (rows[i]) tr.insertAdjacentHTML('beforeend', '<td>' + rk(rows[i]) + '</td>'); });
+    }
   }
   body.querySelectorAll('.gb-row').forEach((row, i) => {
     const foot = row.querySelector('.gb-foot span');
