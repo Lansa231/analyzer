@@ -470,8 +470,6 @@ function bootFirebase(cfg){
           const s=await getDoc(doc(db,'students',u.uid));
           if(s.exists()){ role='student'; profile=s.data(); }
           else {
-            // Auth user exists but no profile — this shouldn't happen if signup works.
-            // Don't sign out; show a friendly message so they can retry or contact you.
             lookupErr = new Error('Your login exists but your profile is missing. Please try signing up again with a different email, or contact us.');
             try { await signOut(auth); } catch(e2){}
             role=null; profile=null;
@@ -861,7 +859,6 @@ async function signup(){
 
       try {
         await updateProfile(cred.user,{displayName:nm});
-        // IMPORTANT: verified must be false to match your Firestore rules
         await setDoc(doc(db,'students',cred.user.uid),{
           fullName:nm, nic, barcode:bc, skey:pk, gender:gen, email:em,
           mobile:mob, whatsapp:wa, school:sch, batch:bat, center:ctr,
@@ -872,7 +869,6 @@ async function signup(){
         try{ await deleteDoc(doc(db,'pending',nic)); }catch(e){}
         try{ await deleteDoc(doc(db,'pending','BC'+bc)); }catch(e){}
       } catch(writeErr){
-        // Rollback: delete the just-created auth user so the email is freed
         try { await deleteUser(cred.user); } catch(e2){ console.error('Rollback deleteUser failed:', e2); }
         signingUp=false; busy(false); $("#btn").disabled=false;
         $("#msg").innerHTML = `<div class="err">Setup failed: ${esc(friendly(writeErr))}. Your account was not created. Please try again or contact us.</div>`;
@@ -1004,7 +1000,12 @@ async function stuDash(){
 
     const rows = rowsP.map(r=>{
       const p = pct(r.m, r.p.max);
-      const barColor = p>=75?'linear-gradient(90deg,#22a06b,#4ade80)':p>=55?'linear-gradient(90deg,#15803d,#22a06b)':p>=35?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#b91c1c,#f87171)';
+      // Distinct, high-contrast colors based on the grade
+      const barColor = p>=75?'linear-gradient(90deg,#10b981,#34d399)': // A - Bright Green
+                       p>=65?'linear-gradient(90deg,#3b82f6,#60a5fa)': // B - Blue
+                       p>=55?'linear-gradient(90deg,#f59e0b,#fbbf24)': // C - Amber
+                       p>=35?'linear-gradient(90deg,#f97316,#fb923c)': // S - Orange
+                             'linear-gradient(90deg,#ef4444,#f87171)'; // F - Red
       return `<tr>
         <td class="mono">${esc(r.p.date||'—')}</td>
         <td>${esc(r.p.title)}</td>
