@@ -409,3 +409,4 @@ main#app.wide{max-width:1280px}
     oldChartCard?.remove();   // drop the old plain chart
   });
 }
+{ const h = document.createElement('style'); h.textContent = '#ranksCard{display:none!important}'; document.head.appendChild(h); }
