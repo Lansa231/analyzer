@@ -930,15 +930,18 @@ async function stuDash(){
   const q=query(collection(db,'papers'), where('published','==',true));
   const load=async()=>{
     const snap=await getDocs(q), ps=snap.docs.map(d=>({id:d.id,...d.data()})), nic=skeyOf(profile);
-    // Fetch all marks for the papers so we can calculate ranks
-    const allMarks=await getDocs(collection(db,'marks')).catch(()=>null);
-    const mkAll = allMarks ? allMarks.docs.map(d=>d.data()) : [];
-    
-    ps.forEach(p=>{ 
-      p.scores={}; 
-      p.meta={};
-      mkAll.forEach(m=>{ if(m.pid===p.id){ p.scores[m.nic]=m.mark; p.meta[m.nic]={n:m.name,c:m.center||''}; } });
-    });
+    // For each paper: read its own "scores" field OR fall back to fetching that paper's marks document
+    await Promise.all(ps.map(async p=>{ 
+      p.scores = p.scores || {}; 
+      try{ const m=await getDoc(doc(db,'marks',p.id+'_'+nic)); if(m.exists()) p.scores[nic]=m.data().mark; }catch(e){}
+      // Also fetch all scores for rank calculation if ranks are published
+      if(p.ranksPublished){
+        try{
+          const all=await getDocs(query(collection(db,'marks'),where('pid','==',p.id)));
+          all.docs.forEach(d=>{ const md=d.data(); p.scores[md.nic]=md.mark; });
+        }catch(e){}
+      }
+    }));
     return ps; 
   };
 
@@ -961,29 +964,26 @@ async function stuDash(){
     const latest = marks[marks.length-1];
     const bestRow = rowsP[marks.indexOf(best)];
 
-    // RANKING WIDGET
+    // Rank widget
     let rankWidget = '';
-    const publishedRankings = rowsP.filter(r => r.p.ranksPublished);
-    if(publishedRankings.length > 0){
-      const lastRankedPaper = publishedRankings[publishedRankings.length - 1];
-      const allMarksInPaper = Object.values(lastRankedPaper.p.scores || {});
-      const myMark = lastRankedPaper.m;
-      const rank = 1 + allMarksInPaper.filter(v => v > myMark).length;
-      
-      if(rank <= 100){
+    const rankedPapers = rowsP.filter(r => r.p.ranksPublished);
+    if(rankedPapers.length){
+      const lastRanked = rankedPapers[rankedPapers.length - 1];
+      const scores = Object.values(lastRanked.p.scores || {});
+      const myRank = 1 + scores.filter(v => v > lastRanked.m).length;
+      if(myRank <= 100){
         rankWidget = `
           <div class="card" style="background:linear-gradient(135deg,#fef08a,#fde047);border:none;color:#422006;display:flex;align-items:center;gap:16px;padding:18px;margin-bottom:20px">
             <div style="font-size:2.5rem;line-height:1">🏆</div>
             <div>
-              <div style="font-weight:800;font-size:1.1rem;color:#422006">You ranked in the Top 100!</div>
-              <div style="font-weight:600;font-size:.92rem;margin-top:2px">Rank #${rank} — ${esc(lastRankedPaper.p.title)}</div>
+              <div style="font-weight:800;font-size:1.1rem;color:#422006">You're in the Top 100!</div>
+              <div style="font-weight:600;font-size:.92rem;margin-top:2px">Rank #${myRank} — ${esc(lastRanked.p.title)}</div>
             </div>
           </div>`;
       }
     }
 
-    const bestCard = `
-      ${rankWidget}
+    const bestCard = `${rankWidget}
       <div class="ma-grid" style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:22px;align-items:stretch">
         <div class="card" style="margin:0;display:flex;flex-direction:column">
           <h2 style="margin:0 0 14px">📈 Progress — ${esc(state.stuSubject)}</h2>
@@ -1031,16 +1031,16 @@ async function stuDash(){
 
     const rows = rowsP.map(r=>{
       const p = pct(r.m, r.p.max);
-      const barColor = p>=75?'linear-gradient(90deg,#10b981,#34d399)': 
-                       p>=65?'linear-gradient(90deg,#3b82f6,#60a5fa)': 
-                       p>=55?'linear-gradient(90deg,#f59e0b,#fbbf24)': 
-                       p>=35?'linear-gradient(90deg,#f97316,#fb923c)': 
-                             'linear-gradient(90deg,#ef4444,#f87171)'; 
-      
+      const barColor = p>=75?'linear-gradient(90deg,#10b981,#34d399)':
+                       p>=65?'linear-gradient(90deg,#3b82f6,#60a5fa)':
+                       p>=55?'linear-gradient(90deg,#f59e0b,#fbbf24)':
+                       p>=35?'linear-gradient(90deg,#f97316,#fb923c)':
+                             'linear-gradient(90deg,#ef4444,#f87171)';
+
       let rankCol = '—';
       if(r.p.ranksPublished){
-        const allMarks = Object.values(r.p.scores || {});
-        const rank = 1 + allMarks.filter(v => v > r.m).length;
+        const all = Object.values(r.p.scores || {});
+        const rank = 1 + all.filter(v => v > r.m).length;
         rankCol = `<b>#${rank}</b>`;
       }
 
