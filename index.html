@@ -305,6 +305,16 @@ canvas{max-height:320px;}
 .lp-foot .foot-legal b{color:var(--brand)}
 @media(max-width:760px){.lp .teacher-grid{grid-template-columns:1fr;gap:24px}.lp-foot .foot-grid{grid-template-columns:1fr;gap:22px}.lp-hero-in{padding:54px 22px 60px}.lp-hero-stats{gap:22px}}
 @media(max-width:520px){.lp .map-list{grid-template-columns:repeat(2,1fr)}.lp .map-canvas{min-height:340px}}
+  /* Full-bleed hero — no side margins on landing */
+.lp-hero{margin-left:calc(50% - 50vw) !important;margin-right:calc(50% - 50vw) !important;padding-left:calc(50vw - 50%) !important;padding-right:calc(50vw - 50%) !important}
+.lp-hero-in{padding-left:40px;padding-right:40px}
+@media(max-width:760px){.lp-hero-in{padding-left:22px;padding-right:22px}}
+
+/* Softer overlay so the photo shows through — remove or reduce these numbers */
+.lp-hero-bg{background:
+  linear-gradient(105deg,rgba(6,42,24,.28) 0%,rgba(6,42,24,.42) 62%,rgba(6,42,24,.58) 100%),
+  url('hero-photo.jpg') center/cover no-repeat,
+  linear-gradient(135deg,#0c4a27,#15803d 55%,#22a06b)}
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>">
 </head>
@@ -558,10 +568,11 @@ function landing(){
         <div class="lp-hero-badge">🌿 A/L Biology · Theory &amp; Revision</div>
         <h1>Master Biology.<br><em>Track every paper</em>, watch yourself improve.</h1>
         <p class="lead">The same Biology class that built doctors — now with a marks portal. Your teacher publishes results paper-by-paper, so you can see exactly how you're growing, from your phone or computer.</p>
-        <div class="lp-hero-cta">
-     <a class="btn btn-gold btn-lg" href="#/login">🎓 Student Login</a>
-<a class="btn btn-on-dark btn-lg" href="#/signup">Sign Up</a>
-        </div>
+   <div class="lp-hero-cta">
+  <a class="btn btn-gold btn-lg" href="#/login">🎓 Student Login</a>
+  <a class="btn btn-on-dark btn-lg" href="#/signup">Sign Up</a>
+  <a class="btn btn-on-dark btn-lg" href="#passages">📚 Past Papers & Marking Schemes</a>
+</div>
         <div class="lp-hero-stats">
           <div><strong>3</strong><span>Class locations</span></div>
           <div><strong>17</strong><span>Paper centers</span></div>
@@ -699,9 +710,44 @@ function landing(){
         </div>
       </div>
     </section>
+<section id="passages">
+  <div class="kicker"><span class="idx">05</span><span class="lbl">Past Papers · Marking Schemes</span></div>
+  <h2 class="sec">Practice with <em>past papers</em></h2>
+  <p class="sec-sub">Download past papers and official marking schemes for your batch — organised by year and paper type. Log in to your student portal to access the full library for your batch.</p>
 
+  <div class="grid-feat">
+    <div class="feat">
+      <div class="fic">📄</div>
+      <h3>2026 Theory Papers</h3>
+      <p>All theory papers for the 2026 batch with full marking schemes. Available in the student portal after login.</p>
+    </div>
+    <div class="feat">
+      <div class="fic">📄</div>
+      <h3>2027 Theory Papers</h3>
+      <p>All theory papers for the 2027 batch with full marking schemes. Available in the student portal after login.</p>
+    </div>
+    <div class="feat">
+      <div class="fic">📄</div>
+      <h3>2026 Revision Papers</h3>
+      <p>Revision papers and answer keys for the 2026 batch. Available in the student portal after login.</p>
+    </div>
+    <div class="feat">
+      <div class="fic">📄</div>
+      <h3>2028 Theory Papers</h3>
+      <p>Newly added theory papers for the 2028 batch. Available in the student portal after login.</p>
+    </div>
+  </div>
+
+  <div style="margin-top:28px;background:var(--brand-soft);border:1px solid var(--line);border-radius:var(--radius);padding:22px 26px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap">
+    <div>
+      <b style="font-size:1.05rem;color:var(--ink)">🔒 Files are in the Student Portal</b>
+      <p style="margin:6px 0 0;color:var(--muted);font-size:.9rem">Log in to access every past paper, marking scheme and picture guide for your batch.</p>
+    </div>
+    <a class="btn btn-gold" href="#/login">🎓 Log in to view →</a>
+  </div>
+</section>
     <section id="contact">
-      <div class="kicker"><span class="idx">05</span><span class="lbl">Contact Us</span></div>
+      <div class="kicker"><span class="idx">06</span><span class="lbl">Contact Us</span></div>
       <h2 class="sec">Get in <em>touch</em></h2>
       <p class="sec-sub">Questions about the class, your marks, or signing up? Reach out any way you prefer.</p>
       <div class="contact-grid">
@@ -906,12 +952,21 @@ function forgot(){
 async function stuDash(){
   if(!profile) return;
   try{ const f=await getDoc(doc(db,'students',user.uid)); if(f.exists()) profile=f.data(); }catch(e){}
+
+  const firstName = (profile.fullName||'Student').split(' ')[0];
+
   app.innerHTML = `
-    <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-      <div><b style="font-size:1.05rem">🎓 ${esc(profile.fullName)}</b> <span class="pill brand">Student</span> ${profile.verified?'<span class="vbadge">✔ Verified</span>':'<span class="sub" style="display:inline">· pending verification</span>'}
-        <div class="sub" style="margin:2px 0 0">${esc(profile.batch||BATCHES[0])}${profile.center?' · '+esc(profile.center):''}${profile.school?' · '+esc(profile.school):''}</div></div>
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;padding:20px 24px;background:linear-gradient(120deg,var(--brand),var(--brand2));border:none;color:#fff">
+      <div>
+        <div style="font-size:.85rem;opacity:.9;font-weight:600">Welcome back 👋</div>
+        <h2 style="color:#fff;margin:4px 0 2px;font-size:1.5rem;letter-spacing:-.02em">Hello, ${esc(firstName)}</h2>
+        <div style="font-size:.85rem;opacity:.9">${esc(profile.batch||BATCHES[0])}${profile.center?' · '+esc(profile.center):''}${profile.school?' · '+esc(profile.school):''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${profile.verified?'<span style="background:rgba(255,255,255,.2);padding:6px 12px;border-radius:999px;font-weight:700;font-size:.78rem">✔ Verified</span>':'<span style="background:rgba(255,255,255,.15);padding:6px 12px;border-radius:999px;font-weight:700;font-size:.78rem">Pending verification</span>'}
+      </div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 12px"><button class="btn btn-ghost btn-sm" id="editMe">✏️ Edit my details</button><button class="btn btn-ghost btn-sm" id="reqCh">🔁 Change center / batch</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 14px"><button class="btn btn-ghost btn-sm" id="editMe">✏️ Edit my details</button><button class="btn btn-ghost btn-sm" id="reqCh">🔁 Change center / batch</button></div>
     <div id="editBox"></div>
     <div id="stuBody"><div class="card"><p class="sub">Loading your marks…</p></div></div>`;
   $("#editMe").onclick=()=>studentEditCard($("#editBox"),profile,false,()=>stuDash());
@@ -923,6 +978,7 @@ async function stuDash(){
     const snap=await getDocs(q), ps=snap.docs.map(d=>({id:d.id,...d.data()})), nic=skeyOf(profile);
     await Promise.all(ps.map(async p=>{ p.scores={}; try{ const m=await getDoc(doc(db,'marks',p.id+'_'+nic)); if(m.exists()) p.scores[nic]=m.data().mark; }catch(e){} }));
     return ps; };
+
   const renderBody=papers=>{
     const rowsP=papers
       .filter(p=>(p.batch||BATCHES[0])===(profile.batch||BATCHES[0]))
@@ -930,30 +986,118 @@ async function stuDash(){
       .map(p=>({p, m:p.scores?.[skeyOf(profile)]}))
       .filter(r=>r.m!=null)
       .sort((a,b)=>String(a.p.date||'').localeCompare(String(b.p.date||'')));
-    let inner='';
+
     if(!rowsP.length){
-      inner=`<div class="card"><p class="sub">📭 No published marks yet${state.stuSubject!=='All'?' for '+esc(state.stuSubject):''}. Your teacher will publish them here after each paper.</p></div>`;
-    }else{
-      inner=`<div class="card"><h2>📈 Progress — ${esc(state.stuSubject)}</h2><canvas id="c1"></canvas></div>
-      <div class="card"><h2>📄 Paper-by-Paper Marks</h2><div class="tbl-wrap"><table>
-        <tr><th>Date</th><th>Subject</th><th>Paper</th><th>Marks</th><th>%</th><th>Grade</th></tr>
-        ${rowsP.map(r=>{const p=pct(r.m,r.p.max);return `<tr><td class="mono">${esc(r.p.date||'—')}</td><td>${esc(r.p.subject)}</td><td>${esc(r.p.title)}</td>
-          <td class="mono"><b>${r.m}</b> / ${r.p.max}</td><td><span class="pill ${gCls(p)}">${p}%</span></td>
-          <td><span class="pill ${gCls(p)}">${grade(p)}</span></td></tr>`;}).join('')}
-      </table></div></div>`;
+      $("#stuBody").innerHTML=`<div class="card"><p class="sub">📭 No published marks yet${state.stuSubject!=='All'?' for '+esc(state.stuSubject):''}. Your teacher will publish them here after each paper.</p></div>`;
+      return;
     }
-    $("#stuBody").innerHTML=inner;
-    if(rowsP.length){
-      charts.s1=new Chart($("#c1"),{type:'line',data:{labels:rowsP.map(r=>r.p.title),
-        datasets:[{label:'My score %',data:rowsP.map(r=>pct(r.m,r.p.max)),
-          borderColor:'#15803d', backgroundColor:'rgba(21,128,61,.12)', fill:true, tension:.35, pointRadius:5, pointBackgroundColor:'#22a06b'}]},
-        options:{scales:{y:{min:0,max:100,title:{display:true,text:'Percentage'}}},
-          plugins:{legend:{display:true},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y}%`}}}}});
-    }
+
+    // Compute the stats
+    const marks = rowsP.map(r=>pct(r.m, r.p.max));
+    const best = Math.max(...marks);
+    const avg = Math.round(marks.reduce((a,b)=>a+b,0)/marks.length*10)/10;
+    const latest = marks[marks.length-1];
+    const bestRow = rowsP[marks.indexOf(best)];
+
+    // Build the "best mark with trophy" card + progress bars
+    const bestCard = `
+      <div class="ma-grid" style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:22px;align-items:stretch">
+        <div class="card" style="margin:0;display:flex;flex-direction:column">
+          <h2 style="margin:0 0 14px">📈 Progress — ${esc(state.stuSubject)}</h2>
+          <div style="background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:16px">
+            <div class="gb-row" style="border:none;padding:0">
+              <div class="gb-head" style="display:flex;justify-content:space-between;margin-bottom:8px">
+                <span class="gb-title" style="font-weight:700;font-size:.9rem">Latest paper — ${esc(rowsP[rowsP.length-1].p.title)}</span>
+                <span class="gb-date" style="color:var(--muted);font-size:.74rem">${esc(rowsP[rowsP.length-1].p.date||'—')}</span>
+              </div>
+              <div class="gb-track" style="height:14px;border-radius:999px;background:var(--line);overflow:hidden">
+                <div style="height:100%;border-radius:999px;background:linear-gradient(90deg,var(--brand),var(--brand2));width:${latest}%"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:.76rem;color:var(--muted)">
+                <span>${rowsP[rowsP.length-1].m} / ${rowsP[rowsP.length-1].p.max} marks</span>
+                <b style="color:var(--brand)">${latest}%</b>
+              </div>
+            </div>
+          </div>
+          <canvas id="c1" style="margin-top:auto"></canvas>
+        </div>
+        <div class="card" style="margin:0;display:flex;flex-direction:column;justify-content:center;text-align:center">
+          <div class="ma-best">
+            <div class="ma-trophy" style="font-size:3.5rem;animation:maBounce 1.8s ease-in-out infinite;line-height:1;filter:drop-shadow(0 10px 18px rgba(255,190,0,.45))">🏆</div>
+            <div class="ma-best-title" style="font-weight:800;font-size:.9rem;margin-top:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Best mark</div>
+            <div class="ma-best-mark" style="font-size:1.7rem;font-weight:800;color:var(--brand);line-height:1.1">${best}%</div>
+            <div class="sub" style="margin-top:4px;font-size:.78rem">${esc(bestRow.p.title)}</div>
+            <div class="ma-mini" style="display:flex;gap:10px;margin-top:16px">
+              <div style="flex:1;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 6px">
+                <div class="n" style="font-weight:800;font-size:1.02rem;color:var(--brand)">${rowsP.length}</div>
+                <div class="l" style="font-size:.7rem;color:var(--muted);margin-top:2px">Papers sat</div>
+              </div>
+              <div style="flex:1;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 6px">
+                <div class="n" style="font-weight:800;font-size:1.02rem;color:var(--brand)">${avg}%</div>
+                <div class="l" style="font-size:.7rem;color:var(--muted);margin-top:2px">Average</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <style>
+        @keyframes maBounce{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-8px) scale(1.06)}}
+        @media (prefers-reduced-motion:reduce){.ma-trophy{animation:none!important}}
+        @media(max-width:760px){.ma-grid{grid-template-columns:1fr!important}}
+      </style>`;
+
+    // Paper-by-paper with gradient fill bars
+    const rows = rowsP.map(r=>{
+      const p = pct(r.m, r.p.max);
+      const barColor = p>=75?'linear-gradient(90deg,#22a06b,#4ade80)':p>=55?'linear-gradient(90deg,#15803d,#22a06b)':p>=35?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#b91c1c,#f87171)';
+      return `<tr>
+        <td class="mono">${esc(r.p.date||'—')}</td>
+        <td>${esc(r.p.title)}</td>
+        <td class="mono"><b>${r.m}</b> / ${r.p.max}</td>
+        <td style="min-width:140px">
+          <div class="bar-wrap" style="background:var(--line);border-radius:8px;height:8px;overflow:hidden">
+            <div class="bar" style="height:100%;border-radius:8px;width:${p}%;background:${barColor};transition:width 1s ease"></div>
+          </div>
+        </td>
+        <td><span class="pill ${gCls(p)}">${p}%</span></td>
+        <td><span class="pill ${gCls(p)}">${grade(p)}</span></td>
+      </tr>`;
+    }).join('');
+
+    $("#stuBody").innerHTML = bestCard + `
+      <div class="card" style="margin-top:20px">
+        <h2>📄 Paper-by-Paper Marks</h2>
+        <div class="tbl-wrap">
+          <table>
+            <tr><th>Date</th><th>Paper</th><th>Marks</th><th>Progress</th><th>%</th><th>Grade</th></tr>
+            ${rows}
+          </table>
+        </div>
+      </div>`;
+
+    // Draw the line chart
+    charts.s1 = new Chart($("#c1"), {
+      type:'line',
+      data:{
+        labels: rowsP.map(r=>r.p.title),
+        datasets:[{
+          label:'My score %',
+          data: rowsP.map(r=>pct(r.m, r.p.max)),
+          borderColor:'#15803d',
+          backgroundColor:'rgba(21,128,61,.12)',
+          fill:true, tension:.35, pointRadius:5, pointBackgroundColor:'#22a06b'
+        }]
+      },
+      options:{
+        scales:{ y:{ min:0, max:100, title:{display:true,text:'Percentage'} } },
+        plugins:{ legend:{display:true}, tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y}%`}} }
+      }
+    });
   };
+
   window.drawStu = () => load().then(renderBody).catch(e=>{ $("#stuBody").innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; });
-  unsubStu=onSnapshot(q, ()=>{ load().then(renderBody).catch(()=>{}); }, ()=>{});
-  const first=await load().catch(()=>[]);
+  unsubStu = onSnapshot(q, ()=>{ load().then(renderBody).catch(()=>{}); }, ()=>{});
+  const first = await load().catch(()=>[]);
   renderBody(first);
 }
 
