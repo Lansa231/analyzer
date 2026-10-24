@@ -949,10 +949,16 @@ async function stuDash(){
           const snapAll = await getDocs(query(collection(db,'marks'), where('pid','==',p.id)));
           p._all = snapAll.docs.map(d => d.data());
         } catch(e){
-          // Fallback: scan all marks and filter by doc ID prefix
+          p._all = [];
+        }
+        // Fallback when the pid query returns nothing (old marks saved without
+        // a `pid` field). Doc ids are always "pid_nic", so filter by prefix.
+        if (!p._all.length) {
           try {
             const snap2 = await getDocs(collection(db,'marks'));
-            p._all = snap2.docs.filter(d => d.id.startsWith(p.id + '_')).map(d => d.data());
+            p._all = snap2.docs
+              .filter(d => d.id.startsWith(p.id + '_'))
+              .map(d => ({ ...d.data(), pid: d.data().pid || p.id }));
           } catch(e2){}
         }
       }
@@ -1231,8 +1237,20 @@ async function teacherDash(){
   const admins={}; if(admSnap) admSnap.docs.forEach(d=>admins[d.id]=d.data());
   const requests=reqSnap?reqSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.status==='pending'?0:1)-(b.status==='pending'?0:1)):[];
   const pendReq=requests.filter(r=>r.status==='pending').length;
-  const mkAll=mkSnap.docs.map(d=>d.data());
-  papersAll.forEach(p=>{ p.scores={...(p.scores||{})}; p.meta={}; mkAll.forEach(m=>{ if(m.pid===p.id){ p.scores[m.nic]=m.mark; p.meta[m.nic]={n:m.name,c:m.center||''}; } }); });
+  const mkAll=mkSnap.docs.map(d=>({ ...d.data(), _docId:d.id }));
+  papersAll.forEach(p=>{
+    p.scores={...(p.scores||{})};
+    p.meta={};
+    mkAll.forEach(m=>{
+      // Match by explicit pid when present, otherwise fall back to the doc-id prefix
+      // so old marks saved without a `pid` field still count (needed for ranks).
+      const match = m.pid===p.id || (m.pid==null && m._docId && m._docId.startsWith(p.id+'_'));
+      if (match) {
+        p.scores[m.nic]=m.mark;
+        p.meta[m.nic]={n:m.name,c:m.center||''};
+      }
+    });
+  });
   const papers=papersAll.filter(p=>(p.batch||BATCHES[0])===state.batch);
   const rosterAll=students.map(x=>({id:skeyOf(x),uid:x.id,fullName:x.fullName,nic:skeyOf(x),realNic:String(x.nic||'').toUpperCase(),barcode:String(x.barcode||'').toUpperCase(),gender:x.gender||'',email:x.email,mobile:x.mobile,whatsapp:x.whatsapp,school:x.school,batch:x.batch||BATCHES[0],center:x.center||'',payMethod:x.payMethod,verified:!!x.verified,signedUp:true}));
   pending.forEach(x=>{ if(!rosterAll.some(r=>r.id===x.key)) rosterAll.push({id:x.key,fullName:x.fullName,nic:x.key,realNic:String(x.nic||'').toUpperCase(),barcode:String(x.barcode||'').toUpperCase(),email:x.email||'',batch:x.batch||BATCHES[0],center:x.center||'',verified:false,signedUp:false}); });
