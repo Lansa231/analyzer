@@ -466,16 +466,25 @@ function bootFirebase(cfg){
     if(u){
       try{
         const t=await getDoc(doc(db,'teachers',u.uid));
-        if(t.exists()){ role='teacher'; profile=t.data(); try{ profile.isAdmin=(await getDoc(doc(db,'admins',u.uid))).exists(); }catch(e){ profile.isAdmin=false; } }
-        else{
+        if(t.exists()){ 
+          role='teacher'; 
+          profile=t.data(); 
+          try{ profile.isAdmin=(await getDoc(doc(db,'admins',u.uid))).exists(); }catch(e){ profile.isAdmin=false; }
+        } else {
           const s=await getDoc(doc(db,'students',u.uid));
           if(s.exists()){ role='student'; profile=s.data(); }
-          else { await signOut(auth); role=null; }
+          else { 
+            // DON'T sign out silently — show error so they can contact you
+            lookupErr = new Error('We found your login but your profile is missing. Please contact the admin to fix this, then try logging in again.');
+            try { await signOut(auth); } catch(e2) {}
+          }
         }
       }catch(e){ lookupErr=e; }
     }
     try{ route(); } finally { busy(false); }
-    if(u && !role && lookupErr){ app.insertAdjacentHTML('afterbegin',`<div class="card" style="max-width:560px;margin:14px auto"><div class="err">Could not reach the server: ${esc(lookupErr.message)}</div></div>`); }
+    if(lookupErr){ 
+      app.innerHTML = `<div class="card auth-card"><div class="err">${esc(lookupErr.message)}</div><p class="sub" style="margin-top:12px"><a href="#/contact">📞 Contact us</a> · <a href="#/login">Try logging in again</a></p></div>`;
+    }
   };
   // Render landing immediately — don't wait for Firebase
   try{ route(); }catch(e){ console.error(e); }
@@ -854,17 +863,45 @@ async function signup(){
       if(nicDoc.exists()){ busy(false); $("#msg").innerHTML=`<div class="err">An account with this NIC already exists. If you want to use a new email, please contact us and ask us to delete the previous account, then sign up again.<br><a class="foot-contact" href="#/contact" style="margin-top:10px">📞 Contact us</a> &nbsp;<a href="#/login">Log in instead</a></div>`; return; }
       const bcDoc=await getDoc(doc(db,'barcodes',bc));
       if(bcDoc.exists()){ busy(false); $("#msg").innerHTML=`<div class="err">An account with this barcode already exists. If you need a new account, please contact us and ask us to delete the previous one, then sign up again.<br><a class="foot-contact" href="#/contact" style="margin-top:10px">📞 Contact us</a> &nbsp;<a href="#/login">Log in instead</a></div>`; return; }
-      let pk=nic; { const p1=await getDoc(doc(db,'pending',nic)); if(!p1.exists()){ const p2=await getDoc(doc(db,'pending','BC'+bc)); if(p2.exists()) pk='BC'+bc; } }
+      
+      let pk=nic; 
+      { 
+        const p1=await getDoc(doc(db,'pending',nic)); 
+        if(!p1.exists()){ 
+          const p2=await getDoc(doc(db,'pending','BC'+bc)); 
+          if(p2.exists()) pk='BC'+bc; 
+        } 
+      }
+      
       signingUp=true;
       const cred=await createUserWithEmailAndPassword(auth, em, pw);
-      await updateProfile(cred.user,{displayName:nm});
-      await setDoc(doc(db,'students',cred.user.uid),{fullName:nm, nic, barcode:bc, skey:pk, gender:gen, email:em, mobile:mob, whatsapp:wa, school:sch, batch:bat, center:ctr, payMethod:pay, verified:true, createdAt:serverTimestamp()});
-      await setDoc(doc(db,'nics',nic),{uid:cred.user.uid, email:em, skey:pk});
-      await setDoc(doc(db,'barcodes',bc),{uid:cred.user.uid, email:em, skey:pk});
-      try{ await deleteDoc(doc(db,'pending',nic)); }catch(e){}
-      try{ await deleteDoc(doc(db,'pending','BC'+bc)); }catch(e){}
-      signingUp=false; await authLoad(auth.currentUser); busy(false); go('#/dashboard');
-    }catch(e){ signingUp=false; busy(false); $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
+      
+      // TRY BLOCK FOR FIRESTORE WRITES — ROLLBACK IF IT FAILS
+      try {
+        await updateProfile(cred.user,{displayName:nm});
+        await setDoc(doc(db,'students',cred.user.uid),{fullName:nm, nic, barcode:bc, skey:pk, gender:gen, email:em, mobile:mob, whatsapp:wa, school:sch, batch:bat, center:ctr, payMethod:pay, verified:true, createdAt:serverTimestamp()});
+        await setDoc(doc(db,'nics',nic),{uid:cred.user.uid, email:em, skey:pk});
+        await setDoc(doc(db,'barcodes',bc),{uid:cred.user.uid, email:em, skey:pk});
+        try{ await deleteDoc(doc(db,'pending',nic)); }catch(e){}
+        try{ await deleteDoc(doc(db,'pending','BC'+bc)); }catch(e){}
+      } catch(writeErr) {
+        // ROLLBACK: delete the Auth user so they can try again
+        try { await cred.user.delete(); } catch(e2) { console.error('Rollback failed:', e2); }
+        signingUp = false;
+        busy(false);
+        $("#msg").innerHTML = `<div class="err">Account setup failed: ${esc(friendly(writeErr))}. Your account was not created. Please try again or contact us.</div>`;
+        return;
+      }
+      
+      signingUp=false; 
+      await authLoad(auth.currentUser); 
+      busy(false); 
+      go('#/dashboard');
+    }catch(e){ 
+      signingUp=false; 
+      busy(false); 
+      $("#msg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; 
+    }
   };
 }
 
