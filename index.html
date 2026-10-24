@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S.K. Wellala Biology Paper Class</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Sinhala:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -17,7 +17,7 @@
   --good:#166534; --bad:#b91c1c; --warn:#b45309;
   --good-bg:#dcf3e3; --bad-bg:#fee2e2; --warn-bg:#fef3c7; --brand-bg:#e4f4e8;
   --shadow:0 8px 28px rgba(20,80,40,.10); --radius:16px;
-  --tint-a:.20; --tint-b:.40;   /* darkness of the green overlay on photos: 0 = none, 1 = solid */
+  --tint-a:.20; --tint-b:.40;
 }
 [data-theme="dark"]{
   --bg:#0a1710; --card:#12261a; --ink:#e6f2ea; --muted:#8fb09a; --line:#1f3a2a;
@@ -26,8 +26,7 @@
   --good-bg:#12391f; --bad-bg:#4c1d1d; --warn-bg:#45320b; --brand-bg:#14532d;
   --shadow:0 8px 28px rgba(0,0,0,.4);
 }
-@font-face{font-family:'SinhalaFont';src:url('sinhala.woff2') format('woff2'),url('sinhala.ttf') format('truetype');font-display:swap}
-*{box-sizing:border-box; margin:0; padding:0; font-family:'Inter','SinhalaFont','Noto Sans Sinhala','Nirmala UI','Iskoola Pota',system-ui,sans-serif;}
+*{box-sizing:border-box; margin:0; padding:0; font-family:'Inter','Noto Sans Sinhala','Nirmala UI','Iskoola Pota',system-ui,sans-serif;}
 body{background:var(--bg); color:var(--ink); min-height:100vh; transition:background .25s, color .25s;}
 a{color:var(--brand); text-decoration:none;}
 header{position:sticky; top:0; z-index:50; background:var(--card); border-bottom:1px solid var(--line);
@@ -36,6 +35,7 @@ header{position:sticky; top:0; z-index:50; background:var(--card); border-bottom
 .logo span{background:linear-gradient(120deg,var(--brand),var(--brand2)); -webkit-background-clip:text; background-clip:text; color:transparent;}
 .hdr-actions{display:flex; gap:8px; align-items:center;}
 main{max-width:1040px; margin:0 auto; padding:24px 16px 80px;}
+main#app.landing-wide{max-width:none;padding:0}
 .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:24px; margin-bottom:20px;}
 h1{font-size:1.5rem; letter-spacing:-.02em;}
 h2{font-size:1.05rem; margin-bottom:14px;}
@@ -153,7 +153,8 @@ canvas{max-height:320px;}
 .pdfcard img,.pdfph{width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--brand-soft);display:grid;place-items:center;font-size:2.6rem}
 .pdfcard .pt{padding:8px 10px;font-weight:700;font-size:.85rem}.pdfcard .pb{display:flex;gap:6px;padding:0 10px 10px}
 </style>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>">
+
+<!-- ============ LANDING STYLES ============ -->
 <style id="landingStyles">
 .lp{max-width:1180px;margin:0 auto;padding:0 16px}
 .lp .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:12px;padding:12px 24px;font-weight:700;font-size:.92rem;cursor:pointer;font-family:inherit;transition:.2s;text-decoration:none;line-height:1.2;white-space:nowrap}
@@ -168,7 +169,7 @@ canvas{max-height:320px;}
 .lp .btn-on-dark:hover{background:rgba(255,255,255,.26)}
 .lp .btn-lg{padding:14px 30px;font-size:.98rem;border-radius:13px}
 
-.lp-hero{position:relative;overflow:hidden;border-radius:0 0 26px 26px;margin:-24px -16px 20px}
+.lp-hero{position:relative;overflow:hidden;border-radius:0 0 26px 26px;margin:0 0 20px}
 .lp-hero-bg{position:absolute;inset:0;background:
   linear-gradient(105deg,rgba(6,42,24,.34) 0%,rgba(6,42,24,.58) 62%,rgba(6,42,24,.74) 100%),
   radial-gradient(circle at 78% 28%,rgba(52,211,153,.30),transparent 55%),
@@ -301,10 +302,8 @@ canvas{max-height:320px;}
 .lp-foot .foot-legal b{color:var(--brand)}
 @media(max-width:760px){.lp .teacher-grid{grid-template-columns:1fr;gap:24px}.lp-foot .foot-grid{grid-template-columns:1fr;gap:22px}.lp-hero-in{padding:54px 22px 60px}.lp-hero-stats{gap:22px}}
 @media(max-width:520px){.lp .map-list{grid-template-columns:repeat(2,1fr)}.lp .map-canvas{min-height:340px}}
-
-/* Make #app not have extra top padding on landing so hero can go edge-to-edge */
-main#app.landing-wide{max-width:none;padding:0}
 </style>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>">
 </head>
 <body>
 
@@ -313,7 +312,7 @@ main#app.landing-wide{max-width:none;padding:0}
   <div class="hdr-actions" id="hdrActions"></div>
 </header>
 <main id="app"></main>
-<footer class="site-foot"><a class="foot-contact" href="#/contact">📞 Contact us</a><br>Site developer: <b>Tharusha Lansakara</b> · S.K. Wellala Biology Paper Class</footer>
+<footer class="site-foot" id="siteFoot"><a class="foot-contact" href="#/contact">📞 Contact us</a><br>Site developer: <b>Tharusha Lansakara</b> · S.K. Wellala Biology Paper Class</footer>
 <div id="loading"><div class="spinner"></div></div>
 
 <script src="features.js"></script>
@@ -333,7 +332,6 @@ const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>
 const pct = (a,b) => b>0 ? Math.round(a/b*1000)/10 : 0;
 const SUBJECTS = ["Biology"];
 const BATCHES = ["2027 A/L","2028 A/L"];
-// Standard A/L grade boundaries by %
 const grade = p => p>=75?'A':p>=65?'B':p>=55?'C':p>=35?'S':'F';
 const gCls  = p => p>=75?'good':p>=55?'brand':p>=35?'warn':'bad';
 const NIC_RE = /^(\d{9}[VvXx]|\d{12})$/;
@@ -367,7 +365,6 @@ let auth=null, db=null, user=null, role=null, profile=null;
 let signingUp=false, authLoad=null;
 let state = {batch:'2027 A/L',center:'All',rankPaper:null, tab:'marks', selPaper:null, stuSubject:'All', settings:null };
 let unsubStu = null;
-const AL = SUBJECTS.map(s=>({s,g:0,p:0,total:0})); // not used; kept minimal
 
 /* ============================== ROUTER ============================== */
 const routes = () => ({
@@ -380,13 +377,12 @@ function go(h){ if(location.hash===h) route(); else location.hash=h; }
 window.CA={myRanks,esc,pct,grade,gCls,SUBJECTS,BATCHES,app,go,busy,friendly,state,
   get role(){return role}, get user(){return user}, get profile(){return profile}, get db(){return db},
   fs:{doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,addDoc,collection,query,where,serverTimestamp},
-  tabs:[],                                   // add-on files push {id,label,render(ctx)} here to add teacher tabs
+  tabs:[],
   refresh:()=>route()};
 function route(){
   if(unsubStu){ unsubStu(); unsubStu=null; }
   killCharts();
   const r = location.hash.startsWith('#/student/') ? 'studentView' : (routes()[location.hash] || 'landing');
-  // guards
   if(r==='stuDash' && !(user && role==='student')) return go('#/login');
   if(r==='teacherDash' && !(user && role==='teacher')) return go('#/teacher');
   if(r==='studentView' && !(user && role==='teacher' && (profile.isAdmin||profile.verified===true))) return go('#/teacher');
@@ -395,12 +391,11 @@ function route(){
   if(r==='teacherAuth' && user && role==='teacher') return go('#/teacher/dashboard');
   renderHdr(r);
   app.classList.toggle('landing-wide', r==='landing');
+  const sf=document.getElementById('siteFoot'); if(sf) sf.style.display = (r==='landing')?'none':'';
   { const fail=e=>{ busy(false); app.innerHTML=`<div class="card" style="max-width:560px;margin:28px auto"><h2>⚠️ Something went wrong</h2><div class="err">${esc(friendly(e))}</div><p class="sub" style="margin-top:8px">Technical detail: ${esc(e&&e.message||String(e))}</p><button class="btn btn-primary" onclick="location.reload()" style="width:auto">Reload</button></div>`; };
     try{ const out=({landing,login,signup,forgot,stuDash,teacherAuth,teacherDash,studentView,contact})[r](); if(out&&out.catch) out.catch(fail); }catch(e){ fail(e); } }
-   try{ document.dispatchEvent(new CustomEvent('ca:view',{detail:{name:r}})); }catch(e){}
+  try{ document.dispatchEvent(new CustomEvent('ca:view',{detail:{name:r}})); }catch(e){}
   window.scrollTo(0,0);
-  const sf=document.getElementById('siteFoot'); if(sf) sf.style.display = (r==='landing')?'none':'';
-
 }
 function renderHdr(r){
   const h=$("#hdrActions");
@@ -415,16 +410,15 @@ function renderHdr(r){
 
 /* ============================== SETUP / BOOT ============================== */
 function parseCfg(txt){
-  // Accepts strict JSON OR the JS snippet Firebase shows: const firebaseConfig = { apiKey: "..", ... };
   let t=String(txt||'').trim();
   const a=t.indexOf('{'), b=t.lastIndexOf('}');
   if(a<0||b<a) throw new Error('no braces');
   t=t.slice(a,b+1)
-     .replace(/\/\/.*$/gm,'')                       // line comments
-     .replace(/[\u201C\u201D]/g,'"').replace(/[\u2018\u2019]/g,"'")  // smart quotes
-     .replace(/'([^']*)'/g,'"$1"')                  // single -> double quotes
-     .replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g,'$1"$2":') // quote bare keys
-     .replace(/,\s*([}\]])/g,'$1');                // trailing commas
+     .replace(/\/\/.*$/gm,'')
+     .replace(/[\u201C\u201D]/g,'"').replace(/[\u2018\u2019]/g,"'")
+     .replace(/'([^']*)'/g,'"$1"')
+     .replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g,'$1"$2":')
+     .replace(/,\s*([}\]])/g,'$1');
   return JSON.parse(t);
 }
 function setupScreen(msg){
@@ -461,9 +455,9 @@ function bootFirebase(cfg){
     try{ route(); } finally { busy(false); }
     if(u && !role && lookupErr){ app.insertAdjacentHTML('afterbegin',`<div class="card" style="max-width:560px;margin:14px auto"><div class="err">Could not reach the server: ${esc(lookupErr.message)}</div></div>`); }
   };
-  // ✅ Render the landing page right away — don't wait for Firebase
+  // Render landing immediately — don't wait for Firebase
   try{ route(); }catch(e){ console.error(e); }
-  // ✅ Only show the loader on auth-protected routes; never block the landing page
+  // Only show loader on auth-protected routes; never block the landing page
   onAuthStateChanged(auth,u=>{
     if(signingUp) return;
     const h = location.hash || '#/';
@@ -477,9 +471,6 @@ setTheme(localStorage.getItem('ca_theme')||'light');
   for(let i=0;i<16;i++){ const e=document.createElement('span'); e.textContent=E[i%E.length];
     e.style.cssText=`left:${Math.random()*96}%;font-size:${18+Math.random()*24}px;animation-duration:${22+Math.random()*26}s;animation-delay:-${Math.random()*40}s`; f.appendChild(e); }
   document.body.prepend(f); })();
-/* >>> BEFORE UPLOADING TO GITHUB: paste your Firebase config between the braces below, e.g.
-   const HARDCODED_CFG = { apiKey:"AIza...", authDomain:"...", projectId:"...", appId:"..." };
-   Leave as null to use the one-time setup screen (config then only works in that one browser). */
 const HARDCODED_CFG = {
   apiKey: "AIzaSyDMg2pV6BZZi0dFCfteM1BSx_0Ac3P43s8",
   authDomain: "marks2-dabd9.firebaseapp.com",
@@ -494,11 +485,7 @@ if(HARDCODED_CFG){ bootFirebase(HARDCODED_CFG); }
 else if(savedCfg){ try{ bootFirebase(JSON.parse(savedCfg)); }catch(e){ setupScreen('Saved config invalid — paste again.');} }
 else setupScreen();
 
-/* ============================== LANDING ============================== */
-/* ===== EDIT THE OPENING-PAGE TEXT HERE =====
-   pos: 'left' | 'center' | 'right'  (where the text sits over the photo)
-   title may use <br> for a new line. Photo file: hero-photo.jpg (same folder as index.html). */
-/* ============================== CONTACT (unchanged) ============================== */
+/* ============================== CONTACT ============================== */
 const CONTACT={
   intro:'Questions about the class, your marks or signing up? Get in touch with us.',
   phone:'+94 70 232 2744',
@@ -510,6 +497,25 @@ const CONTACT={
   facebook:'https://www.facebook.com/share/1BkdSMofkL/',
   youtube:''
 };
+function contact(){
+  const rows=[
+    ['📞','Phone',CONTACT.phone,v=>'tel:'+v.replace(/[^+\d]/g,'')],
+    ['💬','WhatsApp',CONTACT.whatsapp,v=>'https://wa.me/'+v.replace(/\D/g,'').replace(/^0/,'94')],
+    ['✉️','Email',CONTACT.email,v=>'mailto:'+v],
+    ['✈️','Official Telegram channel',CONTACT.telegram,v=>v,v=>v.replace(/^https?:\/\//,'')],
+    ['📍','Address',CONTACT.address,null],
+    ['🕒','Class hours',CONTACT.hours,null],
+    ['📘','Facebook',CONTACT.facebook,v=>v],
+    ['▶️','YouTube',CONTACT.youtube,v=>v]
+  ].filter(r=>r[2]);
+  app.innerHTML=`<div class="card" style="max-width:560px;margin:28px auto">
+    <p><a href="#" id="cBack" style="font-size:.85rem">← Back</a></p>
+    <h2 style="margin-top:6px">📞 Contact us</h2>
+    <p class="sub">${esc(CONTACT.intro)}</p>
+    ${rows.length?rows.map(([ic,l,v,f,dsp])=>`<div class="crow"><span class="ic">${ic}</span><div><div class="sub" style="margin:0">${l}</div>${f?`<a href="${esc(f(v))}" target="_blank" rel="noopener">${esc(dsp?dsp(v):v)}</a>`:`<b>${esc(v)}</b>`}</div></div>`).join(''):'<p class="sub" style="margin-top:14px">Contact details will be added soon.</p>'}
+  </div>`;
+  $("#cBack").onclick=e=>{ e.preventDefault(); history.length>1?history.back():go('#/'); };
+}
 
 /* ============================== LANDING ============================== */
 const PAPER_CENTERS = [
@@ -733,7 +739,6 @@ function landing(){
 
   </div>`;
 
-  // Wire up map interactivity
   const tip = document.getElementById('mapTip');
   const setActive = (name) => {
     document.querySelectorAll('.lp .map-dot').forEach(d => d.classList.toggle('active', d.dataset.city === name));
@@ -751,7 +756,6 @@ function landing(){
     b.addEventListener('click', () => setActive(b.dataset.city));
   });
 
-  // Smooth scroll for the in-page anchor links (Explore Classes, footer links, etc.)
   document.querySelectorAll('.lp a[href^="#"]').forEach(a => {
     a.addEventListener('click', (e) => {
       const id = a.getAttribute('href').slice(1);
@@ -760,45 +764,6 @@ function landing(){
       if(el){ e.preventDefault(); el.scrollIntoView({behavior:'smooth', block:'start'}); }
     });
   });
-}
-function contact(){
-  const rows=[
-    ['📞','Phone',CONTACT.phone,v=>'tel:'+v.replace(/[^+\d]/g,'')],
-    ['💬','WhatsApp',CONTACT.whatsapp,v=>'https://wa.me/'+v.replace(/\D/g,'').replace(/^0/,'94')],
-    ['✉️','Email',CONTACT.email,v=>'mailto:'+v],
-    ['✈️','Official Telegram channel',CONTACT.telegram,v=>v,v=>v.replace(/^https?:\/\//,'')],
-    ['📍','Address',CONTACT.address,null],
-    ['🕒','Class hours',CONTACT.hours,null],
-    ['📘','Facebook',CONTACT.facebook,v=>v],
-    ['▶️','YouTube',CONTACT.youtube,v=>v]
-  ].filter(r=>r[2]);
-  app.innerHTML=`<div class="card" style="max-width:560px;margin:28px auto">
-    <p><a href="#" id="cBack" style="font-size:.85rem">← Back</a></p>
-    <h2 style="margin-top:6px">📞 Contact us</h2>
-    <p class="sub">${esc(CONTACT.intro)}</p>
-    ${rows.length?rows.map(([ic,l,v,f,dsp])=>`<div class="crow"><span class="ic">${ic}</span><div><div class="sub" style="margin:0">${l}</div>${f?`<a href="${esc(f(v))}" target="_blank" rel="noopener">${esc(dsp?dsp(v):v)}</a>`:`<b>${esc(v)}</b>`}</div></div>`).join(''):'<p class="sub" style="margin-top:14px">Contact details will be added soon.</p>'}
-  </div>`;
-  $("#cBack").onclick=e=>{ e.preventDefault(); history.length>1?history.back():go('#/'); };
-}
-function landing(){
-  app.innerHTML = `
-  <div class="card hero photo pos-${HERO.pos}"><div class="hero-in">
-    <div class="badge">${HERO.badge}</div>
-    <h1>${HERO.title}</h1>
-    <p class="sub">${HERO.sub}</p>
-    <div class="hero-btns">
-      <button class="btn btn-primary" id="bLogin">${HERO.login}</button>
-      <button class="btn btn-ghost" id="bSignup" style="padding:13px 34px;font-size:.92rem">${HERO.signup}</button>
-    </div>
-  </div></div>
-  <div class="grid g4">
-    <div class="card stat" style="margin:0"><div style="font-size:1.6rem">📈</div><div class="lbl" style="margin-top:6px">Progress charts per subject</div></div>
-    <div class="card stat" style="margin:0"><div style="font-size:1.6rem">📄</div><div class="lbl" style="margin-top:6px">Paper-by-paper marks</div></div>
-    <div class="card stat" style="margin:0"><div style="font-size:1.6rem">🔒</div><div class="lbl" style="margin-top:6px">Private — only you see your marks</div></div>
-    <div class="card stat" style="margin:0"><div style="font-size:1.6rem">📱</div><div class="lbl" style="margin-top:6px">Works on any device</div></div>
-  </div>`;
-  $("#bLogin").onclick=()=>go('#/login');
-  $("#bSignup").onclick=()=>go('#/signup');
 }
 
 /* ============================== AUTH: STUDENT ============================== */
@@ -940,18 +905,10 @@ async function stuDash(){
     <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <div><b style="font-size:1.05rem">🎓 ${esc(profile.fullName)}</b> <span class="pill brand">Student</span> ${profile.verified?'<span class="vbadge">✔ Verified</span>':'<span class="sub" style="display:inline">· pending verification</span>'}
         <div class="sub" style="margin:2px 0 0">${esc(profile.batch||BATCHES[0])}${profile.center?' · '+esc(profile.center):''}${profile.school?' · '+esc(profile.school):''}</div></div>
-      <div style="display:none">
-        <label style="margin:0">Subject:</label>
-        <select id="subj" style="width:auto">
-          <option${state.stuSubject==='All'?' selected':''}>All</option>
-          ${SUBJECTS.map(s=>`<option${state.stuSubject===s?' selected':''}>${s}</option>`).join('')}
-        </select>
-      </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 12px"><button class="btn btn-ghost btn-sm" id="editMe">✏️ Edit my details</button><button class="btn btn-ghost btn-sm" id="reqCh">🔁 Change center / batch</button></div>
     <div id="editBox"></div>
     <div id="stuBody"><div class="card"><p class="sub">Loading your marks…</p></div></div>`;
-  $("#subj").onchange=e=>{ state.stuSubject=e.target.value; drawStu(); };
   $("#editMe").onclick=()=>studentEditCard($("#editBox"),profile,false,()=>stuDash());
   $("#reqCh").onclick=()=>studentRequestCard($("#editBox"));
   { const fd=document.createElement('div'); fd.id='stuFiles'; $("#stuBody").insertAdjacentElement('afterend',fd); loadStuFiles(); }
@@ -981,10 +938,7 @@ async function stuDash(){
       </table></div></div>`;
     }
     $("#stuBody").innerHTML=inner;
-    try{ document.dispatchEvent(new CustomEvent('ca:student-marks',{detail:{name:profile.fullName,nic:profile.nic,email:profile.email,subject:state.stuSubject,
-      rows:rowsP.map(r=>({pid:r.p.id,title:r.p.title,subject:r.p.subject,date:r.p.date,mark:r.m,max:r.p.max,pct:pct(r.m,r.p.max)}))}})); }catch(e){}
     if(rowsP.length){
-      const dark=document.documentElement.dataset.theme==='dark';
       charts.s1=new Chart($("#c1"),{type:'line',data:{labels:rowsP.map(r=>r.p.title),
         datasets:[{label:'My score %',data:rowsP.map(r=>pct(r.m,r.p.max)),
           borderColor:'#15803d', backgroundColor:'rgba(21,128,61,.12)', fill:true, tension:.35, pointRadius:5, pointBackgroundColor:'#22a06b'}]},
@@ -1059,7 +1013,6 @@ function teacherAuth(){
 }
 
 /* ============================== TEACHER DASHBOARD ============================== */
-/* ---- Clipart faces + ranking marquee ---- */
 const FACES=['😀','😎','🤓','😊','🙂','😄','🧐','😇','🤩','😺','🦊','🐼','🐯','🐨','🦉','🐸'];
 const FACE_BG=['#fde68a','#bfdbfe','#fbcfe8','#bbf7d0','#ddd6fe','#fed7aa','#a5f3fc','#fecaca'];
 function faceOf(id){ let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0))>>>0; return {e:FACES[h%FACES.length], bg:FACE_BG[(h>>3)%FACE_BG.length]}; }
@@ -1072,10 +1025,8 @@ function rankMarquee(students,papers){
     return `<div class="marq-item"><span class="face" style="background:${f.bg}">${f.e}</span><span><b>${medal(x.rank)} <a class="nl" href="#/student/${encodeURIComponent(x.s.nic)}">${esc(x.s.fullName)}</a></b><small>${x.m}/${paper.max} · ${x.pct}%</small></span></div>`; }).join('');
   return `<div class="marq"><div class="marq-h">🏆 ${esc(paper.title).toUpperCase()} — RANKINGS</div><div class="marq-track" style="animation-duration:${Math.max(25,r.length*4)}s">${items}${items}</div></div>`;
 }
-
-/* ---- Teacher profile (shown once after signup, editable later) ---- */
 function teacherProfile(){
-  const p=profile||{}, have=p.subjects||[];
+  const p=profile||{};
   app.innerHTML=`<div class="card auth-card" style="max-width:560px">
     <h2>👩‍🏫 ${p.profileDone?'Edit your profile':'Complete your details'}</h2>
     <p class="sub">${p.profileDone?'Update your instructor details.':'One last step before you start entering marks.'}</p>
@@ -1083,21 +1034,16 @@ function teacherProfile(){
     <label>Phone Number</label><input id="pp" type="tel" placeholder="07X XXX XXXX" value="${esc(p.phone||'')}">
     <label>Institute / School</label><input id="pi" placeholder="e.g. ABC Tuition Class" value="${esc(p.institute||'')}">
     <label>Attended Class</label><input id="pc" placeholder="e.g. 2027 A/L Biology" value="${esc(p.className||'')}">
-    <label style="display:none">Subjects you teach</label>
-    <div style="display:none">${SUBJECTS.map(x=>`<label class="chk"><input type="checkbox" class="psub" value="${x}" checked>${x}</label>`).join('')}</div>
     <button class="btn btn-primary" id="psave" style="margin-top:12px">Save & Continue</button>
     <div id="pmsg"></div></div>`;
   $("#psave").onclick=async()=>{
-    const d={fullName:$("#pn").value.trim(), phone:$("#pp").value.trim(), institute:$("#pi").value.trim(),
-      className:$("#pc").value.trim(),
-      subjects:[...document.querySelectorAll('.psub:checked')].map(c=>c.value)};
+    const d={fullName:$("#pn").value.trim(), phone:$("#pp").value.trim(), institute:$("#pi").value.trim(), className:$("#pc").value.trim(), subjects:['Biology']};
     if(d.fullName.length<3||!d.phone||!d.institute) return $("#pmsg").innerHTML='<div class="err">Please fill in your name, phone and institute.</div>';
     busy(true);
     try{ d.profileDone=true; await updateDoc(doc(db,'teachers',user.uid),d); profile={...profile,...d}; busy(false); teacherDash(); }
     catch(e){ busy(false); $("#pmsg").innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
 }
-
 async function teacherDash(){
   if(!profile) return;
   if(!profile.isAdmin && profile.verified!==true){
@@ -1172,8 +1118,6 @@ async function teacherDash(){
   else (tabs[state.tab]||tabStudents)(ctx);
   try{ document.dispatchEvent(new CustomEvent('ca:teacher-view',{detail:{tab:state.tab,batch:state.batch,adm}})); }catch(e){}
 }
-
-/* ---- Student profile page (teacher / developer) ---- */
 async function studentView(){
   const nic=decodeURIComponent(location.hash.slice('#/student/'.length)).toUpperCase(), adm=!!profile.isAdmin;
   const back='<p><a href="#/teacher/dashboard">← Back to dashboard</a></p>';
@@ -1204,7 +1148,6 @@ async function studentView(){
     ${rows.map(r=>`<tr><td class="mono">${esc(r.p.date||'—')}</td><td>${esc(r.p.title)}</td><td class="mono"><b>${r.m}</b> / ${r.p.max}</td><td><span class="pill ${gCls(r.pc)}">${r.pc}%</span></td><td><span class="pill ${gCls(r.pc)}">${grade(r.pc)}</span></td><td>${r.rank} / ${r.n}</td><td>${r.p.published?'Published':'Hidden'}</td></tr>`).join('')}</table></div></div>`
     :'<div class="card"><p class="sub">No marks entered for this student yet.</p></div>'}`;
     if(rows.length) charts.sv=new Chart($("#svC"),{type:'line',data:{labels:rows.map(r=>r.p.title),datasets:[{label:'Score %',data:rows.map(r=>r.pc),borderColor:'#15803d',backgroundColor:'rgba(21,128,61,.12)',fill:true,tension:.35,pointRadius:5,pointBackgroundColor:'#22a06b'}]},options:{scales:{y:{min:0,max:100}}}});
-       try{ document.dispatchEvent(new CustomEvent('ca:student-view-marks',{detail:{nic, rows:rows.map(r=>({pid:r.p.id,title:r.p.title,date:r.p.date,mark:r.m,max:r.p.max,pct:r.pc}))}})); }catch(e){}
     if($("#svEdit")) $("#svEdit").onclick=()=>studentEditCard($("#svEditBox"),s,true,()=>studentView());
     if($("#svVer")) $("#svVer").onclick=async()=>{ busy(true); await updateDoc(doc(db,'students',s.id),{verified:!s.verified}); busy(false); studentView(); };
     $("#svDel").onclick=async()=>{
@@ -1213,7 +1156,7 @@ async function studentView(){
       try{
         for(const d of papersAll){ await deleteDoc(doc(db,'marks',d.id+'_'+nic)).catch(()=>{}); }
         if(s.signedUp) await deleteDoc(doc(db,'students',s.id));
-                if(s.signedUp && adm) await deleteAuthUser(s.id).catch(()=>{});
+        if(s.signedUp && adm) await deleteAuthUser(s.id).catch(()=>{});
         if(s.signedUp){ if(s.nic) await deleteDoc(doc(db,'nics',s.nic)).catch(()=>{}); if(s.barcode) await deleteDoc(doc(db,'barcodes',s.barcode)).catch(()=>{}); }
         await deleteDoc(doc(db,'pending',nic)).catch(()=>{});
         busy(false); go('#/teacher/dashboard');
@@ -1221,13 +1164,10 @@ async function studentView(){
     };
   }catch(e){ app.innerHTML=`${back}<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; }
 }
-
-/* ---- Students tab ---- */
 function tabStudents({roster,rosterAll}){
   const adm=profile.isAdmin, L=state.lists;
   const opt=(a,sel)=>a.map(x=>`<option${x===sel?' selected':''}>${esc(x)}</option>`).join('');
-  const vb=s=>'';
-  const row=s=>`<tr><td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b>${vb(s)}${s.signedUp?'':' <span class="sub">(not signed up)</span>'}</td><td class="mono">${esc(s.realNic||'—')}</td><td class="mono">${esc(s.barcode||'—')}</td><td>${esc(s.batch)}</td><td>${esc(s.center||'—')}</td>
+  const row=s=>`<tr><td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b>${s.signedUp?'':' <span class="sub">(not signed up)</span>'}</td><td class="mono">${esc(s.realNic||'—')}</td><td class="mono">${esc(s.barcode||'—')}</td><td>${esc(s.batch)}</td><td>${esc(s.center||'—')}</td>
     <td>${esc(s.mobile||'—')}${s.whatsapp?`<br><span class="sub" style="margin:0">WA ${esc(s.whatsapp)}</span>`:''}</td><td>${esc(s.school||'—')}</td><td>${esc(s.payMethod||'—')}</td>
     <td style="text-align:right;white-space:nowrap">${adm&&s.signedUp?`<button class="btn btn-ghost btn-sm" data-ver="${s.uid}" data-v="${s.verified?1:0}">${s.verified?'Unverify':'Verify'}</button> `:''}
     ${s.signedUp?`<button class="btn btn-ghost btn-sm" data-edit="${s.uid}" data-name="${esc(s.fullName)}">Edit</button> `:''}
@@ -1256,7 +1196,7 @@ function tabStudents({roster,rosterAll}){
         const nic=b.dataset.rm, ps=await getDocs(collection(db,'papers'));
         for(const d of ps.docs){ await deleteDoc(doc(db,'marks',d.id+'_'+nic)).catch(()=>{}); }
         if(b.dataset.uid) await deleteDoc(doc(db,'students',b.dataset.uid));
-                if(b.dataset.uid && profile.isAdmin) await deleteAuthUser(b.dataset.uid).catch(()=>{});
+        if(b.dataset.uid && profile.isAdmin) await deleteAuthUser(b.dataset.uid).catch(()=>{});
         if(b.dataset.rnic) await deleteDoc(doc(db,'nics',b.dataset.rnic)).catch(()=>{}); if(b.dataset.rbc) await deleteDoc(doc(db,'barcodes',b.dataset.rbc)).catch(()=>{}); await deleteDoc(doc(db,'pending',nic)).catch(()=>{});
         busy(false); teacherDash();
       }catch(e){ busy(false); alert(friendly(e)); } });
@@ -1282,14 +1222,11 @@ function tabStudents({roster,rosterAll}){
     }catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
 }
-
-/* ---- Rankings tab (paper by paper) ---- */
 function paperRanks(students,paper){
   const rows=students.map(s=>({s,m:paper.scores?.[s.id]})).filter(x=>x.m!=null).sort((a,b)=>b.m-a.m);
   let rk=0,prev=null; rows.forEach((x,i)=>{ if(x.m!==prev){rk=i+1;prev=x.m;} x.rank=rk; x.pct=pct(x.m,paper.max); });
   return rows;
 }
-/* ---- shared helpers for rankings / analytics (built from the marks records, so all centers are included) ---- */
 const batchKey=b=>String(b).split(' ')[0];
 const avgOf=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length*10)/10:null;
 const GRADE_LEGEND='A 75+ · B 65–74 · C 55–64 · S 35–54 · F below 35';
@@ -1308,8 +1245,6 @@ function studentsFromMarks(papers){
 function rankRows(rows){ rows.sort((a,b)=>b.v-a.v); let rk=0,pv=null; rows.forEach((x,i)=>{ if(x.v!==pv){rk=i+1;pv=x.v;} x.rank=rk; }); return rows; }
 const canOpen=c=>!!profile.isAdmin||(c||'')===(profile.center||'');
 const nameLink=(nic,name,c)=>canOpen(c==='—'?'':c)?`<a class="nl" href="#/student/${encodeURIComponent(nic)}">${esc(name)}</a>`:esc(name);
-
-/* ---- Rankings tab: by paper or overall, all centers together or center by center ---- */
 function tabRanks({papers}){
   const view=(state.rkView==='overall'||papers.some(p=>p.id===state.rkView))?state.rkView:(papers[0]?.id||'overall');
   state.rkView=view; if(view!=='overall') state.rankPaper=view;
@@ -1332,8 +1267,6 @@ function tabRanks({papers}){
     ${body}</div>`;
   if($("#rkV")){ $("#rkV").onchange=e=>{ state.rkView=e.target.value; teacherDash(); }; $("#rkG").onchange=e=>{ state.rkGroup=e.target.value; teacherDash(); }; }
 }
-
-/* ---- Edit student details (student: own contact info; developer: everything) ---- */
 async function moveMarksCenter(nic,center){
   const q=await getDocs(query(collection(db,'marks'),where('nic','==',nic)));
   for(const d of q.docs) await updateDoc(d.ref,{center});
@@ -1349,7 +1282,7 @@ async function studentEditCard(host,s,admin,onDone){
     <label>Payment method</label><select id="ef_p"><option value="">—</option>${O(L.payMethods,s.payMethod)}</select>
     ${admin?`<label>Center</label><select id="ef_c"><option value="">—</option>${O(L.centers,s.center)}</select>
       <label>Batch</label><select id="ef_b">${BATCHES.map(b=>`<option${b===(s.batch||BATCHES[0])?' selected':''}>${b}</option>`).join('')}</select>`
-    :`<p class="sub" style="margin-top:10px">🔒 Your NIC (<b>${esc(s.nic)}</b>) and email (<b>${esc(s.email)}</b>) can't be changed here. To use a different NIC or email, log out and create a new account. If that NIC is already registered, <a href="#/contact">contact us</a> and ask us to delete the previous account first.</p>`}
+    :`<p class="sub" style="margin-top:10px">🔒 Your NIC (<b>${esc(s.nic)}</b>) and email (<b>${esc(s.email)}</b>) can't be changed here.</p>`}
     <div class="row" style="margin-top:12px"><button class="btn btn-primary" id="ef_save" style="width:auto">Save</button><button class="btn btn-ghost" id="ef_cancel" style="width:auto">Cancel</button></div><div id="ef_msg"></div></div>`;
   $("#ef_cancel").onclick=()=>{ host.innerHTML=''; };
   $("#ef_save").onclick=async()=>{
@@ -1390,8 +1323,6 @@ async function studentRequestCard(host){
     }catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
 }
-
-/* ---- Developer: all teachers (nickname, verify, make developer) ---- */
 function tabTeachers({teachers,admins}){
   const me_=user.uid;
   $("#tabBody").innerHTML=`<div class="card"><h2>🧑‍🏫 All teachers (${teachers.length})</h2>
@@ -1409,11 +1340,9 @@ function tabTeachers({teachers,admins}){
   document.querySelectorAll('[data-tv]').forEach(b=>b.onclick=async()=>{ busy(true); await updateDoc(doc(db,'teachers',b.dataset.tv),{verified:b.dataset.v!=='1'}); busy(false); teacherDash(); });
   document.querySelectorAll('[data-nick]').forEach(b=>b.onclick=async()=>{ const n=prompt('Nickname for this teacher (leave empty to clear):',b.dataset.cur); if(n===null) return; busy(true); try{ await updateDoc(doc(db,'teachers',b.dataset.nick),{nickname:n.trim()}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
   document.querySelectorAll('[data-promote]').forEach(b=>b.onclick=async()=>{ if(!confirm('Make this teacher a developer? They will be able to see everything and manage the site.')) return; busy(true); try{ await setDoc(doc(db,'admins',b.dataset.promote),{promotedBy:user.uid,at:serverTimestamp()}); await updateDoc(doc(db,'teachers',b.dataset.promote),{verified:true}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
-    document.querySelectorAll('[data-rmt]').forEach(b=>b.onclick=async()=>{ if(!confirm('Remove this teacher? Their login will also be deleted.')) return; busy(true); try{ await deleteDoc(doc(db,'teachers',b.dataset.rmt)); await deleteAuthUser(b.dataset.rmt).catch(()=>{}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
+  document.querySelectorAll('[data-rmt]').forEach(b=>b.onclick=async()=>{ if(!confirm('Remove this teacher? Their login will also be deleted.')) return; busy(true); try{ await deleteDoc(doc(db,'teachers',b.dataset.rmt)); await deleteAuthUser(b.dataset.rmt).catch(()=>{}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
   document.querySelectorAll('[data-demote]').forEach(b=>b.onclick=async()=>{ if(!confirm('Remove developer access from this person?')) return; busy(true); try{ await deleteDoc(doc(db,'admins',b.dataset.demote)); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
 }
-
-/* ---- Developer: center / batch change requests ---- */
 function tabRequests({requests}){
   const pend=requests.filter(r=>r.status==='pending');
   $("#tabBody").innerHTML=`<div class="card"><h2>📨 Change requests (${pend.length} pending)</h2>
@@ -1426,8 +1355,6 @@ function tabRequests({requests}){
     catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
   document.querySelectorAll('[data-rj]').forEach(b=>b.onclick=async()=>{ busy(true); try{ await updateDoc(doc(db,'changeRequests',b.dataset.rj),{status:'rejected'}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
 }
-
-/* ---- Marking PDFs (links to Google Drive files, listed per batch) ---- */
 const driveId=u=>{ const m=String(u).match(/\/d\/([\w-]+)/)||String(u).match(/[?&]id=([\w-]+)/); return m?m[1]:null; };
 const thumbImg=id=>`<img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'pdfph',textContent:'📄'}))">`;
 const fileView=id=>`https://drive.google.com/file/d/${id}/view`, fileDl=id=>`https://drive.google.com/uc?export=download&id=${id}`;
@@ -1437,7 +1364,7 @@ async function tabFiles(){
   const lists={}; BATCHES.forEach((b,i)=>lists[b]=docs[i]?.exists()?(docs[i].data().items||[]):[]);
   const save=async(b)=>{ busy(true); try{ await setDoc(doc(db,'fileLists',batchKey(b)),{items:lists[b]}); }catch(e){ alert(friendly(e)); } busy(false); tabFiles(); };
   $("#tabBody").innerHTML=`<div class="card"><h2>📚 Add a marking PDF</h2>
-    <p class="sub" style="margin:0 0 6px">1) Upload the PDF to Google Drive. 2) Share it as <b>Anyone with the link → Viewer</b>. 3) Paste the link here. Students of the chosen batch see it with a thumbnail and a download button.</p>
+    <p class="sub" style="margin:0 0 6px">1) Upload the PDF to Google Drive. 2) Share it as <b>Anyone with the link → Viewer</b>. 3) Paste the link here.</p>
     <div class="row"><div><label>Batch</label><select id="fb">${BATCHES.map(b=>`<option${b===state.batch?' selected':''}>${b}</option>`).join('')}</select></div>
     <div><label>Title</label><input id="ft" placeholder="e.g. Paper 3 — Marking scheme"></div>
     <div><label>Google Drive link</label><input id="fl" placeholder="https://drive.google.com/file/d/…"></div>
@@ -1460,8 +1387,6 @@ async function loadStuFiles(){
     host.innerHTML=`<div class="card"><h2>📚 Marking schemes &amp; files</h2><div class="pdfgrid">${items.slice().reverse().map(it=>`<div class="pdfcard"><a href="${fileView(it.fileId)}" target="_blank" rel="noopener">${thumbImg(it.fileId)}</a><div class="pt">${esc(it.title)}</div><div class="pb"><a class="btn btn-primary btn-sm" href="${fileDl(it.fileId)}" target="_blank" rel="noopener" style="width:auto">⬇ Download</a></div></div>`).join('')}</div></div>`;
   }catch(e){ host.innerHTML=''; }
 }
-
-/* ---- Developer: exam centers & payment methods ---- */
 function tabAdmin(){
   const L=state.lists;
   const block=(k,title,ph)=>`<div class="card"><h2>${title}</h2><div class="row"><div><input id="in_${k}" placeholder="${ph}"></div>
@@ -1472,8 +1397,6 @@ function tabAdmin(){
   document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{ const k=b.dataset.add, v=$("#in_"+k).value.trim(); if(!v||L[k].includes(v)) return; L[k]=[...L[k],v]; save(k); });
   document.querySelectorAll('[data-rmv]').forEach(b=>b.onclick=()=>{ const [k,i]=b.dataset.rmv.split(':'); L[k]=L[k].filter((_,j)=>j!==+i); save(k); });
 }
-
-/* ---- All Marks tab: every center, sortable ---- */
 function tabAllMarks({papers,rosterAll}){
   const adm=!!profile.isAdmin, mine=profile.center||'';
   const sel=papers.find(p=>p.id===state.amPaper)||papers[0]||null; if(sel) state.amPaper=sel.id;
@@ -1495,8 +1418,6 @@ function tabAllMarks({papers,rosterAll}){
     ${rows.length?`<div class="tbl-wrap"><table><tr><th>Rank</th><th>Student</th><th>NIC</th><th>Center</th><th>Marks</th><th>%</th></tr>${body}</table></div>`:(sel?'<p class="sub">No marks entered for this paper yet.</p>':'')}</div>`;
   if($("#amP")){ $("#amP").onchange=e=>{ state.amPaper=e.target.value; teacherDash(); }; $("#amS").onchange=e=>{ state.amSort=e.target.value; teacherDash(); }; }
 }
-
-/* ---- Marks tab ---- */
 function tabMarks({students,papers}){
   const sel = papers.find(p=>p.id===state.selPaper) || papers[0] || null;
   if(sel) state.selPaper=sel.id;
@@ -1504,7 +1425,6 @@ function tabMarks({students,papers}){
   ${profile.isAdmin?`<div class="card">
     <h2>Create Paper / Exam</h2>
     <div class="row">
-      <div style="display:none"><label>Subject</label><select id="cpSubj">${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>
       <div><label>Paper title</label><input id="cpTitle" placeholder="e.g. Paper 1 — MCQ"></div>
       <div><label>Date</label><input id="cpDate" type="date"></div>
       <div><label>Max marks</label><input id="cpMax" type="number" value="100" min="1"></div>
@@ -1524,16 +1444,12 @@ function tabMarks({students,papers}){
           <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
             <span class="switch"><input type="checkbox" data-pub="${p.id}" ${p.published?'checked':''}><span class="slider"></span></span>
             <span style="font-size:.8rem">${p.published?'Published ✅':'Hidden from students'}</span></label>
-                      <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
-            <span class="switch"><input type="checkbox" data-rank="${p.id}" ${p.ranksPublished?'checked':''}><span class="slider"></span></span>
-            <span style="font-size:.8rem">${p.ranksPublished?'Ranks released':'Ranks hidden'}</span></label>
           <button class="btn btn-ghost btn-sm" data-open="${p.id}">Enter marks</button>
           ${profile.isAdmin?`<button class="btn btn-danger btn-sm" data-delp="${p.id}">Delete</button>`:''}
         </div>
       </div>`).join('') : (profile.isAdmin?'<p class="sub">No papers yet — create one above.</p>':'<p class="sub">No papers yet — the developer creates the papers.</p>')}
   </div>
   <div id="marksPane"></div>`;
-
   if($("#cpBtn")) $("#cpBtn").onclick=async()=>{
     const title=$("#cpTitle").value.trim(), max=parseInt($("#cpMax").value), date=$("#cpDate").value;
     const m=$("#cpMsg"); m.innerHTML='';
@@ -1541,7 +1457,7 @@ function tabMarks({students,papers}){
     if(!max||max<1) return m.innerHTML='<div class="err">Max marks must be at least 1.</div>';
     busy(true);
     try{
-      await addDoc(collection(db,'papers'),{subject:$("#cpSubj").value, batch:state.batch, title, date, max, published:false, scores:{}});
+      await addDoc(collection(db,'papers'),{subject:'Biology', batch:state.batch, title, date, max, published:false, scores:{}});
       busy(false); teacherDash();
     }catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
@@ -1550,11 +1466,6 @@ function tabMarks({students,papers}){
     await updateDoc(doc(db,'papers',t.dataset.pub),{published:t.checked});
     busy(false); tabMarks({students,papers:papers.map(p=>p.id===t.dataset.pub?{...p,published:t.checked}:p)});
   });
-    document.querySelectorAll('[data-rank]').forEach(t=>t.onchange=async()=>{
-    busy(true);
-    try{ await updateDoc(doc(db,'papers',t.dataset.rank),{ranksPublished:t.checked}); }catch(e){ alert(friendly(e)); }
-    busy(false); tabMarks({students,papers:papers.map(p=>p.id===t.dataset.rank?{...p,ranksPublished:t.checked}:p)});
-  });
   document.querySelectorAll('[data-delp]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Delete this paper and all its marks?')) return;
     busy(true); try{ const ms=await getDocs(query(collection(db,'marks'),where('pid','==',b.dataset.delp))); for(const d of ms.docs) await deleteDoc(d.ref).catch(()=>{}); }catch(e){} await deleteDoc(doc(db,'papers',b.dataset.delp)); busy(false); state.selPaper=null; teacherDash();
@@ -1562,7 +1473,6 @@ function tabMarks({students,papers}){
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{ state.selPaper=b.dataset.open; drawMarksPane(students,papers); });
   drawMarksPane(students,papers);
 }
-
 function drawMarksPane(students,papers){
   const pane=$("#marksPane"); if(!pane) return;
   const selPapers=papers.filter(p=>p.id===state.selPaper);
@@ -1578,7 +1488,7 @@ function drawMarksPane(students,papers){
           <td style="max-width:120px"><input type="number" step="0.01" min="0" max="${sel.max}" value="${sc??''}" data-mk="${s.id}"></td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${p}%</span>`:'—'}</td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${grade(p)}</span>`:'—'}</td></tr>`;
-      }).join('')}</table></div>`:'<p class="sub">No students yet — add them in the Students tab using their NIC.</p>'}
+      }).join('')}</table></div>`:'<p class="sub">No students yet.</p>'}
   </div>`;
   document.querySelectorAll('[data-mk]').forEach(inp=>inp.onchange=async()=>{
     const nic=inp.dataset.mk, st=students.find(x=>x.id===nic);
@@ -1591,31 +1501,6 @@ function drawMarksPane(students,papers){
     }catch(e){ $("#svLbl").textContent='⚠ '+friendly(e); }
   });
 }
-
-/* ---- Analytics tab ---- */
-function computeStats(students,papers){
-  const per=students.map(s=>{
-    const sub={}, tot={g:0,m:0};
-    SUBJECTS.forEach(x=>sub[x]={g:0,m:0});
-    papers.forEach(p=>{
-      const sc=p.scores?.[s.id]; if(sc==null) return;
-      sub[p.subject].g+=sc; sub[p.subject].m+=p.max; tot.g+=sc; tot.m+=p.max;
-    });
-    const subP={}; SUBJECTS.forEach(x=>subP[x]=sub[x].m?pct(sub[x].g,sub[x].m):null);
-    return {s, subP, overall:tot.m?pct(tot.g,tot.m):null};
-  });
-  const ranked=per.filter(x=>x.overall!=null).sort((a,b)=>b.overall-a.overall);
-  ranked.forEach((x,i)=>x.rank = i>0 && x.overall===ranked[i-1].overall ? ranked[i-1].rank : i+1);
-  const subAvg={}; SUBJECTS.forEach(x=>{
-    const vals=per.map(p=>p.subP[x]).filter(v=>v!=null);
-    subAvg[x]=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10:null;
-  });
-  const bins=[0,0,0,0,0];
-  ranked.forEach(x=>{ const p=x.overall; bins[p<20?0:p<40?1:p<60?2:p<80?3:4]++; });
-  const attention=per.filter(x=>x.overall!=null && (x.overall<40 || SUBJECTS.some(s=>x.subP[s]!=null&&x.subP[s]<40)));
-  return {per,ranked,subAvg,bins,attention};
-}
-
 function tabAnalytics({papers}){
   const S=studentsFromMarks(papers).filter(s=>s.avg!=null);
   const order=[...papers].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
@@ -1637,38 +1522,26 @@ function tabAnalytics({papers}){
       <div class="stat"><div class="num">${ranked.length?ranked[0].v+'%':'—'}</div><div class="lbl">Top average</div></div></div>
     <p class="sub" style="margin:10px 0 0">Grades: ${GRADE_LEGEND}</p></div>
   <div class="card"><h2>📄 Paper-by-paper average</h2>
-    ${pS.length?`<canvas id="cPap" style="max-height:260px"></canvas><div class="tbl-wrap" style="margin-top:12px"><table><tr><th>Paper</th><th>Date</th><th>Students</th><th>Average</th><th>Highest</th><th>Lowest</th><th>A</th><th>B</th><th>C</th><th>S</th><th>F</th></tr>
-    ${pS.map(x=>`<tr><td><b>${esc(x.p.title)}</b></td><td class="mono">${esc(x.p.date||'—')}</td><td>${x.n}</td><td>${x.avg!=null?`<span class="pill ${gCls(x.avg)}">${x.avg}%</span>`:'—'}</td><td>${x.hi??'—'}</td><td>${x.lo??'—'}</td><td>${x.g.A}</td><td>${x.g.B}</td><td>${x.g.C}</td><td>${x.g.S}</td><td>${x.g.F}</td></tr>`).join('')}</table></div>`:'<p class="sub">No papers yet.</p>'}</div>
-  <div class="card"><h2>🏫 Center-by-center average</h2>
-    ${cS.length?`<canvas id="cCen" style="max-height:240px"></canvas><div class="tbl-wrap" style="margin-top:12px"><table><tr><th>Center</th><th>Students</th>${order.map(p=>`<th>${esc(p.title)}</th>`).join('')}<th>Overall</th></tr>
-    ${cS.map(x=>`<tr><td><b>${esc(x.c)}</b></td><td>${x.n}</td>${order.map(p=>`<td>${x.o[p.id]?avgOf(x.o[p.id])+'%':'—'}</td>`).join('')}<td><span class="pill ${gCls(x.avg)}">${x.avg}%</span></td></tr>`).join('')}</table></div>`:'<p class="sub">No marks yet.</p>'}</div>
-  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
-    <div class="card" style="margin:0"><h2>🏆 Top performers</h2>
-      ${ranked.slice(0,5).map(x=>`<div class="list-item"><span><b>${x.rank}.</b> ${nameLink(x.nic,x.fullName,x.center)} <span class="sub" style="display:inline">· ${esc(x.center||'—')}</span></span><span class="pill ${gCls(x.v)}">${x.v}% · ${grade(x.v)}</span></div>`).join('')||'<p class="sub">No marks yet.</p>'}</div>
-    <div class="card" style="margin:0"><h2>⚠️ Needs attention</h2>
-      ${att.map(x=>`<div class="list-item"><span>${nameLink(x.s.nic,x.s.fullName,x.s.center)} <span class="sub" style="display:inline">· ${esc(x.s.center||'—')} · ${esc(x.r.join('; '))}</span></span><span class="pill ${gCls(x.s.avg)}">${x.s.avg}%</span></div>`).join('')||'<p class="sub">🎉 Nobody needs attention right now.</p>'}</div></div>
+    ${pS.length?`<canvas id="cPap" style="max-height:260px"></canvas><div class="tbl-wrap" style="margin-top:12px"><table><tr><th>Paper</th><th>Date</th><th>Students</th><th>Average</th><th>Highest</th><th>Lowest</th></tr>
+    ${pS.map(x=>`<tr><td><b>${esc(x.p.title)}</b></td><td class="mono">${esc(x.p.date||'—')}</td><td>${x.n}</td><td>${x.avg!=null?`<span class="pill ${gCls(x.avg)}">${x.avg}%</span>`:'—'}</td><td>${x.hi??'—'}</td><td>${x.lo??'—'}</td></tr>`).join('')}</table></div>`:'<p class="sub">No papers yet.</p>'}</div>
+  <div class="card"><h2>🏆 Top performers</h2>
+      ${ranked.slice(0,5).map(x=>`<div class="list-item"><span><b>${x.rank}.</b> ${nameLink(x.nic,x.fullName,x.center)}</span><span class="pill ${gCls(x.v)}">${x.v}% · ${grade(x.v)}</span></div>`).join('')||'<p class="sub">No marks yet.</p>'}</div>
   <div class="card"><h2>📋 Class rankings (overall average)</h2>
     ${ranked.length?`<div class="tbl-wrap"><table><tr><th>Rank</th><th>Name</th><th>NIC</th><th>Center</th><th>Papers</th><th>Average</th><th>Grade</th></tr>
     ${ranked.map(x=>`<tr><td><b>#${x.rank}</b></td><td>${nameLink(x.nic,x.fullName,x.center)}</td><td class="mono">${esc(x.nic)}</td><td>${esc(x.center||'—')}</td><td>${x.n}</td><td><span class="pill ${gCls(x.v)}">${x.v}%</span></td><td><span class="pill ${gCls(x.v)}">${grade(x.v)}</span></td></tr>`).join('')}</table></div>`:'<p class="sub">No marks entered yet.</p>'}</div>`;
   if($("#cPap")) charts.c1=new Chart($("#cPap"),{type:'bar',data:{labels:pS.map(x=>x.p.title),datasets:[{label:'Average %',data:pS.map(x=>x.avg??0),backgroundColor:'#22a06b',borderRadius:8}]},options:{plugins:{legend:{display:false}},scales:{y:{min:0,max:100}}}});
-  if($("#cCen")) charts.c2=new Chart($("#cCen"),{type:'bar',data:{labels:cS.map(x=>x.c),datasets:[{label:'Average %',data:cS.map(x=>x.avg),backgroundColor:'#15803d',borderRadius:8}]},options:{plugins:{legend:{display:false}},scales:{y:{min:0,max:100}}}});
-  $("#xls").onclick=()=>{
+  if($("#xls")) $("#xls").onclick=()=>{
     const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Rank','Name','NIC','Center','Papers','Average %','Grade'],...ranked.map(x=>[x.rank,x.fullName,x.nic,x.center,x.n,x.v,grade(x.v)])]),'Rankings');
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Paper','Date','Students','Average %','Highest','Lowest','A','B','C','S','F'],...pS.map(x=>[x.p.title,x.p.date||'',x.n,x.avg,x.hi,x.lo,x.g.A,x.g.B,x.g.C,x.g.S,x.g.F])]),'Paper averages');
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Center','Students',...order.map(p=>p.title),'Overall %'],...cS.map(x=>[x.c,x.n,...order.map(p=>x.o[p.id]?avgOf(x.o[p.id]):''),x.avg])]),'Center averages');
     XLSX.writeFile(wb,'class-analytics.xlsx');
   };
-  $("#pdf").onclick=()=>{
+  if($("#pdf")) $("#pdf").onclick=()=>{
     const { jsPDF }=window.jspdf; const d=new jsPDF();
     d.setFontSize(15); d.text('S.K. Wellala Biology Paper Class — '+state.batch+' Rankings',14,16);
-    d.setFontSize(9); d.setTextColor(120); d.text(`Generated ${new Date().toLocaleString()}  |  ${GRADE_LEGEND}`,14,22); d.setTextColor(0);
     d.autoTable({startY:28,head:[['Rank','Name','NIC','Center','Papers','Average','Grade']],body:ranked.map(x=>[String(x.rank),x.fullName,x.nic,x.center||'—',String(x.n),x.v+'%',grade(x.v)])});
     d.save('class-rankings.pdf');
   };
 }
-
-/* first render */
 chartDefaults();
 </script>
 </body>
