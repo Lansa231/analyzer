@@ -14,7 +14,7 @@ async function getRanks() {
 document.addEventListener('ca:student-marks', e => {
   const { rows, name } = e.detail, body = document.getElementById('stuBody');
   if (!body) return;
-  if (rows.length) { addSummary(rows, body); }
+  if (rows.length) { addSummary(rows, body); addRankWidget(rows); addRankColumn(rows); }
   addWelcome(name, rows.length, body);
 });
 
@@ -410,3 +410,40 @@ main#app.wide{max-width:1280px}
   });
 }
 { const h = document.createElement('style'); h.textContent = '#ranksCard{display:none!important}'; document.head.appendChild(h); }
+
+/* ---- Rank widget: the student's rank in the latest paper whose ranks were released (top 100 only) ---- */
+async function addRankWidget(rows) {
+  const r = await getRanks(), { esc } = window.CA;
+  document.getElementById('rankWidget')?.remove();
+  const released = rows.filter(x => Object.prototype.hasOwnProperty.call(r, x.pid))
+    .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+  const latest = released[released.length - 1];
+  if (!latest || !r[latest.pid]) return;            /* nothing released yet, or this student is not in the top 100 */
+  const sum = document.getElementById('sumCard'); if (!sum) return;
+  const w = document.createElement('div');
+  w.id = 'rankWidget'; w.className = 'card';
+  w.style.cssText = 'background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:0;display:flex;align-items:center;gap:18px;flex-wrap:wrap';
+  w.innerHTML = '<div style="font-size:3rem;line-height:1">\ud83c\udfc5</div><div style="flex:1;min-width:180px"><div style="opacity:.9;font-size:.85rem">Your rank - ' + esc(latest.title) +
+    '</div><div style="font-size:2.2rem;font-weight:800;line-height:1.1">#' + r[latest.pid] + '</div><div style="opacity:.9;font-size:.82rem">You are in the top 100 across all centers</div></div>';
+  sum.insertAdjacentElement('afterend', w);
+}
+
+/* ---- Rank column in the Paper-by-Paper table (and under each bar): shown only once ranks were released for a paper ---- */
+async function addRankColumn(rows) {
+  const r = await getRanks();
+  if (!rows.some(x => Object.prototype.hasOwnProperty.call(r, x.pid))) return;   /* nothing released yet: no rank anywhere */
+  const body = document.getElementById('stuBody'); if (!body) return;
+  const rk = x => (Object.prototype.hasOwnProperty.call(r, x.pid) && r[x.pid]) ? '<span class="pill brand">#' + r[x.pid] + '</span>' : '<span class="sub" style="margin:0">-</span>';
+  const card = Array.from(body.querySelectorAll('.card')).find(c => /Paper-by-Paper/i.test((c.querySelector('h2') || {}).textContent || ''));
+  const table = card && card.querySelector('table');
+  if (table && !table.dataset.rk) {
+    table.dataset.rk = '1';
+    const trs = Array.from(table.querySelectorAll('tr'));
+    trs[0].insertAdjacentHTML('beforeend', '<th>Rank</th>');
+    trs.slice(1).forEach((tr, i) => { if (rows[i]) tr.insertAdjacentHTML('beforeend', '<td>' + rk(rows[i]) + '</td>'); });
+  }
+  body.querySelectorAll('.gb-row').forEach((row, i) => {
+    const foot = row.querySelector('.gb-foot span');
+    if (foot && rows[i] && !foot.dataset.rk && r[rows[i].pid]) { foot.dataset.rk = '1'; foot.insertAdjacentHTML('beforeend', ' &middot; Rank #' + r[rows[i].pid]); }
+  });
+}
