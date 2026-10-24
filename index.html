@@ -1512,27 +1512,28 @@ function tabRequests({requests}){
     catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
   document.querySelectorAll('[data-rj]').forEach(b=>b.onclick=async()=>{ busy(true); try{ await updateDoc(doc(db,'changeRequests',b.dataset.rj),{status:'rejected'}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
 }
-const driveId=u=>{ const m=String(u).match(/\/d\/([\w-]+)/)||String(u).match(/[?&]id=([\w-]+)/); return m?m[1]:null; };
+const tgLink=u=>{ const s=String(u||'').trim(); return /^https?:\/\/(t\.me|telegram\.me|telegram\.dog)\/\S+$/i.test(s)?s:null; };
+const itemUrl=it=>it.url||(it.fileId?`https://drive.google.com/file/d/${it.fileId}/view`:'#');
 const thumbImg=id=>`<img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'pdfph',textContent:'📄'}))">`;
-const fileView=id=>`https://drive.google.com/file/d/${id}/view`, fileDl=id=>`https://drive.google.com/uc?export=download&id=${id}`;
+const itemThumb=it=>it.fileId&&!it.url?thumbImg(it.fileId):'<div class="pdfph">✈️</div>';
 async function tabFiles(){
   $("#tabBody").innerHTML='<div class="card"><p class="sub">Loading…</p></div>';
   const docs=await Promise.all(BATCHES.map(b=>getDoc(doc(db,'fileLists',batchKey(b))).catch(()=>null)));
   const lists={}; BATCHES.forEach((b,i)=>lists[b]=docs[i]?.exists()?(docs[i].data().items||[]):[]);
   const save=async(b)=>{ busy(true); try{ await setDoc(doc(db,'fileLists',batchKey(b)),{items:lists[b]}); }catch(e){ alert(friendly(e)); } busy(false); tabFiles(); };
   $("#tabBody").innerHTML=`<div class="card"><h2>📚 Add a marking PDF</h2>
-    <p class="sub" style="margin:0 0 6px">1) Upload PDF to Drive. 2) Share "Anyone with link → Viewer". 3) Paste link here.</p>
+    <p class="sub" style="margin:0 0 6px">1) Post the PDF in your Telegram channel. 2) Tap the message → Copy Link (e.g. https://t.me/Wellbiopaper/123). 3) Paste the link here.</p>
     <div class="row"><div><label>Batch</label><select id="fb">${BATCHES.map(b=>`<option${b===state.batch?' selected':''}>${b}</option>`).join('')}</select></div>
     <div><label>Title</label><input id="ft" placeholder="e.g. Paper 3 — Marking scheme"></div>
-    <div><label>Google Drive link</label><input id="fl" placeholder="https://drive.google.com/file/d/…"></div>
+    <div><label>Telegram link</label><input id="fl" placeholder="https://t.me/Wellbiopaper/123"></div>
     <button class="btn btn-primary" id="fadd" style="width:auto;margin:0">+ Add</button></div><div id="fm"></div></div>
   ${BATCHES.map(b=>`<div class="card"><h2>${b} files (${lists[b].length})</h2>
-    ${lists[b].length?`<div class="pdfgrid">${lists[b].map(it=>`<div class="pdfcard"><a href="${fileView(it.fileId)}" target="_blank" rel="noopener">${thumbImg(it.fileId)}</a><div class="pt">${esc(it.title)}</div><div class="pb"><button class="btn btn-danger btn-sm" data-rf="${esc(b)}|${it.id}">Remove</button></div></div>`).join('')}</div>`:'<p class="sub">No files yet.</p>'}</div>`).join('')}`;
+    ${lists[b].length?`<div class="pdfgrid">${lists[b].map(it=>`<div class="pdfcard"><a href="${esc(itemUrl(it))}" target="_blank" rel="noopener">${itemThumb(it)}</a><div class="pt">${esc(it.title)}</div><div class="pb"><button class="btn btn-danger btn-sm" data-rf="${esc(b)}|${it.id}">Remove</button></div></div>`).join('')}</div>`:'<p class="sub">No files yet.</p>'}</div>`).join('')}`;
   $("#fadd").onclick=()=>{
-    const b=$("#fb").value, t=$("#ft").value.trim(), id=driveId($("#fl").value), m=$("#fm"); m.innerHTML='';
+    const b=$("#fb").value, t=$("#ft").value.trim(), url=tgLink($("#fl").value), m=$("#fm"); m.innerHTML='';
     if(t.length<2) return m.innerHTML='<div class="err">Please enter a title.</div>';
-    if(!id) return m.innerHTML='<div class="err">That doesn\'t look like a Drive link.</div>';
-    lists[b]=[...lists[b],{id:Date.now().toString(36),title:t,fileId:id,at:Date.now()}]; save(b);
+    if(!url) return m.innerHTML='<div class="err">That doesn\'t look like a Telegram link (it should start with https://t.me/).</div>';
+    lists[b]=[...lists[b],{id:Date.now().toString(36),title:t,url,at:Date.now()}]; save(b);
   };
   document.querySelectorAll('[data-rf]').forEach(x=>x.onclick=()=>{ if(!confirm('Remove this file from the list?')) return; const [b,id]=x.dataset.rf.split('|'); lists[b]=lists[b].filter(i=>i.id!==id); save(b); });
 }
@@ -1541,7 +1542,7 @@ async function loadStuFiles(){
   try{
     const d=await getDoc(doc(db,'fileLists',batchKey(profile.batch||BATCHES[0]))), items=d.exists()?(d.data().items||[]):[];
     if(!items.length){ host.innerHTML=''; return; }
-    host.innerHTML=`<div class="card"><h2>📚 Marking schemes &amp; files</h2><div class="pdfgrid">${items.slice().reverse().map(it=>`<div class="pdfcard"><a href="${fileView(it.fileId)}" target="_blank" rel="noopener">${thumbImg(it.fileId)}</a><div class="pt">${esc(it.title)}</div><div class="pb"><a class="btn btn-primary btn-sm" href="${fileDl(it.fileId)}" target="_blank" rel="noopener" style="width:auto">⬇ Download</a></div></div>`).join('')}</div></div>`;
+    host.innerHTML=`<div class="card"><h2>📚 Marking schemes &amp; files</h2><div class="pdfgrid">${items.slice().reverse().map(it=>`<div class="pdfcard"><a href="${esc(itemUrl(it))}" target="_blank" rel="noopener">${itemThumb(it)}</a><div class="pt">${esc(it.title)}</div><div class="pb"><a class="btn btn-primary btn-sm" href="${esc(itemUrl(it))}" target="_blank" rel="noopener" style="width:auto">${it.url?'✈️ Open in Telegram':'⬇ Download'}</a></div></div>`).join('')}</div></div>`;
   }catch(e){ host.innerHTML=''; }
 }
 function tabAdmin(){
