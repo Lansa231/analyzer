@@ -927,77 +927,64 @@ async function stuDash(){
   $("#reqCh").onclick=()=>studentRequestCard($("#editBox"));
   { const fd=document.createElement('div'); fd.id='stuFiles'; $("#stuBody").insertAdjacentElement('afterend',fd); loadStuFiles(); }
 
-  const q=query(collection(db,'papers'), where('published','==',true));
-  const load=async()=>{
+  // --- LOADER ---
+  // We fetch all published papers, then for each paper we:
+  //   1. Fetch my own mark (marks/{paperId}_{nic})
+  //   2. If ranks are published, fetch ALL marks for that paper so we can compute rank
+  // We populate p.scores[nic] = my mark for the row, and store all marks in p._all.
+  const q = query(collection(db,'papers'), where('published','==',true));
+  const load = async () => {
     const nic = skeyOf(profile);
     const snap = await getDocs(q);
-    const ps = snap.docs.map(d=>({id:d.id,...d.data()}));
-
-    // For EVERY published paper, fetch its own mark doc (my mark).
-    // Additionally, for papers with ranksPublished, fetch ALL marks for that paper
-    // so we can compute my rank.
+    const ps = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     await Promise.all(ps.map(async p => {
-      // 1. Always fetch my own mark
-      p.myScore = null;
+      p.scores = {};
+      p._all = [];
       try {
         const myDoc = await getDoc(doc(db,'marks', p.id + '_' + nic));
-        if (myDoc.exists()) p.myScore = myDoc.data().mark;
-      } catch(e){ /* ignore */ }
-
-      // 2. Fetch all marks for this paper (needed only if ranks are published,
-      //    but we also need a fallback: some old marks docs may not have pid,
-      //    so try both a query on pid and a scan of the collection filtered by
-      //    the paper id prefix).
-      p.allMarks = [];
+        if (myDoc.exists()) p.scores[nic] = myDoc.data().mark;
+      } catch(e){ /* not found is fine */ }
       if (p.ranksPublished) {
-        let all = [];
         try {
-          const qAll = query(collection(db,'marks'), where('pid','==',p.id));
-          const snapAll = await getDocs(qAll);
-          all = snapAll.docs.map(d=>d.data());
-        } catch(e){ /* rules blocked */ }
-        // Fallback: if the pid query came back empty, scan all marks and filter
-        // by doc ID prefix "paperId_"
-        if (!all.length) {
+          const snapAll = await getDocs(query(collection(db,'marks'), where('pid','==',p.id)));
+          p._all = snapAll.docs.map(d => d.data());
+        } catch(e){
+          // Fallback: scan all marks and filter by doc ID prefix
           try {
             const snap2 = await getDocs(collection(db,'marks'));
-            all = snap2.docs
-              .filter(d => d.id.startsWith(p.id + '_'))
-              .map(d => d.data());
-          } catch(e){ /* ignore */ }
+            p._all = snap2.docs.filter(d => d.id.startsWith(p.id + '_')).map(d => d.data());
+          } catch(e2){}
         }
-        p.allMarks = all;
       }
     }));
-
     return ps;
   };
-  const renderBody=papers=>{
-       const rowsP=papers
-      .filter(p=>(p.batch||BATCHES[0])===(profile.batch||BATCHES[0]))
-      .filter(p=>state.stuSubject==='All'||p.subject===state.stuSubject)
-      .map(p=>({p, m:p.myScore}))
-      .filter(r=>r.m!=null)
-      .sort((a,b)=>String(a.p.date||'').localeCompare(String(b.p.date||'')));
+
+  const renderBody = papers => {
+    const rowsP = papers
+      .filter(p => (p.batch||BATCHES[0]) === (profile.batch||BATCHES[0]))
+      .filter(p => state.stuSubject==='All' || p.subject===state.stuSubject)
+      .map(p => ({ p, m: p.scores?.[skeyOf(profile)] }))
+      .filter(r => r.m != null)
+      .sort((a,b) => String(a.p.date||'').localeCompare(String(b.p.date||'')));
 
     if(!rowsP.length){
-      $("#stuBody").innerHTML=`<div class="card"><p class="sub">📭 No published marks yet. Your teacher will publish them here after each paper.</p></div>`;
+      $("#stuBody").innerHTML = `<div class="card"><p class="sub">📭 No published marks yet. Your teacher will publish them here after each paper.</p></div>`;
       return;
     }
 
-    const marks = rowsP.map(r=>pct(r.m, r.p.max));
+    const marks = rowsP.map(r => pct(r.m, r.p.max));
     const best = Math.max(...marks);
     const avg = Math.round(marks.reduce((a,b)=>a+b,0)/marks.length*10)/10;
     const latest = marks[marks.length-1];
     const bestRow = rowsP[marks.indexOf(best)];
 
-    // Rank widget
-     // Rank widget
+    // RANK WIDGET
     let rankWidget = '';
-    const rankedPapers = rowsP.filter(r => r.p.ranksPublished && Array.isArray(r.p.allMarks) && r.p.allMarks.length > 0);
+    const rankedPapers = rowsP.filter(r => r.p.ranksPublished && Array.isArray(r.p._all) && r.p._all.length > 0);
     if(rankedPapers.length){
       const lastRanked = rankedPapers[rankedPapers.length - 1];
-      const myRank = 1 + lastRanked.p.allMarks.filter(d => d.mark > lastRanked.m).length;
+      const myRank = 1 + lastRanked.p._all.filter(d => d.mark > lastRanked.m).length;
       if(myRank <= 100){
         rankWidget = `
           <div class="card" style="background:linear-gradient(135deg,#fef08a,#fde047);border:none;color:#422006;display:flex;align-items:center;gap:16px;padding:18px;margin-bottom:20px">
@@ -1056,7 +1043,7 @@ async function stuDash(){
         @media(max-width:760px){.ma-grid{grid-template-columns:1fr!important}}
       </style>`;
 
-    const rows = rowsP.map(r=>{
+    const rows = rowsP.map(r => {
       const p = pct(r.m, r.p.max);
       const barColor = p>=75?'linear-gradient(90deg,#10b981,#34d399)':
                        p>=65?'linear-gradient(90deg,#3b82f6,#60a5fa)':
@@ -1065,8 +1052,8 @@ async function stuDash(){
                              'linear-gradient(90deg,#ef4444,#f87171)';
 
       let rankCol = '—';
-      if(r.p.ranksPublished && Array.isArray(r.p.allMarks) && r.p.allMarks.length > 0){
-        const rank = 1 + r.p.allMarks.filter(d => d.mark > r.m).length;
+      if(r.p.ranksPublished && Array.isArray(r.p._all) && r.p._all.length > 0){
+        const rank = 1 + r.p._all.filter(d => d.mark > r.m).length;
         rankCol = `<b>#${rank}</b>`;
       }
 
@@ -1116,7 +1103,7 @@ async function stuDash(){
   };
 
   window.drawStu = () => load().then(renderBody).catch(e=>{ $("#stuBody").innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; });
-  unsubStu = onSnapshot(q, ()=>{ load().then(renderBody).catch(()=>{}); }, ()=>{});
+  unsubStu = onSnapshot(q, () => { load().then(renderBody).catch(()=>{}); }, ()=>{});
   const first = await load().catch(()=>[]);
   renderBody(first);
 }
