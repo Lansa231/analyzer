@@ -639,7 +639,7 @@ function landing(){
         <div class="teacher-copy">
           <div class="kicker"><span class="idx">03</span><span class="lbl">Your Teacher · ඔබේ ගුරුවරයා</span></div>
           <h2 class="sec">The teacher behind <em>the doctors</em></h2>
-          <p class="si">මහනුවර දිස්ත්‍රික්කයේ ප්‍රමුඛ දිස්ත්‍රික් කුසලතාවයක් ලබා ගනිමින් ජීව විද්‍යාව, රසායන විද්‍යාව හා භෞතික විද්‍යාව යන විෂයන් තුනම විශිෂ්ඨ ලෙස සමත්ව විශ්වවිද්‍යාල වරම් ලද කිංස්වුඩ් විද්‍යාලයේ කීර්තිමත් ආදි ශිෂ්‍යයෙකි.</p>
+          <p class="si">මහනුවර දිස්ත්‍රික්කයේ ප්‍රමුඛ දිස්ත්‍රික් කුසලතාවයක් ලබා ගනිමින් ජීව විද්‍යාව, රසායන විද්‍යාව හා භෞතික විද්‍යාව යන විෂයන් තුනම විශිෂ්ට ලෙස සමත්ව විශ්වවිද්‍යාල වරම් ලද කිංස්වුඩ් විද්‍යාලයේ කීර්තිමත් ආදි ශිෂ්‍යයෙකි.</p>
           <p>He combines natural public-speaking ability, an unmatched teaching style, and deep subject knowledge gained through higher education. His mission is simple: to create the next generation of doctors — starting with the mother subject, Biology.</p>
           <div class="teacher-tags">
             <span>🎯 Kandy District Top</span>
@@ -930,8 +930,17 @@ async function stuDash(){
   const q=query(collection(db,'papers'), where('published','==',true));
   const load=async()=>{
     const snap=await getDocs(q), ps=snap.docs.map(d=>({id:d.id,...d.data()})), nic=skeyOf(profile);
-    await Promise.all(ps.map(async p=>{ p.scores={}; try{ const m=await getDoc(doc(db,'marks',p.id+'_'+nic)); if(m.exists()) p.scores[nic]=m.data().mark; }catch(e){} }));
-    return ps; };
+    // Fetch all marks for the papers so we can calculate ranks
+    const allMarks=await getDocs(collection(db,'marks')).catch(()=>null);
+    const mkAll = allMarks ? allMarks.docs.map(d=>d.data()) : [];
+    
+    ps.forEach(p=>{ 
+      p.scores={}; 
+      p.meta={};
+      mkAll.forEach(m=>{ if(m.pid===p.id){ p.scores[m.nic]=m.mark; p.meta[m.nic]={n:m.name,c:m.center||''}; } });
+    });
+    return ps; 
+  };
 
   const renderBody=papers=>{
     const rowsP=papers
@@ -952,7 +961,29 @@ async function stuDash(){
     const latest = marks[marks.length-1];
     const bestRow = rowsP[marks.indexOf(best)];
 
+    // RANKING WIDGET
+    let rankWidget = '';
+    const publishedRankings = rowsP.filter(r => r.p.ranksPublished);
+    if(publishedRankings.length > 0){
+      const lastRankedPaper = publishedRankings[publishedRankings.length - 1];
+      const allMarksInPaper = Object.values(lastRankedPaper.p.scores || {});
+      const myMark = lastRankedPaper.m;
+      const rank = 1 + allMarksInPaper.filter(v => v > myMark).length;
+      
+      if(rank <= 100){
+        rankWidget = `
+          <div class="card" style="background:linear-gradient(135deg,#fef08a,#fde047);border:none;color:#422006;display:flex;align-items:center;gap:16px;padding:18px;margin-bottom:20px">
+            <div style="font-size:2.5rem;line-height:1">🏆</div>
+            <div>
+              <div style="font-weight:800;font-size:1.1rem;color:#422006">You ranked in the Top 100!</div>
+              <div style="font-weight:600;font-size:.92rem;margin-top:2px">Rank #${rank} — ${esc(lastRankedPaper.p.title)}</div>
+            </div>
+          </div>`;
+      }
+    }
+
     const bestCard = `
+      ${rankWidget}
       <div class="ma-grid" style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:22px;align-items:stretch">
         <div class="card" style="margin:0;display:flex;flex-direction:column">
           <h2 style="margin:0 0 14px">📈 Progress — ${esc(state.stuSubject)}</h2>
@@ -1000,12 +1031,19 @@ async function stuDash(){
 
     const rows = rowsP.map(r=>{
       const p = pct(r.m, r.p.max);
-      // Distinct, high-contrast colors based on the grade
-      const barColor = p>=75?'linear-gradient(90deg,#10b981,#34d399)': // A - Bright Green
-                       p>=65?'linear-gradient(90deg,#3b82f6,#60a5fa)': // B - Blue
-                       p>=55?'linear-gradient(90deg,#f59e0b,#fbbf24)': // C - Amber
-                       p>=35?'linear-gradient(90deg,#f97316,#fb923c)': // S - Orange
-                             'linear-gradient(90deg,#ef4444,#f87171)'; // F - Red
+      const barColor = p>=75?'linear-gradient(90deg,#10b981,#34d399)': 
+                       p>=65?'linear-gradient(90deg,#3b82f6,#60a5fa)': 
+                       p>=55?'linear-gradient(90deg,#f59e0b,#fbbf24)': 
+                       p>=35?'linear-gradient(90deg,#f97316,#fb923c)': 
+                             'linear-gradient(90deg,#ef4444,#f87171)'; 
+      
+      let rankCol = '—';
+      if(r.p.ranksPublished){
+        const allMarks = Object.values(r.p.scores || {});
+        const rank = 1 + allMarks.filter(v => v > r.m).length;
+        rankCol = `<b>#${rank}</b>`;
+      }
+
       return `<tr>
         <td class="mono">${esc(r.p.date||'—')}</td>
         <td>${esc(r.p.title)}</td>
@@ -1015,6 +1053,7 @@ async function stuDash(){
             <div class="bar" style="height:100%;border-radius:8px;width:${p}%;background:${barColor};transition:width 1s ease"></div>
           </div>
         </td>
+        <td>${rankCol}</td>
         <td><span class="pill ${gCls(p)}">${p}%</span></td>
         <td><span class="pill ${gCls(p)}">${grade(p)}</span></td>
       </tr>`;
@@ -1025,7 +1064,7 @@ async function stuDash(){
         <h2>📄 Paper-by-Paper Marks</h2>
         <div class="tbl-wrap">
           <table>
-            <tr><th>Date</th><th>Paper</th><th>Marks</th><th>Progress</th><th>%</th><th>Grade</th></tr>
+            <tr><th>Date</th><th>Paper</th><th>Marks</th><th>Progress</th><th>Rank</th><th>%</th><th>Grade</th></tr>
             ${rows}
           </table>
         </div>
