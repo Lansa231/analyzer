@@ -632,39 +632,20 @@ function landing(){
       </div>
     </section>
 
-    <section id="centers">
+        <section id="centers">
       <div class="kicker"><span class="idx">02</span><span class="lbl">Paper Centers · Island-wide</span></div>
       <h2 class="sec">Where you can <em>face the paper</em></h2>
-      <p class="sec-sub">Papers are held across 17 centres in Sri Lanka. Hover or tap any city on the map — or in the list — to see where a paper center is located.</p>
-      <div class="map-shell">
-        <div class="map-list" id="mapList">
-          ${PAPER_CENTERS.map(c=>`<button type="button" data-city="${esc(c.n)}">${esc(c.n)}</button>`).join('')}
-        </div>
-        <div class="map-canvas">
-          <div class="map-tip" id="mapTip">🇱🇰 17 Paper Centers</div>
-          <svg viewBox="0 0 500 800" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Map of Sri Lanka showing 17 paper centers">
-            <!-- Accurate Sri Lanka Map with District Boundaries -->
-<path class="sl-map-fill" d="
-  M 246,38
-  L 258,44 L 268,64 L 275,96 L 285,112
-  L 292,140 L 300,168 L 308,196 L 315,224
-  L 322,252 L 328,286 L 334,320 L 338,354
-  L 340,388 L 338,424 L 332,458 L 322,492
-  L 308,522 L 292,548 L 274,570 L 256,588
-  L 240,600 L 224,606 L 210,602 L 198,590
-  L 188,572 L 180,552 L 170,532 L 158,512
-  L 148,492 L 140,470 L 136,448 L 134,424
-  L 136,400 L 140,378 L 148,358 L 158,340
-  L 170,322 L 180,304 L 188,284 L 194,262
-  L 198,240 L 200,218 L 202,196 L 204,174
-  L 206,152 L 210,130 L 216,108 L 222,86
-  L 230,66 L 238,50 Z" />            
-            ${dotMarkup}
-          </svg>
-        </div>
+      <p class="sec-sub">Papers are held across 17 centres in Sri Lanka.</p>
+      
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;max-width:800px">
+        ${PAPER_CENTERS.map(c=>`
+          <div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;font-weight:600;color:var(--ink);font-size:.9rem;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow)">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--brand);flex:none;box-shadow:0 0 0 3px var(--brand-soft)"></span>
+            ${esc(c.n)}
+          </div>
+        `).join('')}
       </div>
     </section>
-
     <section id="teacher">
       <div class="teacher-grid">
         <div class="teacher-photo">
@@ -774,23 +755,6 @@ function landing(){
     </footer>
 
   </div>`;
-
-  const tip = document.getElementById('mapTip');
-  const setActive = (name) => {
-    document.querySelectorAll('.lp .map-dot').forEach(d => d.classList.toggle('active', d.dataset.city === name));
-    document.querySelectorAll('#mapList button').forEach(b => b.classList.toggle('active', b.dataset.city === name));
-    if(tip) tip.textContent = name ? `📍 ${name}` : '🇱🇰 17 Paper Centers';
-  };
-  document.querySelectorAll('.lp .map-dot').forEach(d => {
-    d.addEventListener('mouseenter', () => setActive(d.dataset.city));
-    d.addEventListener('mouseleave', () => setActive(null));
-    d.addEventListener('click', () => setActive(d.dataset.city));
-  });
-  document.querySelectorAll('#mapList button').forEach(b => {
-    b.addEventListener('mouseenter', () => setActive(b.dataset.city));
-    b.addEventListener('mouseleave', () => setActive(null));
-    b.addEventListener('click', () => setActive(b.dataset.city));
-  });
 
   document.querySelectorAll('.lp a[href^="#"]').forEach(a => {
     a.addEventListener('click', (e) => {
