@@ -394,10 +394,13 @@ function route(){
   if(['login','signup','forgot'].includes(r) && user && role==='teacher') return go('#/teacher/dashboard');
   if(r==='teacherAuth' && user && role==='teacher') return go('#/teacher/dashboard');
   renderHdr(r);
+  app.classList.toggle('landing-wide', r==='landing');
   { const fail=e=>{ busy(false); app.innerHTML=`<div class="card" style="max-width:560px;margin:28px auto"><h2>⚠️ Something went wrong</h2><div class="err">${esc(friendly(e))}</div><p class="sub" style="margin-top:8px">Technical detail: ${esc(e&&e.message||String(e))}</p><button class="btn btn-primary" onclick="location.reload()" style="width:auto">Reload</button></div>`; };
     try{ const out=({landing,login,signup,forgot,stuDash,teacherAuth,teacherDash,studentView,contact})[r](); if(out&&out.catch) out.catch(fail); }catch(e){ fail(e); } }
-  try{ document.dispatchEvent(new CustomEvent('ca:view',{detail:{name:r}})); }catch(e){}
+   try{ document.dispatchEvent(new CustomEvent('ca:view',{detail:{name:r}})); }catch(e){}
   window.scrollTo(0,0);
+  const sf=document.getElementById('siteFoot'); if(sf) sf.style.display = (r==='landing')?'none':'';
+
 }
 function renderHdr(r){
   const h=$("#hdrActions");
@@ -458,8 +461,16 @@ function bootFirebase(cfg){
     try{ route(); } finally { busy(false); }
     if(u && !role && lookupErr){ app.insertAdjacentHTML('afterbegin',`<div class="card" style="max-width:560px;margin:14px auto"><div class="err">Could not reach the server: ${esc(lookupErr.message)}</div></div>`); }
   };
-  busy(true);   // wait for Firebase to restore the saved login before drawing any page
-  onAuthStateChanged(auth,u=>{ if(!signingUp) authLoad(u); });
+  // ✅ Render the landing page right away — don't wait for Firebase
+  try{ route(); }catch(e){ console.error(e); }
+  // ✅ Only show the loader on auth-protected routes; never block the landing page
+  onAuthStateChanged(auth,u=>{
+    if(signingUp) return;
+    const h = location.hash || '#/';
+    const onPublic = ['', '#/', '#/login', '#/signup', '#/forgot'].includes(h);
+    if(!onPublic) busy(true);
+    authLoad(u);
+  });
 }
 setTheme(localStorage.getItem('ca_theme')||'light');
 (function(){ const f=document.createElement('div'); f.className='bgfx'; const E=['🧬','🌿','🔬','🧫','🍃','🦠','🧠','🫀','🌱'];
@@ -487,25 +498,269 @@ else setupScreen();
 /* ===== EDIT THE OPENING-PAGE TEXT HERE =====
    pos: 'left' | 'center' | 'right'  (where the text sits over the photo)
    title may use <br> for a new line. Photo file: hero-photo.jpg (same folder as index.html). */
-const HERO={
-  pos:'left',
-  badge:'A/L Biology · Paper Class',
-  title:'Track every paper.<br>Watch yourself improve.',
-  sub:'Your teacher publishes marks paper-by-paper. Log in anytime to see your progress chart and full marks history — from your phone or computer.',
-  login:'Log In', signup:'Sign Up'
-};
-/* ===== EDIT THE CONTACT DETAILS HERE (leave a line as '' to hide it) ===== */
+/* ============================== CONTACT (unchanged) ============================== */
 const CONTACT={
   intro:'Questions about the class, your marks or signing up? Get in touch with us.',
   phone:'+94 70 232 2744',
   whatsapp:'+94 70 232 2744',
-  telegram:'https://t.me/Wellbiopaper',   // official Telegram channel
-  email:'',        // e.g. 'class@example.com'
-  address:'',      // class location / centers
-  hours:'',        // e.g. 'Mon–Fri 4 PM – 8 PM'
-  facebook:'',     // full link, e.g. 'https://facebook.com/yourpage'
-  youtube:''       // full link
+  telegram:'https://t.me/Wellbiopaper',
+  email:'info@skwellala.com',
+  address:'No 51/1, Kandy Road, Kurunegala',
+  hours:'',
+  facebook:'https://www.facebook.com/share/1BkdSMofkL/',
+  youtube:''
 };
+
+/* ============================== LANDING ============================== */
+const PAPER_CENTERS = [
+  {n:'Anamaduwa',      x:112, y:118},
+  {n:'Anuradhapura',   x:150, y:82},
+  {n:'Dambulla',       x:168, y:150},
+  {n:'Galgamuwa',      x:120, y:108},
+  {n:'Gampola',        x:180, y:222},
+  {n:'Kandy',          x:186, y:206},
+  {n:'Kanthale',       x:222, y:130},
+  {n:'Kegalle',        x:148, y:228},
+  {n:'Keklrawa',       x:198, y:150},
+  {n:'Kuliyapitiya',   x:100, y:180},
+  {n:'Kurunegala',     x:128, y:178},
+  {n:'Mahiyanganaya',  x:224, y:184},
+  {n:'Matale',         x:178, y:180},
+  {n:'Nawalapitiya',   x:164, y:236},
+  {n:'Nuwaraeliya',    x:180, y:260},
+  {n:'Rikillagaskada', x:200, y:200},
+  {n:'Polonnaruwa',    x:216, y:148}
+];
+
+function landing(){
+  const dotMarkup = PAPER_CENTERS.map((c,i)=>`
+    <g class="map-dot" data-city="${esc(c.n)}" transform="translate(${c.x},${c.y})">
+      <circle class="halo" r="6"></circle>
+      <circle class="core" r="2.6"></circle>
+      <text x="0" y="${i%3===0?-4.5:(i%3===1?6.5:-4.5)}">${esc(c.n)}</text>
+    </g>`).join('');
+
+  app.innerHTML = `
+  <div class="lp">
+
+    <section class="lp-hero">
+      <div class="lp-hero-bg"></div>
+      <div class="lp-hero-in">
+        <div class="lp-hero-badge">🌿 A/L Biology · Theory &amp; Revision</div>
+        <h1>Master Biology.<br><em>Track every paper</em>, watch yourself improve.</h1>
+        <p class="lead">The same Biology class that built doctors — now with a marks portal. Your teacher publishes results paper-by-paper, so you can see exactly how you're growing, from your phone or computer.</p>
+        <div class="lp-hero-cta">
+          <a class="btn btn-gold btn-lg" href="https://wellbioapp.eclass.lk/login" target="_blank" rel="noopener">🎓 Student Login</a>
+          <a class="btn btn-on-dark btn-lg" href="#classes">Explore Classes</a>
+        </div>
+        <div class="lp-hero-stats">
+          <div><strong>3</strong><span>Class locations</span></div>
+          <div><strong>17</strong><span>Paper centers</span></div>
+          <div><strong>10</strong><span>Units covered</span></div>
+          <div><strong>100%</strong><span>Private marks</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="lp-trust">
+      <div><i>📈</i><span>Progress charts <b>per paper</b></span></div>
+      <div><i>📄</i><span>Paper-by-paper <b>marks history</b></span></div>
+      <div><i>🔒</i><span>Private — <b>only you</b> see your marks</span></div>
+      <div><i>📱</i><span>Works on <b>any device</b></span></div>
+    </div>
+
+    <section id="classes">
+      <div class="kicker"><span class="idx">01</span><span class="lbl">Class Schedule · Time Table</span></div>
+      <h2 class="sec">Our <em>class locations</em> &amp; timings</h2>
+      <p class="sec-sub">Three centres across Sri Lanka, each running a full theory and revision programme. Join the Telegram channel for your batch to get updates.</p>
+      <div class="grid-class">
+        <div class="class-card">
+          <h3>Sipwin</h3>
+          <div class="loc">📍 Kurunegala</div>
+          <div class="class-row"><span class="t">2026 Theory</span><span class="d">Sunday · 8.00am</span></div>
+          <div class="class-row"><span class="t">2026 Revision</span><span class="d">Thursday · 8.00am</span></div>
+          <div class="class-row"><span class="t">2027 Theory</span><span class="d">Sunday · 1.00pm</span></div>
+        </div>
+        <div class="class-card">
+          <h3>NoZero</h3>
+          <div class="loc">📍 Kandy</div>
+          <div class="class-row"><span class="t">2026 Theory</span><span class="d">Saturday · 8.00am</span></div>
+          <div class="class-row"><span class="t">2026 Revision</span><span class="d">Wednesday · 8.00am</span></div>
+          <div class="class-row"><span class="t">2027 Theory</span><span class="d">Saturday · 1.00pm</span></div>
+        </div>
+        <div class="class-card">
+          <h3>All-Island</h3>
+          <div class="loc">📍 Online &amp; island-wide</div>
+          <div class="class-row"><span class="t">2026 Theory</span><span class="d">Saturday · 8.00am</span></div>
+          <div class="class-row"><span class="t">2026 Revision</span><span class="d">Wednesday · 8.00am</span></div>
+          <div class="class-row"><span class="t">2027 Theory</span><span class="d">Saturday · 1.00pm</span></div>
+        </div>
+      </div>
+      <div class="tg-strip">
+        <a class="tg-card" href="https://t.me/bio2026skw" target="_blank" rel="noopener"><div class="ic">✈️</div><div class="info"><b>2026 Theory</b><span>Official Telegram channel</span><span class="join">t.me/bio2026skw →</span></div></a>
+        <a class="tg-card" href="https://t.me/Bio2027skw" target="_blank" rel="noopener"><div class="ic">✈️</div><div class="info"><b>2027 Theory</b><span>Official Telegram channel</span><span class="join">t.me/Bio2027skw →</span></div></a>
+        <a class="tg-card" href="https://t.me/SK2026MR" target="_blank" rel="noopener"><div class="ic">✈️</div><div class="info"><b>2026 Revision</b><span>Official Telegram channel</span><span class="join">t.me/SK2026MR →</span></div></a>
+        <a class="tg-card" href="https://t.me/SKW2028T" target="_blank" rel="noopener"><div class="ic">✈️</div><div class="info"><b>2028 Theory</b><span>Official Telegram channel</span><span class="join">t.me/SKW2028T →</span></div></a>
+      </div>
+    </section>
+
+    <section id="centers">
+      <div class="kicker"><span class="idx">02</span><span class="lbl">Paper Centers · Island-wide</span></div>
+      <h2 class="sec">Where you can <em>face the paper</em></h2>
+      <p class="sec-sub">Papers are held across 17 centres in Sri Lanka. Hover or tap any city on the map — or in the list — to see where a paper center is located.</p>
+      <div class="map-shell">
+        <div class="map-list" id="mapList">
+          ${PAPER_CENTERS.map(c=>`<button type="button" data-city="${esc(c.n)}">${esc(c.n)}</button>`).join('')}
+        </div>
+        <div class="map-canvas">
+          <div class="map-tip" id="mapTip">🇱🇰 17 Paper Centers</div>
+          <svg viewBox="0 0 300 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Map of Sri Lanka showing 17 paper centers">
+            <path class="sri-lanka-outline" d="M118,18 C126,12 138,16 142,26 C150,40 160,52 172,60 C186,70 200,78 210,92 C220,106 226,122 224,138 C222,154 214,168 210,184 C206,200 208,216 200,232 C192,248 178,258 168,270 C158,282 150,296 138,302 C126,308 112,302 104,290 C96,278 92,264 84,252 C76,240 66,228 60,214 C54,200 52,184 56,168 C60,152 70,140 78,126 C86,112 96,98 100,84 C104,70 100,54 104,40 C108,28 112,22 118,18 Z"></path>
+            ${dotMarkup}
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <section id="teacher">
+      <div class="teacher-grid">
+        <div class="teacher-photo">
+          <div class="badge-float">
+            <b>🏆 Kandy District Top Achiever</b>
+            <span>Biology · Chemistry · Physics — all three A's, now building doctors</span>
+          </div>
+        </div>
+        <div class="teacher-copy">
+          <div class="kicker"><span class="idx">03</span><span class="lbl">Your Teacher · ඔබේ ගුරුවරයා</span></div>
+          <h2 class="sec">The teacher behind <em>the doctors</em></h2>
+          <p class="si">මහනුවර දිස්ත්‍රික්කයේ ප්‍රමුඛ දිස්ත්‍රික් කුසලතාවයක් ලබා ගනිමින් ජීව විද්‍යාව, රසායන විද්‍යාව හා භෞතික විද්‍යාව යන විෂයන් තුනම විශිෂ්ඨ ලෙස සමත්ව විශ්වවිද්‍යාල වරම් ලද කිංස්වුඩ් විද්‍යාලයේ කීර්තිමත් ආදි ශිෂ්‍යයෙකි.</p>
+          <p>He combines natural public-speaking ability, an unmatched teaching style, and deep subject knowledge gained through higher education. His mission is simple: to create the next generation of doctors — starting with the mother subject, Biology.</p>
+          <div class="teacher-tags">
+            <span>🎯 Kandy District Top</span>
+            <span>🧬 Biology Specialist</span>
+            <span>🎓 University Graduate</span>
+            <span>👨‍⚕️ Doctor-Maker</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="course">
+      <div class="kicker"><span class="idx">04</span><span class="lbl">Our Course · අපගේ පාඨමාලාව</span></div>
+      <h2 class="sec">What's inside <em>the programme</em></h2>
+      <p class="sec-sub">Everything you need to face the A/L Biology paper with confidence — from handwritten theory notes to picture guides, practicals, and olympiad prep.</p>
+      <div class="grid-feat">
+        <div class="feat"><div class="fic">📝</div><h3>Handwritten Theory Notes</h3><p>You're a theory student — writing by hand and drawing diagrams is essential. For selected units we supply printed theory notes to supplement your own work.</p></div>
+        <div class="feat"><div class="fic">🖼️</div><h3>Picture Guides</h3><p>Every unit comes with a printed <em>Picture Guide</em> containing exam-style diagrams — single-colour, exactly how they appear on the paper.</p></div>
+        <div class="feat"><div class="fic">🔄</div><h3>3-Level Revision</h3><p>An unmatched revision system: <strong>01 Foundation</strong> · <strong>02 Advanced</strong> · <strong>03 Revision</strong>. Each level locks the theory deeper.</p></div>
+        <div class="feat"><div class="fic">🔬</div><h3>Theory + Practical</h3><p>All 10 units covered with full theory, plus every A/L Biology practical demonstrated on projection screens.</p></div>
+        <div class="feat"><div class="fic">🥇</div><h3>Olympiad Training</h3><p>We guide students into the Olympiad exam — held before the A/Ls in August — which gives a serious advantage for the main paper.</p></div>
+        <div class="feat"><div class="fic">🎤</div><h3>Engaging Lecture Style</h3><p>Complex concepts broken down with examples and shortcuts. The class keeps you living inside the subject, not memorising it.</p></div>
+      </div>
+    </section>
+
+    <section id="portal">
+      <div class="portal-banner">
+        <div class="portal-in">
+          <div>
+            <h2>Your marks, <em>beautifully tracked</em>.</h2>
+            <p>Log in anytime to see a progress chart and a full marks history — published paper-by-paper by your teacher. No spreadsheets. No guesswork.</p>
+            <div class="portal-list">
+              <div><i>▸</i><span>📈 Progress charts across every paper</span></div>
+              <div><i>▸</i><span>📄 Full paper-by-paper marks table with grade</span></div>
+              <div><i>▸</i><span>🔒 Private — only you can see your marks</span></div>
+              <div><i>▸</i><span>📚 Marking schemes &amp; PDFs per batch</span></div>
+            </div>
+            <div class="portal-cta">
+              <a class="btn btn-gold" href="https://wellbioapp.eclass.lk/login" target="_blank" rel="noopener">🎓 Student Login</a>
+              <a class="btn btn-on-dark" href="https://wellbioapp.eclass.lk/login" target="_blank" rel="noopener">Sign Up →</a>
+            </div>
+          </div>
+          <div class="portal-mock" aria-hidden="true">
+            <div class="mh"><span>📈 Progress — Biology</span><b>78.4%</b></div>
+            <div class="mock-bar"><i></i></div>
+            <div class="mock-paper"><b>Paper 1 — MCQ</b><span>82 / 100 · <span class="mock-tag">A</span></span></div>
+            <div class="mock-paper"><b>Paper 2 — Structured</b><span>74 / 100 · <span class="mock-tag">B</span></span></div>
+            <div class="mock-paper"><b>Paper 3 — Essay</b><span>79 / 100 · <span class="mock-tag">A</span></span></div>
+            <div class="mock-paper"><b>Model Paper</b><span>86 / 100 · <span class="mock-tag">A</span></span></div>
+            <div style="margin-top:12px;font-size:.74rem;color:rgba(255,255,255,.55)">Your teacher publishes each paper · you watch the line climb 📈</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact">
+      <div class="kicker"><span class="idx">05</span><span class="lbl">Contact Us</span></div>
+      <h2 class="sec">Get in <em>touch</em></h2>
+      <p class="sec-sub">Questions about the class, your marks, or signing up? Reach out any way you prefer.</p>
+      <div class="contact-grid">
+        <div class="c-item"><div class="ic">📞</div><div><b>Phone</b><a href="tel:+94702322744">+94 70 232 2744</a></div></div>
+        <div class="c-item"><div class="ic">💬</div><div><b>WhatsApp</b><a href="https://wa.me/94702322744" target="_blank" rel="noopener">+94 70 232 2744</a></div></div>
+        <div class="c-item"><div class="ic">✈️</div><div><b>Telegram</b><a href="https://t.me/Wellbiopaper" target="_blank" rel="noopener">Official Channel</a></div></div>
+        <div class="c-item"><div class="ic">📘</div><div><b>Facebook</b><a href="https://www.facebook.com/share/1BkdSMofkL/" target="_blank" rel="noopener">S.K. Wellala Biology</a></div></div>
+        <div class="c-item"><div class="ic">✉️</div><div><b>Email</b><a href="mailto:info@skwellala.com">info@skwellala.com</a></div></div>
+        <div class="c-item"><div class="ic">📍</div><div><b>Main Location</b><span>No 51/1, Kandy Road, Kurunegala</span></div></div>
+      </div>
+    </section>
+
+    <footer class="lp-foot">
+      <div class="foot-grid">
+        <div>
+          <div class="foot-brand"><span class="mark">🧬</span><b>S.K. Wellala Biology</b></div>
+          <p style="color:var(--muted);font-size:.86rem;line-height:1.7;max-width:300px">A/L Biology theory, revision and paper classes — creating the next generation of doctors, one paper at a time.</p>
+        </div>
+        <div class="foot-col">
+          <h4>Explore</h4>
+          <a href="#classes">Classes &amp; Timings</a>
+          <a href="#centers">Paper Centers</a>
+          <a href="#teacher">Your Teacher</a>
+          <a href="#course">Our Course</a>
+          <a href="#portal">Marks Portal</a>
+        </div>
+        <div class="foot-col">
+          <h4>Students</h4>
+          <a href="https://wellbioapp.eclass.lk/login" target="_blank" rel="noopener">Student Login →</a>
+          <a href="https://wellbioapp.eclass.lk/login" target="_blank" rel="noopener">Sign Up</a>
+          <a href="https://t.me/Wellbiopaper" target="_blank" rel="noopener">Telegram Channel</a>
+          <a href="#contact">Contact Us</a>
+        </div>
+      </div>
+      <div class="foot-legal">
+        <span>© 2025 S.K. Wellala Biology Paper Class · Site developer: <b>Tharusha Lansakara</b></span>
+        <span>Made with 🧬 for future doctors</span>
+      </div>
+    </footer>
+
+  </div>`;
+
+  // Wire up map interactivity
+  const tip = document.getElementById('mapTip');
+  const setActive = (name) => {
+    document.querySelectorAll('.lp .map-dot').forEach(d => d.classList.toggle('active', d.dataset.city === name));
+    document.querySelectorAll('#mapList button').forEach(b => b.classList.toggle('active', b.dataset.city === name));
+    if(tip) tip.textContent = name ? `📍 ${name}` : '🇱🇰 17 Paper Centers';
+  };
+  document.querySelectorAll('.lp .map-dot').forEach(d => {
+    d.addEventListener('mouseenter', () => setActive(d.dataset.city));
+    d.addEventListener('mouseleave', () => setActive(null));
+    d.addEventListener('click', () => setActive(d.dataset.city));
+  });
+  document.querySelectorAll('#mapList button').forEach(b => {
+    b.addEventListener('mouseenter', () => setActive(b.dataset.city));
+    b.addEventListener('mouseleave', () => setActive(null));
+    b.addEventListener('click', () => setActive(b.dataset.city));
+  });
+
+  // Smooth scroll for the in-page anchor links (Explore Classes, footer links, etc.)
+  document.querySelectorAll('.lp a[href^="#"]').forEach(a => {
+    a.addEventListener('click', (e) => {
+      const id = a.getAttribute('href').slice(1);
+      if(!id) return;
+      const el = document.getElementById(id);
+      if(el){ e.preventDefault(); el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+}
 function contact(){
   const rows=[
     ['📞','Phone',CONTACT.phone,v=>'tel:'+v.replace(/[^+\d]/g,'')],
