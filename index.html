@@ -968,13 +968,23 @@ async function stuDash(){
     const ps = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     let ranks = {};
     try { ranks = (await myRanks()) || {}; } catch(e){ ranks = {}; }
-    await Promise.all(ps.map(async p => {
+        await Promise.all(ps.map(async p => {
       p.scores = {};
-      p._rank = (p.ranksPublished && !isOnline(profile.center) && ranks[p.id]) ? ranks[p.id] : null;
+      p._rank = null;
       try {
         const myDoc = await getDoc(doc(db,'marks', p.id + '_' + nic));
         if (myDoc.exists()) p.scores[nic] = myDoc.data().mark;
-      } catch(e){ /* not found is fine */ }
+      } catch(e){}
+      if(!p.ranksPublished) return;
+      if(!isOnline(profile.center)){ p._rank = ranks[p.id] || null; return; }
+      try{
+        const sn = await getDocs(query(collection(db,'marks'), where('pid','==',p.id)));
+        const mine = p.scores[nic];
+        if(mine!=null){
+          const same = sn.docs.map(d=>d.data()).filter(d => String(d.center||'')===String(profile.center||''));
+          p._rank = 1 + same.filter(d => d.mark > mine).length;
+        }
+      }catch(e){}
     }));
     return ps;
   };
