@@ -970,7 +970,7 @@ async function stuDash(){
     try { ranks = (await myRanks()) || {}; } catch(e){ ranks = {}; }
     await Promise.all(ps.map(async p => {
       p.scores = {};
-      p._rank = (p.ranksPublished && ranks[p.id]) ? ranks[p.id] : null;
+      p._rank = (p.ranksPublished && !isOnline(profile.center) && ranks[p.id]) ? ranks[p.id] : null;
       try {
         const myDoc = await getDoc(doc(db,'marks', p.id + '_' + nic));
         if (myDoc.exists()) p.scores[nic] = myDoc.data().mark;
@@ -1410,10 +1410,11 @@ function tabStudents({roster,rosterAll}){
   };
 }
 function paperRanks(students,paper){
-  const rows=students.map(s=>({s,m:paper.scores?.[s.id]})).filter(x=>x.m!=null).sort((a,b)=>b.m-a.m);
+  const rows=students.filter(s=>!isOnline(s.center)).map(s=>({s,m:paper.scores?.[s.id]})).filter(x=>x.m!=null).sort((a,b)=>b.m-a.m);
   let rk=0,prev=null; rows.forEach((x,i)=>{ if(x.m!==prev){rk=i+1;prev=x.m;} x.rank=rk; x.pct=pct(x.m,paper.max); });
   return rows;
 }
+  function isOnline(c){ return /online/i.test(String(c||'')); }
 const batchKey=b=>String(b).split(' ')[0];
 const avgOf=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length*10)/10:null;
 const GRADE_LEGEND='A 75+ · B 65–74 · C 55–64 · S 35–54 · F below 35';
@@ -1439,6 +1440,7 @@ function tabRanks({papers}){
   let rows=[], paper=null;
   if(view==='overall') rows=studentsFromMarks(papers).filter(s=>s.avg!=null).map(s=>({nic:s.nic,name:s.fullName,center:s.center||'—',v:s.avg,txt:s.avg+'% avg ('+s.n+' papers)',pc:s.avg}));
   else{ paper=papers.find(p=>p.id===view); rows=Object.entries(paper.scores||{}).map(([nic,m])=>{ const mt=paper.meta?.[nic]||{}, pc=pct(m,paper.max); return {nic,name:mt.n||nic,center:mt.c||'—',v:pc,txt:`${m} / ${paper.max}`,pc}; }); }
+    if(grp!=='center') rows=rows.filter(x=>!isOnline(x.center));
   const tr=x=>{ const f=faceOf(x.nic); return `<tr><td><b>${x.rank}</b></td><td><span class="face" style="background:${f.bg};width:30px;height:30px;font-size:1.1rem;display:inline-grid;margin-right:6px;vertical-align:middle">${f.e}</span>${nameLink(x.nic,x.name,x.center)}</td><td class="mono">${esc(x.nic)}</td><td>${esc(x.center)}</td><td>${esc(x.txt)}</td><td><span class="pill ${gCls(x.pc)}">${x.pc}%</span></td><td><span class="pill ${gCls(x.pc)}">${grade(x.pc)}</span></td></tr>`; };
   const tbl=a=>`<div class="tbl-wrap"><table><tr><th>Rank</th><th>Student</th><th>NIC</th><th>Center</th><th>Marks</th><th>%</th><th>Grade</th></tr>${a.map(tr).join('')}</table></div>`;
   let body='';
@@ -1680,7 +1682,7 @@ function tabAllMarks({papers,rosterAll}){
   const sort=state.amSort||'high';
   let rows=sel?Object.entries(sel.scores||{}).map(([nic,m])=>{ const mt=sel.meta?.[nic]||{}, r=rosterAll.find(x=>x.nic===nic)||{};
     return {nic,m,pc:pct(m,sel.max),name:mt.n||r.fullName||nic,center:(mt.c??r.center)||'—'}; }):[];
-  const byHigh=[...rows].sort((a,b)=>b.m-a.m); let rk=0,pv=null; byHigh.forEach((x,i)=>{ if(x.m!==pv){rk=i+1;pv=x.m;} x.rank=rk; });
+  const byHigh=[...rows].sort((a,b)=>b.m-a.m); let rk=0,pv=null; let k=0; byHigh.forEach(x=>{ if(isOnline(x.center)){x.rank='—';return;} k++; if(x.m!==pv){rk=k;pv=x.m;} x.rank=rk; });
   if(sort==='high') rows=byHigh; else if(sort==='low') rows=[...byHigh].reverse(); else rows.sort((a,b)=>a.center.localeCompare(b.center)||b.m-a.m);
   const cs={}; rows.forEach(x=>{ (cs[x.center]??={n:0,t:0}); cs[x.center].n++; cs[x.center].t+=x.pc; });
   let last=null, body='';
@@ -1793,7 +1795,7 @@ function tabAnalytics({papers}){
     return {p,n:v.length,avg:avgOf(v),hi:v.length?Math.max(...v):null,lo:v.length?Math.min(...v):null,g}; });
   const cen={}; order.forEach(p=>Object.entries(p.scores||{}).forEach(([nic,m])=>{ const c=p.meta?.[nic]?.c||'No center'; ((cen[c]??={})[p.id]??=[]).push(pct(m,p.max)); }));
   const cS=Object.entries(cen).map(([c,o])=>({c,o,avg:avgOf(Object.values(o).flat()),n:S.filter(s=>(s.center||'No center')===c).length})).sort((a,b)=>b.avg-a.avg);
-  const ranked=rankRows(S.map(s=>({...s,v:s.avg})));
+  const ranked=rankRows(S.filter(s=>!isOnline(s.center)).map(s=>({...s,v:s.avg})));
   const att=S.map(s=>{ const r=[]; if(s.avg<35) r.push('overall average below 35%'); if(s.last!=null&&s.last<35&&s.avg>=35) r.push('latest paper below 35%'); if(s.prev!=null&&s.prev-s.last>=15) r.push(`dropped ${Math.round((s.prev-s.last)*10)/10} points in the latest paper`); return {s,r}; }).filter(x=>x.r.length);
   const overall=avgOf(S.map(s=>s.avg));
   $("#tabBody").innerHTML=`
