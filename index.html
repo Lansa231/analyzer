@@ -151,6 +151,8 @@ canvas{max-height:320px;}
 .pdfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:10px}
 .pdfcard{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
 .pdfcard img,.pdfph{width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--brand-soft);display:grid;place-items:center;font-size:2.6rem}
+  .pdfcard img,.pdfph{width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--brand-soft);display:grid;place-items:center;font-size:2.6rem}
+.pdfcard img.yt-thumb{aspect-ratio:16/9}
 .pdfcard .pt{padding:8px 10px;font-weight:700;font-size:.85rem}.pdfcard .pb{display:flex;gap:6px;padding:0 10px 10px}
 </style>
 
@@ -344,6 +346,22 @@ const NIC_RE = /^(\d{9}[VvXx]|\d{12})$/;
 const BC_RE = /^[A-Za-z0-9]{8}$/;
 const skeyOf = p => String((p && (p.skey || p.nic)) || '').toUpperCase();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  /* ===== YouTube video helpers ===== */
+const ytId = u => {
+  const s = String(u||'').trim();
+  const m = s.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : (/^[A-Za-z0-9_-]{11}$/.test(s) ? s : null);
+};
+const ytThumb = id => `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+const ytUrl   = id => `https://www.youtube.com/watch?v=${id}`;
+const videosDocId = batch => 'videos_' + batchKey(batch);
+const getVideos = async batch => {
+  const d = await getDoc(doc(db, 'settings', videosDocId(batch))).catch(() => null);
+  return d && d.exists() ? (d.data().items || []) : [];
+};
+const saveVideos = async (batch, items) => {
+  await setDoc(doc(db, 'settings', videosDocId(batch)), { items });
+};
 const busy = on => $("#loading").classList.toggle('show', !!on);
 let charts = {};
 function killCharts(){ Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}}); charts={}; }
@@ -935,7 +953,8 @@ async function stuDash(){
     <div id="stuBody"><div class="card"><p class="sub">Loading your marks…</p></div></div>`;
   $("#editMe").onclick=()=>studentEditCard($("#editBox"),profile,false,()=>stuDash());
   $("#reqCh").onclick=()=>studentRequestCard($("#editBox"));
-  { const fd=document.createElement('div'); fd.id='stuFiles'; $("#stuBody").insertAdjacentElement('afterend',fd); loadStuFiles(); }
+   { const fd=document.createElement('div'); fd.id='stuFiles'; $("#stuBody").insertAdjacentElement('afterend',fd); loadStuFiles();
+    const vd=document.createElement('div'); vd.id='stuVideos'; fd.insertAdjacentElement('afterend',vd); loadStuVideos(); }
 
   // --- LOADER ---
   // We fetch all published papers, then for each paper we:
@@ -1267,7 +1286,8 @@ async function teacherDash(){
     <button data-tab="marks" class="${state.tab==='marks'?'active':''}">📝 Marks</button>
     <button data-tab="analytics" class="${state.tab==='analytics'?'active':''}">📊 Analytics</button>
     <button data-tab="ranks" class="${state.tab==='ranks'?'active':''}">🏅 Rankings</button>
-    <button data-tab="allmarks" class="${state.tab==='allmarks'?'active':''}">🌐 All Marks</button>
+       <button data-tab="allmarks" class="${state.tab==='allmarks'?'active':''}">🌐 All Marks</button>
+    <button data-tab="videos" class="${state.tab==='videos'?'active':''}">📹 Videos</button>
     ${window.CA.tabs.map(t=>`<button data-tab="x_${t.id}" class="${state.tab==='x_'+t.id?'active':''}">${t.label}</button>`).join('')}
     ${adm?`<button data-tab="teachers" class="${state.tab==='teachers'?'active':''}">🧑‍🏫 Teachers</button><button data-tab="admin" class="${state.tab==='admin'?'active':''}">⚙️ Centers &amp; Payments</button><button data-tab="requests" class="${state.tab==='requests'?'active':''}">📨 Requests${pendReq?` (${pendReq})`:''}</button><button data-tab="files" class="${state.tab==='files'?'active':''}">📚 Marking PDFs</button>`:''}
   </div>
@@ -1281,7 +1301,7 @@ async function teacherDash(){
   document.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>{ state.batch=b.dataset.batch; state.selPaper=null; state.rankPaper=null; teacherDash(); });
   if($("#ctrSel")) $("#ctrSel").onchange=e=>{ state.center=e.target.value; teacherDash(); };
   if(!adm && ['teachers','admin','requests','files'].includes(state.tab)) state.tab='students';
-  const tabs={students:tabStudents,marks:tabMarks,analytics:tabAnalytics,ranks:tabRanks,allmarks:tabAllMarks,requests:tabRequests,files:tabFiles,teachers:tabTeachers,admin:tabAdmin};
+  const tabs={students:tabStudents,marks:tabMarks,analytics:tabAnalytics,ranks:tabRanks,allmarks:tabAllMarks,requests:tabRequests,files:tabFiles,teachers:tabTeachers,admin:tabAdmin,videos:tabVideos};
   const ctx={students:roster,roster,rosterAll,pending,papers,papersAll,teachers,adm,admins,requests};
   const xt=window.CA.tabs.find(t=>'x_'+t.id===state.tab);
   if(xt){ try{ xt.render({...ctx,el:$("#tabBody")}); }catch(e){ $("#tabBody").innerHTML=`<div class="card"><div class="err">${esc(e.message)}</div></div>`; } }
@@ -1547,6 +1567,79 @@ async function tabFiles(){
   };
   document.querySelectorAll('[data-rf]').forEach(x=>x.onclick=()=>{ if(!confirm('Remove this file from the list?')) return; const [b,id]=x.dataset.rf.split('|'); lists[b]=lists[b].filter(i=>i.id!==id); save(b); });
 }
+async function tabVideos(){
+  $("#tabBody").innerHTML='<div class="card"><p class="sub">Loading…</p></div>';
+  const lists = {};
+  await Promise.all(BATCHES.map(async b => { lists[b] = await getVideos(b); }));
+
+  const save = async (b) => {
+    busy(true);
+    try { await saveVideos(b, lists[b]); }
+    catch(e){ alert(friendly(e)); }
+    busy(false); tabVideos();
+  };
+
+  const preview = () => {
+    const id = ytId($("#vy").value);
+    $("#vprev").innerHTML = id
+      ? `<img src="${ytThumb(id)}" alt="" style="max-width:240px;border-radius:12px;border:1px solid var(--line)">`
+      : '<span class="sub">Paste a YouTube link to preview the thumbnail.</span>';
+  };
+
+  $("#tabBody").innerHTML = `
+  <div class="card"><h2>📹 Add a paper-discussion video</h2>
+    <p class="sub" style="margin:0 0 6px">Upload the video to YouTube, then paste the link here. Students in the same batch will see it on their dashboard.</p>
+    <div class="row">
+      <div><label>Batch</label>
+        <select id="vb">${BATCHES.map(b=>`<option${b===state.batch?' selected':''}>${b}</option>`).join('')}</select></div>
+      <div><label>Title</label>
+        <input id="vt" placeholder="e.g. Paper 3 — Essay discussion"></div>
+      <div><label>YouTube link or ID</label>
+        <input id="vy" placeholder="https://youtu.be/xxxxxxxxxxx"></div>
+      <div><label>Date (optional)</label>
+        <input id="vd" type="date"></div>
+    </div>
+    <div id="vprev" style="margin-top:12px"><span class="sub">Paste a YouTube link to preview the thumbnail.</span></div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn btn-primary" id="vadd" style="width:auto;margin:0">+ Add video</button>
+    </div>
+    <div id="vm"></div>
+  </div>
+  ${BATCHES.map(b=>`
+    <div class="card"><h2>${b} videos (${lists[b].length})</h2>
+      ${lists[b].length ? `<div class="pdfgrid">${lists[b].slice().reverse().map(it=>`
+        <div class="pdfcard">
+          <a href="${ytUrl(it.youtubeId)}" target="_blank" rel="noopener">
+            <img class="yt-thumb" src="${ytThumb(it.youtubeId)}" alt="${esc(it.title)}" loading="lazy">
+          </a>
+          <div class="pt">${esc(it.title)}</div>
+          <div class="pb">
+            <span class="sub" style="margin:0;flex:1">${esc(it.date||'')}</span>
+            <button class="btn btn-danger btn-sm" data-rv="${esc(b)}|${it.id}">Remove</button>
+          </div>
+        </div>`).join('')}</div>` : '<p class="sub">No videos yet.</p>'}
+    </div>`).join('')}`;
+
+  $("#vy").addEventListener('input', preview);
+  preview();
+
+  $("#vadd").onclick = () => {
+    const b = $("#vb").value, t = $("#vt").value.trim();
+    const id = ytId($("#vy").value), date = $("#vd").value, m = $("#vm"); m.innerHTML='';
+    if (t.length < 2) return m.innerHTML='<div class="err">Please give the video a title.</div>';
+    if (!id)          return m.innerHTML='<div class="err">That doesn&rsquo;t look like a YouTube link or video ID.</div>';
+    if (lists[b].some(x => x.youtubeId === id)) return m.innerHTML='<div class="err">That video is already in this batch.</div>';
+    lists[b] = [...lists[b], { id: Date.now().toString(36), title:t, youtubeId:id, date, at:Date.now() }];
+    save(b);
+  };
+
+  document.querySelectorAll('[data-rv]').forEach(x => x.onclick = () => {
+    if (!confirm('Remove this video from the list?')) return;
+    const [b,id] = x.dataset.rv.split('|');
+    lists[b] = lists[b].filter(i => i.id !== id);
+    save(b);
+  });
+}
 async function loadStuFiles(){
   const host=$("#stuFiles"); if(!host) return;
   try{
@@ -1554,6 +1647,22 @@ async function loadStuFiles(){
     if(!items.length){ host.innerHTML=''; return; }
     host.innerHTML=`<div class="card"><h2>📚 Marking schemes &amp; files</h2><div class="pdfgrid">${items.slice().reverse().map(it=>`<div class="pdfcard"><a href="${esc(itemUrl(it))}" target="_blank" rel="noopener">${itemThumb(it)}</a><div class="pt">${esc(it.title)}</div><div class="pb"><a class="btn btn-primary btn-sm" href="${esc(itemUrl(it))}" target="_blank" rel="noopener" style="width:auto">${it.url?'✈️ Open in Telegram':'⬇ Download'}</a></div></div>`).join('')}</div></div>`;
   }catch(e){ host.innerHTML=''; }
+}
+  async function loadStuVideos(){
+  const host = $("#stuVideos"); if (!host) return;
+  try {
+    const items = await getVideos(profile.batch || BATCHES[0]);
+    if (!items.length) { host.innerHTML = ''; return; }
+    host.innerHTML = `<div class="card"><h2>📹 Paper discussion videos</h2>
+      <div class="pdfgrid">${items.slice().reverse().map(it=>`
+        <div class="pdfcard">
+          <a href="${ytUrl(it.youtubeId)}" target="_blank" rel="noopener">
+            <img class="yt-thumb" src="${ytThumb(it.youtubeId)}" alt="${esc(it.title)}" loading="lazy">
+          </a>
+          <div class="pt">${esc(it.title)}</div>
+          <div class="pb"><span class="sub" style="margin:0">${esc(it.date||'')}</span></div>
+        </div>`).join('')}</div></div>`;
+  } catch(e){ host.innerHTML = ''; }
 }
 function tabAdmin(){
   const L=state.lists;
