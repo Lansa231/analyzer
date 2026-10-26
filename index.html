@@ -830,9 +830,9 @@ async function signup(){
     <label>Mobile Number</label><input id="mob" type="tel" placeholder="07X XXX XXXX"><div class="field-err" id="e-mob"></div>
     <label>WhatsApp Number</label><input id="wa" type="tel" placeholder="07X XXX XXXX"><div class="field-err" id="e-wa"></div>
     <label>School</label><input id="sch" placeholder="Your school"><div class="field-err" id="e-sch"></div>
-    <label>Batch</label><select id="bat">${BATCHES.map(b=>`<option>${b}</option>`).join('')}</select>
-    <label>Exam Center</label><select id="ctr"><option value="">Select your center</option>${O(L.centers)}</select><div class="field-err" id="e-ctr"></div>
-    <label>How do you pay for the class?</label><select id="pay"><option value="">Select payment method</option>${O(L.payMethods)}</select><div class="field-err" id="e-pay"></div>
+<label>Batch</label><select id="bat"><option value="">Select your batch</option>${BATCHES.map(b=>`<option>${b}</option>`).join('')}</select><div class="field-err" id="e-bat"></div>
+<label>Exam Center</label><select id="ctr"><option value="">Select your center</option>${O(L.centers)}</select><div class="field-err" id="e-ctr"></div>
+<label>How do you pay for the class?</label><select id="pay"><option value="">Select payment method</option>${O(L.payMethods)}</select><div class="field-err" id="e-pay"></div>
     <label>Password</label><input id="pw" type="password" placeholder="Min 8 chars, letters + numbers" autocomplete="new-password">
     <div class="meter"><div id="meterFill" style="width:0"></div></div>
     <div class="field-err" id="e-pw"></div>
