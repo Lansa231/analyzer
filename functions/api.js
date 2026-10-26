@@ -5,7 +5,7 @@
 class Deny extends Error {}
 class Missing extends Error {}
 const deny = m => { throw new Deny(m); };
-const COLS = ['admins','teachers','students','changeRequests','nics','barcodes','pending','papers','marks','fileLists','settings','attendance'];
+const COLS = ['admins','teachers','students','changeRequests','nics','barcodes','pending','papers','marks','fileLists','settings','attendance','examiners'];
 const ONLINE_RE = /online/i;   // a center whose name contains "online" is the Online paper center (left out of all-center ranks)
 const skeyOf = s => String((s && (s.skey || s.nic)) || '').toUpperCase();
 
@@ -41,7 +41,7 @@ function ctxOf(env, uid) {
   c.isAdmin = async () => !!uid && !!(await c.get('admins', uid));
   c.teacher = async () => uid ? c.get('teachers', uid) : null;
   c.isTeacher = async () => { if (await c.isAdmin()) return true; const t = await c.teacher(); return !!t && t.verified === true; };
-  c.sameCenter = async cn => { if (await c.isAdmin()) return true; if (!(await c.isTeacher())) return false; return ((await c.teacher()).center || '') === (cn || ''); };
+  c.examiner  = async () => uid ? c.get('examiners', uid) : null;   c.isExaminer = async () => { const e = await c.examiner(); return !!e && e.verified === true; };   c.sameCenter = async cn => {     if (await c.isAdmin()) return true;     if (await c.isTeacher())  return ((await c.teacher()).center  || '') === (cn || '');     if (await c.isExaminer()) return ((await c.examiner()).center || '') === (cn || '');     return false;   };
   return c;
 }
 
@@ -49,17 +49,17 @@ function ctxOf(env, uid) {
 async function canRead(c, col, id, d) {
   switch (col) {
     case 'nics': case 'barcodes': case 'pending': case 'settings': return true;
-    case 'admins': case 'teachers': case 'changeRequests': return c.signedIn && (c.uid === id || await c.isAdmin());
+    case 'admins': case 'teachers': case 'changeRequests': case 'examiners': return c.signedIn && (c.uid === id || await c.isAdmin());
     case 'students':
       if (!c.signedIn) return false; if (c.uid === id) return true;
       return d ? await c.sameCenter(d.center) : await c.isTeacher();
-    case 'papers': if (await c.isTeacher()) return true; return c.signedIn && (!d || d.published === true);
+    case 'papers': if (await c.isTeacher() || await c.isExaminer()) return true; return c.signedIn && (!d || d.published === true);
     case 'marks': {
       if (await c.isTeacher()) return true; if (!c.signedIn) return false; if (!d) return true;
       const s = await c.get('students', c.uid); if (!s || d.nic !== skeyOf(s)) return false;
       const p = await c.get('papers', d.pid); return !!p && p.published === true;
     }
-            case 'attendance': return (await c.isTeacher()) && (d ? await c.sameCenter(d.center) : true);
+            case 'attendance': return ((await c.isTeacher()) || (await c.isExaminer())) && (d ? await c.sameCenter(d.center) : true);
     case 'fileLists': {
       if (await c.isTeacher()) return true; if (!c.signedIn) return false;
       const s = await c.get('students', c.uid); return !!s && String(s.batch || '').split(' ')[0] === id;
@@ -73,7 +73,7 @@ async function canWrite(c, col, id, ex, patch, final) {
   const isNew = !ex, adm = await c.isAdmin(), s = c.signedIn;
   const changed = Object.keys(patch).filter(k => JSON.stringify(patch[k]) !== JSON.stringify(ex && ex[k]));
   switch (col) {
-    case 'admins': case 'fileLists': case 'settings': return adm;
+    case 'admins': case 'fileLists': case 'settings': return adm;     case 'examiners':       if (adm) return true;       if (!s || c.uid !== id) return false;       if (isNew) return final.verified === false;       return changed.every(k => ['fullName','gender','className'].includes(k));
     case 'teachers':
       if (adm) return true; if (!s || c.uid !== id) return false;
       if (isNew) { if (final.verified !== false) return false; const reg = await c.get('settings', 'registration'); return !(reg && reg.teacherSignupOpen === false); }
@@ -81,7 +81,8 @@ async function canWrite(c, col, id, ex, patch, final) {
     case 'students':
       if (adm) return true;
         if (isNew) return s && c.uid === id && final.verified === false && /^[A-Za-z0-9]{8}$/.test(String(final.barcode || ''));
-      if (s && c.uid === id && changed.every(k => ['mobile', 'whatsapp', 'school', 'payMethod'].includes(k))) return true;
+       if (s && c.uid === id && changed.every(k => ['mobile', 'whatsapp', 'school', 'payMethod'].includes(k))) return true;
+      if (!(await c.isTeacher())) return false;
       return (await c.sameCenter(ex.center)) && (final.verified ?? false) === (ex.verified ?? false);
     case 'changeRequests': return adm || (s && c.uid === id && final.uid === c.uid && final.status === 'pending');
     case 'nics': case 'barcodes': return isNew && s && final.uid === c.uid;
@@ -96,13 +97,13 @@ async function canDelete(c, col, id, ex) {
   const adm = await c.isAdmin();
   switch (col) {
     case 'admins': return adm && !(ex && ex.owner === true) && c.uid !== id;
-    case 'students': return ex ? await c.sameCenter(ex.center) : false;
+    case 'students': return ex ? ((await c.isTeacher()) && await c.sameCenter(ex.center)) : false;
     case 'changeRequests': case 'papers': case 'fileLists': case 'settings': return adm;
-            case 'teachers': return adm && c.uid !== id && !(await c.get('admins', id));
+            case 'teachers': return adm && c.uid !== id && !(await c.get('admins', id));     case 'examiners': return adm && c.uid !== id;
     case 'nics': case 'barcodes': return await c.isTeacher();
     case 'pending': return c.signedIn;
-    case 'marks': return ex ? await c.sameCenter(ex.center) : c.signedIn;
-            case 'attendance': return ex ? await c.sameCenter(ex.center) : await c.isTeacher();
+    case 'marks': return ex ? ((await c.isTeacher()) && await c.sameCenter(ex.center)) : c.signedIn;
+            case 'attendance': return ex ? await c.sameCenter(ex.center) : ((await c.isTeacher()) || (await c.isExaminer()));
   }
   return false;
 }
@@ -167,13 +168,26 @@ async function handle(b, uid, env) {
   if (op === 'list') {
     let wh = (b.where || []).filter(w => w.op === '==' && /^\w+$/.test(w.f));
     const only = (f, v) => { wh = [...wh.filter(w => w.f !== f), { f, op: '==', v }]; };
-    if (col === 'students' || col === 'pending') {
+      if (col === 'students') {
+      if (!(await c.isAdmin())) {
+        if (await c.isTeacher())       only('center', (await c.teacher()).center  || '');
+        else if (await c.isExaminer()) only('center', (await c.examiner()).center || '');
+        else deny();
+      }
+    } else if (col === 'pending') {
       if (!(await c.isAdmin())) { if (!(await c.isTeacher())) deny(); only('center', (await c.teacher()).center || ''); }
-    } else if (col === 'papers') { if (!(await c.isTeacher())) { if (!c.signedIn) deny(); only('published', true); } }
-          
+    } else if (col === 'papers') {
+      if (!(await c.isTeacher()) && !(await c.isExaminer())) { if (!c.signedIn) deny(); only('published', true); }
+    }
     else if (col === 'marks' || col === 'fileLists') { if (!(await c.isTeacher())) deny(); }
-        else if (col === 'attendance') { if (!(await c.isTeacher())) deny(); if (!(await c.isAdmin())) only('center', (await c.teacher()).center || ''); }
-    else if (['admins', 'teachers', 'changeRequests', 'nics', 'barcodes'].includes(col)) { if (!(await c.isAdmin())) deny(); }
+    else if (col === 'attendance') {
+      if (!(await c.isTeacher()) && !(await c.isExaminer())) deny();
+      if (!(await c.isAdmin())) {
+        if (await c.isTeacher()) only('center', (await c.teacher()).center || '');
+        else                     only('center', (await c.examiner()).center || '');
+      }
+    }
+    else if (['admins', 'teachers', 'changeRequests', 'nics', 'barcodes', 'examiners'].includes(col)) { if (!(await c.isAdmin())) deny(); }
     else deny();
     const params = [col]; let sql = 'SELECT id,data FROM docs WHERE col=?1';
     wh.forEach(w => { params.push(w.v === true ? 1 : w.v === false ? 0 : w.v); sql += ` AND COALESCE(json_extract(data,'$.${w.f}'),'')=?${params.length}`; });
