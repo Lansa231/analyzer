@@ -1510,24 +1510,112 @@ function tabRanks({papers}){
   const view=(state.rkView==='overall'||papers.some(p=>p.id===state.rkView))?state.rkView:(papers[0]?.id||'overall');
   state.rkView=view; if(view!=='overall') state.rankPaper=view;
   const grp=state.rkGroup||'all';
+
   let rows=[], paper=null;
   if(view==='overall') rows=studentsFromMarks(papers).filter(s=>s.avg!=null).map(s=>({nic:s.nic,name:s.fullName,center:s.center||'—',v:s.avg,txt:s.avg+'% avg ('+s.n+' papers)',pc:s.avg}));
   else{ paper=papers.find(p=>p.id===view); rows=Object.entries(paper.scores||{}).map(([nic,m])=>{ const mt=paper.meta?.[nic]||{}, pc=pct(m,paper.max); return {nic,name:mt.n||nic,center:mt.c||'—',v:pc,txt:`${m} / ${paper.max}`,pc}; }); }
-    if(grp!=='center') rows=rows.filter(x=>!isOnline(x.center));
+
+  // ---- Group filter: kurunegala / kandy / other / all / center ----
+  const inKurunegala = c => /kurunegala/i.test(String(c||''));
+  const inKandy      = c => /kandy/i.test(String(c||''));
+  if (grp === 'kurunegala')      rows = rows.filter(x=>!isOnline(x.center) && inKurunegala(x.center));
+  else if (grp === 'kandy')      rows = rows.filter(x=>!isOnline(x.center) && inKandy(x.center));
+  else if (grp === 'other')      rows = rows.filter(x=>!isOnline(x.center) && !inKurunegala(x.center) && !inKandy(x.center));
+  else if (grp === 'all')        rows = rows.filter(x=>!isOnline(x.center));
+  // grp === 'center' keeps all (grouped by center, unchanged behaviour)
+
   const tr=x=>{ const f=faceOf(x.nic); return `<tr><td><b>${x.rank}</b></td><td><span class="face" style="background:${f.bg};width:30px;height:30px;font-size:1.1rem;display:inline-grid;margin-right:6px;vertical-align:middle">${f.e}</span>${nameLink(x.nic,x.name,x.center)}</td><td class="mono">${esc(x.nic)}</td><td>${esc(x.center)}</td><td>${esc(x.txt)}</td><td><span class="pill ${gCls(x.pc)}">${x.pc}%</span></td><td><span class="pill ${gCls(x.pc)}">${grade(x.pc)}</span></td></tr>`; };
-  const tbl=a=>`<div class="tbl-wrap"><table><tr><th>Rank</th><th>Student</th><th>NIC</th><th>Center</th><th>Marks</th><th>%</th><th>Grade</th></tr>${a.map(tr).join('')}</table></div>`;
+
+  const exportBar = () => `
+    <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-ghost btn-sm" data-copy-tsv>📋 Copy for Google Sheets</button>
+      <button class="btn btn-ghost btn-sm" data-dl-csv>⬇ Download CSV</button>
+      <span class="sub" style="margin:0;font-size:.75rem">Open a blank Google Sheet, click cell A1, paste (Ctrl+V).</span>
+    </div>`;
+
+  const tbl = a => `<div class="rk-export-wrap"><div class="tbl-wrap"><table><tr><th>Rank</th><th>Student</th><th>NIC</th><th>Center</th><th>Marks</th><th>%</th><th>Grade</th></tr>${a.map(tr).join('')}</table></div>${exportBar()}</div>`;
+
   let body='';
   if(!rows.length) body='<p class="sub">No marks entered yet.</p>';
   else if(grp==='center'){
     const by={}; rows.forEach(x=>(by[x.center]??=[]).push(x));
     body=Object.keys(by).sort().map(c=>{ const a=rankRows(by[c]); return `<h2 style="margin-top:18px">🏫 ${esc(c)} <span class="sub" style="display:inline">· ${a.length} students · average ${avgOf(a.map(x=>x.pc))}%</span></h2>${tbl(a)}`; }).join('');
   } else body=tbl(rankRows(rows));
+
+  const grpLabel = {
+    all: 'All centers (except Online)',
+    kurunegala: 'Kurunegala only',
+    kandy: 'Kandy only',
+    other: 'All centers except Kurunegala & Kandy',
+    center: 'Center by center'
+  }[grp] || 'All centers';
+
   $("#tabBody").innerHTML=`<div class="card"><h2>🏅 Rankings — ${esc(state.batch)}</h2>
-    ${papers.length?`<div class="row"><div><label>Rank by</label><select id="rkV">${papers.map(p=>`<option value="${p.id}"${p.id===view?' selected':''}>${esc(p.title)} (${esc(p.date||'no date')})</option>`).join('')}<option value="overall"${view==='overall'?' selected':''}>Overall (all papers)</option></select></div>
-    <div><label>Show</label><select id="rkG"><option value="all"${grp==='all'?' selected':''}>All centers together</option><option value="center"${grp==='center'?' selected':''}>Center by center</option></select></div></div>
-    <p class="sub" style="margin:8px 0 0">Grades: ${GRADE_LEGEND}</p>`:'<p class="sub">No papers yet.</p>'}
+    ${papers.length?`<div class="row">
+      <div><label>Rank by</label><select id="rkV">${papers.map(p=>`<option value="${p.id}"${p.id===view?' selected':''}>${esc(p.title)} (${esc(p.date||'no date')})</option>`).join('')}<option value="overall"${view==='overall'?' selected':''}>Overall (all papers)</option></select></div>
+      <div><label>Show</label><select id="rkG">
+        <option value="all"${grp==='all'?' selected':''}>All centers (except Online)</option>
+        <option value="kurunegala"${grp==='kurunegala'?' selected':''}>Kurunegala only</option>
+        <option value="kandy"${grp==='kandy'?' selected':''}>Kandy only</option>
+        <option value="other"${grp==='other'?' selected':''}>All centers except Kurunegala &amp; Kandy</option>
+        <option value="center"${grp==='center'?' selected':''}>Center by center</option>
+      </select></div></div>
+    <p class="sub" style="margin:8px 0 0"><b>Showing:</b> ${esc(grpLabel)} · Grades: ${GRADE_LEGEND}</p>`:'<p class="sub">No papers yet.</p>'}
     ${body}</div>`;
-  if($("#rkV")){ $("#rkV").onchange=e=>{ state.rkView=e.target.value; teacherDash(); }; $("#rkG").onchange=e=>{ state.rkGroup=e.target.value; teacherDash(); }; }
+
+  if($("#rkV")){
+    $("#rkV").onchange=e=>{ state.rkView=e.target.value; teacherDash(); };
+    $("#rkG").onchange=e=>{ state.rkGroup=e.target.value; teacherDash(); };
+  }
+  wireRankExports();
+}
+  function tableToRows(table){
+  const clone = table.cloneNode(true);
+  clone.querySelectorAll('.face').forEach(el=>el.remove());   // strip avatar emoji
+  return Array.from(clone.querySelectorAll('tr')).map(tr =>
+    Array.from(tr.querySelectorAll('th,td')).map(td => (td.textContent||'').replace(/\s+/g,' ').trim())
+  );
+}
+function rowsToTSV(rows){ return rows.map(r => r.join('\t')).join('\n'); }
+function rowsToCSV(rows){
+  return rows.map(r => r.map(cell => {
+    if (/[",\n]/.test(cell)) return '"' + cell.replace(/"/g,'""') + '"';
+    return cell;
+  }).join(',')).join('\n');
+}
+function wireRankExports(){
+  document.querySelectorAll('[data-copy-tsv]').forEach(btn => btn.onclick = async () => {
+    const wrap = btn.closest('.rk-export-wrap');
+    const table = wrap && wrap.querySelector('table');
+    if (!table) return;
+    const tsv = rowsToTSV(tableToRows(table));
+    const orig = btn.textContent;
+    try {
+      await navigator.clipboard.writeText(tsv);
+      btn.textContent = '✓ Copied! Now paste into Google Sheets';
+    } catch(e) {
+      const ta = document.createElement('textarea');
+      ta.value = tsv; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); btn.textContent = '✓ Copied!'; }
+      catch(_) { alert('Could not copy — please use Download CSV instead.'); }
+      document.body.removeChild(ta);
+    }
+    setTimeout(() => btn.textContent = orig, 2500);
+  });
+  document.querySelectorAll('[data-dl-csv]').forEach(btn => btn.onclick = () => {
+    const wrap = btn.closest('.rk-export-wrap');
+    const table = wrap && wrap.querySelector('table');
+    if (!table) return;
+    const csv = '\uFEFF' + rowsToCSV(tableToRows(table));   // BOM helps Google Sheets/Excel
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    const label = (state.rkGroup||'all').replace(/\s+/g,'-');
+    a.download = 'rankings-' + String(state.batch||'').replace(/\s+/g,'-') + '-' + label + '-' + new Date().toISOString().slice(0,10) + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1200);
+  });
 }
 async function moveMarksCenter(nic,center){
   const q=await getDocs(query(collection(db,'marks'),where('nic','==',nic)));
