@@ -975,16 +975,7 @@ async function stuDash(){
         const myDoc = await getDoc(doc(db,'marks', p.id + '_' + nic));
         if (myDoc.exists()) p.scores[nic] = myDoc.data().mark;
       } catch(e){}
-      if(!p.ranksPublished) return;
-      if(!isOnline(profile.center)){ p._rank = ranks[p.id] || null; return; }
-      try{
-        const sn = await getDocs(query(collection(db,'marks'), where('pid','==',p.id)));
-        const mine = p.scores[nic];
-        if(mine!=null){
-          const same = sn.docs.map(d=>d.data()).filter(d => String(d.center||'')===String(profile.center||''));
-          p._rank = 1 + same.filter(d => d.mark > mine).length;
-        }
-      }catch(e){}
+      if(p.ranksPublished) p._rank = ranks[p.id] || null;
     }));
     return ps;
   };
