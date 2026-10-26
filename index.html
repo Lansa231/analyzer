@@ -1239,13 +1239,13 @@ async function teacherDash(){
     return;
   }
   if(!profile.profileDone || state.editProfile){ state.editProfile=false; return teacherProfile(); }
-  const [stuSnap, penSnap, papSnap, setSnap, lstSnap, tchSnap, mkSnap, admSnap, reqSnap] = await Promise.all([
+  const [stuSnap, penSnap, papSnap, setSnap, lstSnap, tchSnap, mkSnap, admSnap, reqSnap, attSnap] = await Promise.all([
     getDocs(profile.isAdmin?collection(db,'students'):query(collection(db,'students'),where('center','==',profile.center||''))),
     getDocs(profile.isAdmin?collection(db,'pending'):query(collection(db,'pending'),where('center','==',profile.center||''))),
     getDocs(collection(db,'papers')), getDoc(doc(db,'settings','registration')).catch(()=>null),
     getDoc(doc(db,'settings','lists')).catch(()=>null), profile.isAdmin?getDocs(collection(db,'teachers')):null,
     getDocs(collection(db,'marks')),
-    profile.isAdmin?getDocs(collection(db,'admins')):null, profile.isAdmin?getDocs(collection(db,'changeRequests')):null
+    profile.isAdmin?getDocs(collection(db,'admins')):null, profile.isAdmin?getDocs(collection(db,'changeRequests')):null,     getDocs(profile.isAdmin?collection(db,'attendance'):query(collection(db,'attendance'),where('center','==',profile.center||''))).catch(()=>null)
   ]).catch(e=>{ app.innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; return [null]; });
   if(!stuSnap) return;
   const students=stuSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.fullName.localeCompare(b.fullName));
@@ -1269,6 +1269,8 @@ async function teacherDash(){
       }
     });
   });
+    const attAll=attSnap?attSnap.docs.map(d=>({id:d.id,...d.data()})):[];
+  papersAll.forEach(p=>{ p.att={}; attAll.forEach(a=>{ if(a.pid===p.id) p.att[a.nic]=a; }); });
   const papers=papersAll.filter(p=>(p.batch||BATCHES[0])===state.batch);
   const rosterAll=students.map(x=>({id:skeyOf(x),uid:x.id,fullName:x.fullName,nic:skeyOf(x),realNic:String(x.nic||'').toUpperCase(),barcode:String(x.barcode||'').toUpperCase(),gender:x.gender||'',email:x.email,mobile:x.mobile,whatsapp:x.whatsapp,school:x.school,batch:x.batch||BATCHES[0],center:x.center||'',payMethod:x.payMethod,verified:!!x.verified,signedUp:true}));
   pending.forEach(x=>{ if(!rosterAll.some(r=>r.id===x.key)) rosterAll.push({id:x.key,fullName:x.fullName,nic:x.key,realNic:String(x.nic||'').toUpperCase(),barcode:String(x.barcode||'').toUpperCase(),email:x.email||'',batch:x.batch||BATCHES[0],center:x.center||'',verified:false,signedUp:false}); });
@@ -1363,7 +1365,7 @@ async function studentView(){
     };
   }catch(e){ app.innerHTML=`${back}<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; }
 }
-function tabStudents({roster,rosterAll}){
+function tabStudents({roster,rosterAll,papers}){
   const adm=profile.isAdmin, L=state.lists;
   const opt=(a,sel)=>a.map(x=>`<option${x===sel?' selected':''}>${esc(x)}</option>`).join('');
   const row=s=>`<tr><td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b>${s.signedUp?'':' <span class="sub">(not signed up)</span>'}</td><td class="mono">${esc(s.realNic||'—')}</td><td class="mono">${esc(s.barcode||'—')}</td><td>${esc(s.batch)}</td><td>${esc(s.center||'—')}</td>
@@ -1382,7 +1384,7 @@ function tabStudents({roster,rosterAll}){
   })();
   const table=a=>a.length?`<div class="tbl-wrap"><table><tr><th>Name</th><th>NIC</th><th>Barcode</th><th>Batch</th><th>Center</th><th>Contact</th><th>School</th><th>Paid via</th><th></th></tr>${a.map(row).join('')}</table></div>`:'<p class="sub">No students found.</p>';
   $("#tabBody").innerHTML=`
-  ${sumCard}<div class="card"><h2>🔎 Find a student</h2>
+  ${sumCard}<div id="attBox"></div><div class="card"><h2>🔎 Find a student</h2>
     <input id="q" placeholder="Search by NIC, barcode or name"><div id="qres"></div></div>
   <div class="card"><h2>Add Student to ${esc(state.batch)}</h2>
     <p class="sub" style="margin:0 0 4px">Add a student with their barcode or NIC (either one) and enter marks straight away — they can sign up later with the same NIC and barcode.</p>
@@ -1414,6 +1416,42 @@ function tabStudents({roster,rosterAll}){
     $("#qres").innerHTML=v.length<2?'':table(rosterAll.filter(s=>s.nic.includes(v)||String(s.realNic||'').includes(v)||String(s.barcode||'').includes(v)||s.fullName.toUpperCase().includes(v)).slice(0,25));
     wire();
   };
+    { const box=$("#attBox");
+    const draw=()=>{
+      const p=papers.find(x=>x.id===state.attPaper)||papers[0];
+      if(!p){ box.innerHTML='<div class="card"><h2>✅ Paper attendance</h2><p class="sub">No papers yet for this batch.</p></div>'; return; }
+      state.attPaper=p.id; p.att=p.att||{};
+      const list=Object.values(p.att).sort((a,b)=>(b.at||0)-(a.at||0));
+      box.innerHTML=`<div class="card"><h2>✅ Paper attendance <span class="sub" style="display:inline">· only teachers &amp; developers can see this</span></h2>
+        <div class="row"><div><label style="margin-top:0">Paper</label><select id="atP">${papers.map(x=>`<option value="${x.id}"${x.id===p.id?' selected':''}>${esc(x.title)} (${esc(x.date||'no date')})</option>`).join('')}</select></div>
+        <div><label style="margin-top:0">Barcode (or NIC)</label><input id="atB" placeholder="Scan or type, then press Enter" autocomplete="off" maxlength="12"></div>
+        <button class="btn btn-primary" id="atAdd" style="width:auto;margin:0">+ Mark present</button></div>
+        <div id="atMsg"></div>
+        <p class="sub" style="margin:10px 0 6px"><b>${list.length}</b> student${list.length===1?'':'s'} attended this paper. They now appear in the Marks tab for this paper.</p>
+        ${list.length?`<div class="tbl-wrap"><table><tr><th>#</th><th>Name</th><th>Barcode</th><th>Center</th><th></th></tr>${list.map((a,i)=>`<tr><td>${list.length-i}</td><td><b>${esc(a.name||a.nic)}</b></td><td class="mono">${esc(a.barcode||'—')}</td><td>${esc(a.center||'—')}</td><td style="text-align:right"><button class="btn btn-danger btn-sm" data-at-rm="${esc(a.nic)}">Remove</button></td></tr>`).join('')}</table></div>`:''}</div>`;
+      $("#atP").onchange=e=>{ state.attPaper=e.target.value; draw(); };
+      const add=async()=>{
+        const v=$("#atB").value.trim().toUpperCase(), m=$("#atMsg"); m.innerHTML='';
+        if(!v) return;
+        const s=rosterAll.find(r=>String(r.barcode||'').toUpperCase()===v||String(r.realNic||'').toUpperCase()===v);
+        if(!s){ m.innerHTML=`<div class="err">No student found with "${esc(v)}"${adm?'':' in your center'}.</div>`; return $("#atB").select(); }
+        if(s.batch!==state.batch){ m.innerHTML=`<div class="err">${esc(s.fullName)} is in ${esc(s.batch)}, not ${esc(state.batch)}.</div>`; return; }
+        if(p.att[s.id]){ m.innerHTML=`<div class="err">${esc(s.fullName)} is already marked present.</div>`; $("#atB").value=''; return; }
+        const rec={pid:p.id,nic:s.id,barcode:s.barcode||'',name:s.fullName,center:s.center||'',batch:p.batch||state.batch,by:profile.fullName||'',at:Date.now()};
+        busy(true);
+        try{ await setDoc(doc(db,'attendance',p.id+'_'+s.id),rec); p.att[s.id]=rec; busy(false); draw(); $("#atMsg").innerHTML=`<div class="ok">✅ ${esc(s.fullName)} added.</div>`; $("#atB").focus(); }
+        catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
+      };
+      $("#atAdd").onclick=add;
+      $("#atB").addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); add(); } });
+      document.querySelectorAll('[data-at-rm]').forEach(b=>b.onclick=async()=>{
+        if(!confirm('Remove this student from the attendance list?')) return;
+        busy(true);
+        try{ await deleteDoc(doc(db,'attendance',p.id+'_'+b.dataset.atRm)); delete p.att[b.dataset.atRm]; busy(false); draw(); }
+        catch(e){ busy(false); alert(friendly(e)); }
+      });
+    };
+    draw(); }
   $("#addStu").onclick=async()=>{
     const nm=$("#an").value.trim(), nic=$("#anic").value.trim().toUpperCase(), bc=$("#abc").value.trim().toUpperCase(), m=$("#addMsg"); m.innerHTML='';
     if(nm.length<3) return m.innerHTML='<div class="err">Please enter the student\'s name.</div>';
@@ -1797,18 +1835,18 @@ function drawMarksPane(students,papers){
   const pane=$("#marksPane"); if(!pane) return;
   const selPapers=papers.filter(p=>p.id===state.selPaper);
   const sel=selPapers[0];
-  if(!sel){ pane.innerHTML=''; return; }
+  if(!sel){ pane.innerHTML=''; return; }   const list=students.filter(s=>sel.att?.[s.id]||sel.scores?.[s.id]!=null);
   pane.innerHTML = `
   <div class="card">
     <h2>✏️ Marks — ${esc(sel.subject)}: ${esc(sel.title)} <span class="sub" style="display:inline">(max ${sel.max})</span> <span id="svLbl" class="saved" style="margin-left:8px"></span></h2>
-    ${students.length?`<div class="tbl-wrap"><table><tr><th>Student</th><th>NIC</th><th>Marks / ${sel.max}</th><th>%</th><th>Grade</th></tr>
-      ${students.map(s=>{
+    ${list.length?`<div class="tbl-wrap"><table><tr><th>Student</th><th>NIC</th><th>Marks / ${sel.max}</th><th>%</th><th>Grade</th></tr>
+      ${list.map(s=>{
         const sc=sel.scores?.[s.id]; const p=sc!=null?pct(sc,sel.max):null;
         return `<tr><td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b></td><td class="mono">${esc(s.realNic||'-')}${s.barcode?'<br><span class="sub" style="margin:0">'+esc(s.barcode)+'</span>':''}</td>
           <td style="max-width:120px"><input type="number" step="0.01" min="0" max="${sel.max}" value="${sc??''}" data-mk="${s.id}"></td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${p}%</span>`:'—'}</td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${grade(p)}</span>`:'—'}</td></tr>`;
-      }).join('')}</table></div>`:'<p class="sub">No students yet.</p>'}
+      }).join('')}</table></div>`:'<p class="sub">No students are marked present for this paper yet. Add them in the Students tab → Paper attendance.</p>'}
   </div>`;
   document.querySelectorAll('[data-mk]').forEach(inp=>inp.onchange=async()=>{
     const nic=inp.dataset.mk, st=students.find(x=>x.id===nic);
