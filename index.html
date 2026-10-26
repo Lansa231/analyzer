@@ -1314,7 +1314,7 @@ async function teacherDash(){
   </div>
   <div id="tabBody"></div>`;
 
-  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; state.selPaper=null; teacherDash(); });
+  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; teacherDash(); });
   $("#editProf").onclick=()=>{ state.editProfile=true; teacherDash(); };
   if($("#regOpen")) $("#regOpen").onchange=async e=>{
     await setDoc(doc(db,'settings','registration'),{teacherSignupOpen:e.target.checked},{merge:true});
