@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => window.CA.tabs.push({
   const clean = () => {
     document.querySelectorAll('button').forEach(b => {
       const t = b.textContent.trim();
-      if ((t === 'Verify' || t === 'Unverify') && !b.hasAttribute('data-tv')) b.remove();
+      if ((t === 'Verify' || t === 'Unverify') && !b.hasAttribute('data-tv') && !b.hasAttribute('data-etv')) b.remove();
     });
     document.querySelectorAll('span').forEach(el => {
       const t = el.textContent.trim();
