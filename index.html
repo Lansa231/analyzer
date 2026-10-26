@@ -1511,7 +1511,6 @@ function tabRanks({papers, rosterAll}){
   state.rkView=view; if(view!=='overall') state.rankPaper=view;
   const grp=state.rkGroup||'all';
 
-  // School lookup — built from the roster (signed-up + pending) by NIC
   const schoolOf = nic => {
     const r = (rosterAll||[]).find(x=>x.nic===nic);
     return r ? (r.school || '—') : '—';
@@ -1525,7 +1524,6 @@ function tabRanks({papers, rosterAll}){
       center:s.center||'—',
       school:schoolOf(s.nic),
       v:s.avg,
-      txt:s.avg+'% avg ('+s.n+' papers)',
       pc:s.avg
     }));
   } else {
@@ -1539,22 +1537,18 @@ function tabRanks({papers, rosterAll}){
         center: mt.c || '—',
         school: schoolOf(nic),
         v: pc,
-        txt: `${m} / ${paper.max}`,
         pc
       };
     });
   }
 
-  // Group filter: kurunegala / kandy / other / all / center
   const inKurunegala = c => /kurunegala/i.test(String(c||''));
   const inKandy      = c => /kandy/i.test(String(c||''));
   if      (grp === 'kurunegala') rows = rows.filter(x=>!isOnline(x.center) && inKurunegala(x.center));
   else if (grp === 'kandy')      rows = rows.filter(x=>!isOnline(x.center) && inKandy(x.center));
   else if (grp === 'other')      rows = rows.filter(x=>!isOnline(x.center) && !inKurunegala(x.center) && !inKandy(x.center));
   else if (grp === 'all')        rows = rows.filter(x=>!isOnline(x.center));
-  // grp === 'center' keeps all rows (grouped by center below)
 
-  // New 5-column row: Rank · Name · School · Center · Marks
   const tr = x => `<tr>
     <td><b>${x.rank}</b></td>
     <td>${nameLink(x.nic, x.name, x.center)}</td>
@@ -1565,8 +1559,8 @@ function tabRanks({papers, rosterAll}){
 
   const exportBar = () => `
     <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;align-items:center">
-      <button class="btn btn-ghost btn-sm" data-copy-tsv>📋 Copy for Google Sheets</button>
-      <button class="btn btn-ghost btn-sm" data-dl-csv>⬇ Download CSV</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-copy-tsv>📋 Copy for Google Sheets</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-dl-csv>⬇ Download CSV</button>
       <span class="sub" style="margin:0;font-size:.75rem">Open a blank Google Sheet, click cell A1, paste (Ctrl+V).</span>
     </div>`;
 
@@ -1622,38 +1616,69 @@ function tabRanks({papers, rosterAll}){
   }
   wireRankExports();
 }
+
+function tableToRows(table){
+  const clone = table.cloneNode(true);
+  clone.querySelectorAll('.face').forEach(el=>el.remove());
+  return Array.from(clone.querySelectorAll('tr')).map(tr =>
+    Array.from(tr.querySelectorAll('th,td')).map(td => (td.textContent||'').replace(/\s+/g,' ').trim())
+  );
+}
+function rowsToTSV(rows){ return rows.map(r => r.join('\t')).join('\n'); }
+function rowsToCSV(rows){
+  return rows.map(r => r.map(cell => {
+    if (/[",\n]/.test(cell)) return '"' + cell.replace(/"/g,'""') + '"';
+    return cell;
+  }).join(',')).join('\n');
+}
 function wireRankExports(){
-  document.querySelectorAll('[data-copy-tsv]').forEach(btn => btn.onclick = async () => {
-    const wrap = btn.closest('.rk-export-wrap');
-    const table = wrap && wrap.querySelector('table');
-    if (!table) return;
-    const tsv = rowsToTSV(tableToRows(table));
-    const orig = btn.textContent;
-    try {
-      await navigator.clipboard.writeText(tsv);
-      btn.textContent = '✓ Copied! Now paste into Google Sheets';
-    } catch(e) {
-      const ta = document.createElement('textarea');
-      ta.value = tsv; document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); btn.textContent = '✓ Copied!'; }
-      catch(_) { alert('Could not copy — please use Download CSV instead.'); }
-      document.body.removeChild(ta);
-    }
-    setTimeout(() => btn.textContent = orig, 2500);
+  document.querySelectorAll('[data-copy-tsv]').forEach(btn => {
+    btn.onclick = async (ev) => {
+      ev.preventDefault();
+      const wrap = btn.closest('.rk-export-wrap');
+      const table = wrap && wrap.querySelector('table');
+      if (!table) { alert('No table found to copy.'); return; }
+      const tsv = rowsToTSV(tableToRows(table));
+      const orig = btn.textContent;
+      let ok = false;
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(tsv);
+          ok = true;
+        }
+      } catch (e) { ok = false; }
+      if (!ok) {
+        const ta = document.createElement('textarea');
+        ta.value = tsv;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select();
+        try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+        document.body.removeChild(ta);
+      }
+      btn.textContent = ok ? '✓ Copied! Paste into Google Sheets' : '⚠ Copy failed — use Download CSV';
+      setTimeout(() => btn.textContent = orig, 2800);
+    };
   });
-  document.querySelectorAll('[data-dl-csv]').forEach(btn => btn.onclick = () => {
-    const wrap = btn.closest('.rk-export-wrap');
-    const table = wrap && wrap.querySelector('table');
-    if (!table) return;
-    const csv = '\uFEFF' + rowsToCSV(tableToRows(table));   // BOM helps Google Sheets/Excel
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url;
-    const label = (state.rkGroup||'all').replace(/\s+/g,'-');
-    a.download = 'rankings-' + String(state.batch||'').replace(/\s+/g,'-') + '-' + label + '-' + new Date().toISOString().slice(0,10) + '.csv';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1200);
+  document.querySelectorAll('[data-dl-csv]').forEach(btn => {
+    btn.onclick = (ev) => {
+      ev.preventDefault();
+      const wrap = btn.closest('.rk-export-wrap');
+      const table = wrap && wrap.querySelector('table');
+      if (!table) { alert('No table found to download.'); return; }
+      const csv = '\uFEFF' + rowsToCSV(tableToRows(table));
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url;
+      const label = (state.rkGroup||'all').replace(/\s+/g,'-');
+      a.download = 'rankings-' + String(state.batch||'').replace(/\s+/g,'-') + '-' + label + '-' + new Date().toISOString().slice(0,10) + '.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    };
   });
 }
 async function moveMarksCenter(nic,center){
