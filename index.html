@@ -388,7 +388,7 @@ function bindTheme(){ const b=$("#themeBtn"); if(b) b.onclick=()=>{ setTheme(doc
 /* ============================== STATE ============================== */
 let auth=null, db=null, user=null, role=null, profile=null;
 let signingUp=false, authLoad=null;
-let state = {batch:'2027 A/L',center:'All',rankPaper:null, tab:'marks', selPaper:null, stuSubject:'All', settings:null };
+let state = {batch:'2027 A/L',center:'All',rankPaper:null, tab:'marks', selPaper:null, stuSubject:'All', settings:null, marqueePaperId:null };
 let unsubStu = null;
 
 /* ============================== ROUTER ============================== */
@@ -534,9 +534,7 @@ const HARDCODED_CFG = {
   measurementId: "G-NQK2R0Q174"
 };
 const savedCfg=localStorage.getItem('ca_fb_config');
-if(HARDCODED_CFG){ bootFirebase(HARDCODED_CFG); }
-else if(savedCfg){ try{ bootFirebase(JSON.parse(savedCfg)); }catch(e){ setupScreen('Saved config invalid — paste again.');} }
-else setupScreen();
+
 
 /* ============================== CONTACT ============================== */
 const CONTACT={
@@ -966,11 +964,13 @@ async function stuDash(){
         <div style="font-size:.85rem;opacity:.9">${esc(profile.batch||BATCHES[0])}${profile.center?' · '+esc(profile.center):''}${profile.school?' · '+esc(profile.school):''}</div>
       </div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 14px"><button class="btn btn-ghost btn-sm" id="editMe">✏️ Edit my details</button><button class="btn btn-ghost btn-sm" id="reqCh">🔁 Change center / batch</button></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 14px"><button class="btn btn-ghost btn-sm" id="editMe">✏️ Edit my details</button><button class="btn btn-ghost btn-sm" id="reqCh">🔁 Change center / batch</button></div>
     <div id="editBox"></div>
+    <div id="stuMarquee"></div>
     <div id="stuBody"><div class="card"><p class="sub">Loading your marks…</p></div></div>`;
   $("#editMe").onclick=()=>studentEditCard($("#editBox"),profile,false,()=>stuDash());
   $("#reqCh").onclick=()=>studentRequestCard($("#editBox"));
+  studentMarquee();
    { const fd=document.createElement('div'); fd.id='stuFiles'; $("#stuBody").insertAdjacentElement('afterend',fd); loadStuFiles();
     const vd=document.createElement('div'); vd.id='stuVideos'; fd.insertAdjacentElement('afterend',vd); loadStuVideos(); }
 
@@ -1248,13 +1248,14 @@ async function teacherDash(){
     return;
   }
   if(!profile.profileDone || state.editProfile){ state.editProfile=false; return teacherProfile(); }
-  const [stuSnap, penSnap, papSnap, setSnap, lstSnap, tchSnap, mkSnap, admSnap, reqSnap, attSnap] = await Promise.all([
+  const [stuSnap, penSnap, papSnap, setSnap, lstSnap, tchSnap, mkSnap, admSnap, reqSnap, attSnap, marqSnap] = await Promise.all([
     getDocs(profile.isAdmin?collection(db,'students'):query(collection(db,'students'),where('center','==',profile.center||''))),
     getDocs(profile.isAdmin?collection(db,'pending'):query(collection(db,'pending'),where('center','==',profile.center||''))),
     getDocs(collection(db,'papers')), getDoc(doc(db,'settings','registration')).catch(()=>null),
     getDoc(doc(db,'settings','lists')).catch(()=>null), profile.isAdmin?getDocs(collection(db,'teachers')):null,
     getDocs(collection(db,'marks')),
-    profile.isAdmin?getDocs(collection(db,'admins')):null, profile.isAdmin?getDocs(collection(db,'changeRequests')):null,     getDocs(profile.isAdmin?collection(db,'attendance'):query(collection(db,'attendance'),where('center','==',profile.center||''))).catch(()=>null)
+    profile.isAdmin?getDocs(collection(db,'admins')):null, profile.isAdmin?getDocs(collection(db,'changeRequests')):null,     getDocs(profile.isAdmin?collection(db,'attendance'):query(collection(db,'attendance'),where('center','==',profile.center||''))).catch(()=>null),
+    getDoc(doc(db,'settings','marquee')).catch(()=>null)
   ]).catch(e=>{ app.innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; return [null]; });
   if(!stuSnap) return;
   const students=stuSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.fullName.localeCompare(b.fullName));
@@ -1288,7 +1289,7 @@ async function teacherDash(){
   const lsd=lstSnap?.exists()?lstSnap.data():{};
   state.lists={centers:lsd.centers||[],payMethods:lsd.payMethods||[]};
   const teachers=tchSnap?tchSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.fullName).localeCompare(String(b.fullName))):[];
-  state.settings = setSnap?.exists()? setSnap.data() : {teacherSignupOpen:true};
+  state.settings = setSnap?.exists()? setSnap.data() : {teacherSignupOpen:true};   state.marqueePaperId = marqSnap?.exists() ? (marqSnap.data().paperId || null) : null;
 
   app.innerHTML = `
   <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
@@ -1592,7 +1593,7 @@ function tabRanks({papers, rosterAll}){
     center:     'Center by center'
   }[grp] || 'All centers';
 
-  $("#tabBody").innerHTML = `<div class="card"><h2>🏅 Rankings — ${esc(state.batch)}</h2>
+  const marqueeCard = profile.isAdmin ? `     <div class="card" style="margin-bottom:14px">       <h2>📺 Student Dashboard Marquee — Top 10</h2>       <p class="sub" style="margin:0 0 8px">Choose which paper's top 10 scrolls on every student's dashboard. All centers included, Online excluded.</p>       <div class="row">         <div><label style="margin-top:0">Paper</label>           <select id="marqSel">             <option value="">— Not set (no marquee on students) —</option>             ${papers.map(p=>`<option value="${p.id}"${p.id===state.marqueePaperId?' selected':''}>${esc(p.title)} (${esc(p.date||'no date')})</option>`).join('')}           </select>         </div>         <button class="btn btn-primary" id="marqSave" style="width:auto;margin:0">Save &amp; refresh top 10</button>       </div>       <div id="marqMsg"></div>     </div>` : '';    $("#tabBody").innerHTML = marqueeCard + `<div class="card"><h2>🏅 Rankings — ${esc(state.batch)}</h2>
     ${papers.length ? `<div class="row">
       <div><label>Rank by</label><select id="rkV">
         ${papers.map(p=>`<option value="${p.id}"${p.id===view?' selected':''}>${esc(p.title)} (${esc(p.date||'no date')})</option>`).join('')}
@@ -1614,6 +1615,24 @@ function tabRanks({papers, rosterAll}){
     $("#rkV").onchange = e => { state.rkView = e.target.value; teacherDash(); };
     $("#rkG").onchange = e => { state.rkGroup = e.target.value; teacherDash(); };
   }
+
+  if($("#marqSave")){
+    $("#marqSave").onclick = async () => {
+      const v = $("#marqSel").value || null;
+      busy(true);
+      try {
+        await computeAndSaveMarquee(v);
+        state.marqueePaperId = v;
+        $("#marqMsg").innerHTML = v
+          ? '<div class="ok">✅ Saved. Students will see the top 10 on their next dashboard refresh.</div>'
+          : '<div class="ok">✅ Cleared. Students will no longer see a marquee.</div>';
+      } catch(e) {
+        $("#marqMsg").innerHTML = `<div class="err">${esc(friendly(e))}</div>`;
+      }
+      busy(false);
+    };
+  }
+
   wireRankExports();
 }
 
@@ -2061,10 +2080,15 @@ function drawMarksPane(students,papers){
       if (refreshedSel) sel.scores = refreshedSel.scores;
 
       // redraw ONLY the marquee in place (keeps focus in the current input)
-      const marq = document.querySelector('.marq');
+        const marq = document.querySelector('.marq');
       if (marq) {
         const freshRoster = students.filter(r=>r.batch===state.batch);
         marq.outerHTML = rankMarquee(freshRoster, papers);
+      }
+
+      // If this is the developer-selected student-marquee paper, refresh the stored top 10
+      if(profile.isAdmin && state.marqueePaperId === sel.id){
+        try { await computeAndSaveMarquee(sel.id); } catch(_){}
       }
     }catch(e){ $("#svLbl").textContent='⚠ '+friendly(e); }
   });
@@ -2110,6 +2134,71 @@ function tabAnalytics({papers}){
     d.save('class-rankings.pdf');
   };
 }
+  if(HARDCODED_CFG){ bootFirebase(HARDCODED_CFG); }
+else if(savedCfg){ try{ bootFirebase(JSON.parse(savedCfg)); }catch(e){ setupScreen('Saved config invalid — paste again.');} }
+else setupScreen();
+
+
+/* ===== TOP 10 STUDENT MARQUEE ===== */
+async function computeAndSaveMarquee(paperId){
+  if(!paperId){
+    await setDoc(doc(db,'settings','marquee'),{ paperId:'', top:[], updatedAt:serverTimestamp() });
+    return;
+  }
+  const pSnap = await getDoc(doc(db,'papers',paperId));
+  if(!pSnap.exists()) return;
+  const paper = { id:paperId, ...pSnap.data() };
+  const mSnap = await getDocs(collection(db,'marks'));
+  const top = mSnap.docs.map(d=>d.data())
+    .filter(m=>m.pid===paperId)
+    .filter(m=>!/online/i.test(String(m.center||'')))
+    .sort((a,b)=>b.mark-a.mark)
+    .slice(0,10)
+    .map(m=>({
+      nic: m.nic,
+      name: m.name || m.nic,
+      center: m.center || '',
+      mark: m.mark,
+      pct: pct(m.mark, paper.max)
+    }));
+  await setDoc(doc(db,'settings','marquee'),{
+    paperId,
+    paperTitle: paper.title,
+    paperMax:   paper.max,
+    top,
+    updatedAt:  serverTimestamp()
+  });
+}
+
+async function studentMarquee(){
+  const host = document.getElementById('stuMarquee');
+  if(!host) return;
+  try {
+    const d = await getDoc(doc(db,'settings','marquee'));
+    if(!d.exists()){ host.innerHTML=''; return; }
+    const data = d.data();
+    if(!data.paperId || !(data.top||[]).length){ host.innerHTML=''; return; }
+    const medal = n => n===1?'🥇':n===2?'🥈':n===3?'🥉':'#'+n;
+    const items = data.top.map((m,i)=>{
+      const f = faceOf(m.nic);
+      return `<div class="marq-item">
+        <span class="face" style="background:${f.bg}">${f.e}</span>
+        <span>
+          <b>${medal(i+1)} ${esc(m.name)}</b>
+          <small>${m.pct}% · ${esc(m.center||'—')}</small>
+        </span>
+      </div>`;
+    }).join('');
+    host.innerHTML = `<div class="marq">
+      <div class="marq-h">🏆 TOP 10 — ${esc(data.paperTitle||'').toUpperCase()}</div>
+      <div class="marq-track" style="animation-duration:${Math.max(25, data.top.length*4)}s">${items}${items}</div>
+    </div>`;
+  } catch(e){
+    console.error('[studentMarquee]',e);
+    host.innerHTML = '';
+  }
+}
+
 chartDefaults();
 </script>
 </body>
