@@ -1560,7 +1560,7 @@ function tabRanks({papers, rosterAll}){
     <td>${nameLink(x.nic, x.name, x.center)}</td>
     <td>${esc(x.school||'—')}</td>
     <td>${esc(x.center)}</td>
-    <td class="mono">${esc(x.txt)}</td>
+    <td class="mono"><b>${x.pc}%</b></td>
   </tr>`;
 
   const exportBar = () => `
@@ -1572,7 +1572,7 @@ function tabRanks({papers, rosterAll}){
 
   const tbl = a => `<div class="rk-export-wrap">
     <div class="tbl-wrap"><table>
-      <tr><th>Rank</th><th>Name</th><th>School</th><th>Center</th><th>Marks</th></tr>
+      <tr><th>Rank</th><th>Name</th><th>School</th><th>Center</th><th>%</th></tr>
       ${a.map(tr).join('')}
     </table></div>
     ${exportBar()}
