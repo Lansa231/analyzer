@@ -5,7 +5,7 @@
 class Deny extends Error {}
 class Missing extends Error {}
 const deny = m => { throw new Deny(m); };
-const COLS = ['admins','teachers','students','changeRequests','nics','barcodes','pending','papers','marks','fileLists','settings'];
+const COLS = ['admins','teachers','students','changeRequests','nics','barcodes','pending','papers','marks','fileLists','settings','attendance'];
 const ONLINE_RE = /online/i;   // a center whose name contains "online" is the Online paper center (left out of all-center ranks)
 const skeyOf = s => String((s && (s.skey || s.nic)) || '').toUpperCase();
 
@@ -59,6 +59,7 @@ async function canRead(c, col, id, d) {
       const s = await c.get('students', c.uid); if (!s || d.nic !== skeyOf(s)) return false;
       const p = await c.get('papers', d.pid); return !!p && p.published === true;
     }
+            case 'attendance': return (await c.isTeacher()) && (d ? await c.sameCenter(d.center) : true);
     case 'fileLists': {
       if (await c.isTeacher()) return true; if (!c.signedIn) return false;
       const s = await c.get('students', c.uid); return !!s && String(s.batch || '').split(' ')[0] === id;
@@ -87,6 +88,7 @@ async function canWrite(c, col, id, ex, patch, final) {
     case 'pending': return await c.sameCenter(final.center || '');
     case 'papers': if (adm) return true; return !isNew && (await c.isTeacher()) && changed.every(k => k === 'published' || k === 'ranksPublished');
     case 'marks': return id === final.pid + '_' + final.nic && await c.sameCenter(final.center || '');
+            case 'attendance': return id === final.pid + '_' + final.nic && await c.sameCenter(final.center || '');
   }
   return false;
 }
@@ -100,6 +102,7 @@ async function canDelete(c, col, id, ex) {
     case 'nics': case 'barcodes': return await c.isTeacher();
     case 'pending': return c.signedIn;
     case 'marks': return ex ? await c.sameCenter(ex.center) : c.signedIn;
+            case 'attendance': return ex ? await c.sameCenter(ex.center) : await c.isTeacher();
   }
   return false;
 }
@@ -153,9 +156,11 @@ async function handle(b, uid, env) {
       if (p.published !== true || p.ranksPublished !== true || (p.batch || '2027 A/L') !== batch) continue;
       const rows = ((await env.DB.prepare("SELECT data FROM docs WHERE col='marks' AND COALESCE(json_extract(data,'$.pid'),'')=?1").bind(r.id).all()).results || []).map(x => JSON.parse(x.data));
       const mine = rows.find(x => x.nic === key);
-      if (!mine || ONLINE_RE.test(s.center || '')) { ranks[r.id] = null; continue; }
-      const rank = 1 + rows.filter(x => !ONLINE_RE.test(x.center || '') && x.mark > mine.mark).length;
-      ranks[r.id] = rank <= 100 ? rank : null;
+           if (!mine) { ranks[r.id] = null; continue; }
+      const online = ONLINE_RE.test(s.center || '');
+      const pool = rows.filter(x => ONLINE_RE.test(x.center || '') === online);
+      const rank = 1 + pool.filter(x => x.mark > mine.mark).length;
+      ranks[r.id] = (online || rank <= 100) ? rank : null;
     }
     return { ranks };
   }
@@ -165,7 +170,9 @@ async function handle(b, uid, env) {
     if (col === 'students' || col === 'pending') {
       if (!(await c.isAdmin())) { if (!(await c.isTeacher())) deny(); only('center', (await c.teacher()).center || ''); }
     } else if (col === 'papers') { if (!(await c.isTeacher())) { if (!c.signedIn) deny(); only('published', true); } }
+          
     else if (col === 'marks' || col === 'fileLists') { if (!(await c.isTeacher())) deny(); }
+        else if (col === 'attendance') { if (!(await c.isTeacher())) deny(); if (!(await c.isAdmin())) only('center', (await c.teacher()).center || ''); }
     else if (['admins', 'teachers', 'changeRequests', 'nics', 'barcodes'].includes(col)) { if (!(await c.isAdmin())) deny(); }
     else deny();
     const params = [col]; let sql = 'SELECT id,data FROM docs WHERE col=?1';
