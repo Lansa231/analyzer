@@ -815,6 +815,15 @@ async function getLists(){
 
 async function signup(){
   const L=await getLists();
+  if(!L.centers.length || !L.payMethods.length){
+  app.innerHTML = `<div class="card auth-card">
+    <h2>⏳ Sign-up not ready yet</h2>
+    <p class="sub">The class centers and payment methods haven't been set up yet. Please contact us and we'll let you know when registration opens.</p>
+    <a class="foot-contact" href="#/contact">📞 Contact us</a>
+    <p class="hint" style="text-align:center"><a href="#/">← Back to home</a></p>
+  </div>`;
+  return;
+}
   const O=a=>a.map(x=>`<option>${esc(x)}</option>`).join('');
   app.innerHTML = `<div class="split"><div class="side"><div class="side-txt"><div style="font-size:2rem">🧬</div><h2>S.K. Wellala<br>Biology Paper Class</h2><p>Join your class, follow every paper and watch your progress grow.</p></div></div>
   <div class="card auth-card">
@@ -849,27 +858,36 @@ async function signup(){
     f.style.background=['#b91c1c','#b45309','#15803d','#0f766e'][s];
   };
   $("#btn").onclick=async()=>{
-    ["nm","nic","bc","gen","em","pw","pw2","mob","wa","sch","ctr","pay"].forEach(x=>$("#e-"+x).textContent='');
-    $("#msg").innerHTML='';
-    const nm=$("#nm").value.trim(), nic=$("#nic").value.trim().toUpperCase(),
-          em=$("#em").value.trim().toLowerCase(), pw=$("#pw").value, pw2=$("#pw2").value;
-    const bc=$("#bc").value.trim().toUpperCase(), gen=$("#gen").value;
-    let bad=false;
-    if(!BC_RE.test(bc)){$("#e-bc").textContent='Enter your 8-character barcode number.';bad=true;}
-    if(!gen){$("#e-gen").textContent='Please select your gender.';bad=true;}
-    if(nm.length<3){$("#e-nm").textContent='Please enter your full name.';bad=true;}
-    if(!NIC_RE.test(nic)){$("#e-nic").textContent='Invalid NIC. Use 9 digits + V/X (old) or 12 digits (new).';bad=true;}
-    if(!EMAIL_RE.test(em)){$("#e-em").textContent='Please enter a valid email address.';bad=true;}
-    if(pwScore(pw)<2){$("#e-pw").textContent='Use at least 8 characters with both letters and numbers.';bad=true;}
-    if(pw!==pw2){$("#e-pw2").textContent='Passwords do not match.';bad=true;}
-    const ph=v=>/^(\+94|0)\d{9}$/.test(v.replace(/[\s-]/g,''));
-    const mob=$("#mob").value.trim(), wa=$("#wa").value.trim(), sch=$("#sch").value.trim(), bat=$("#bat").value, ctr=$("#ctr").value, pay=$("#pay").value;
-    if(!ph(mob)){$("#e-mob").textContent='Enter a valid mobile number.';bad=true;}
-    if(!ph(wa)){$("#e-wa").textContent='Enter a valid WhatsApp number.';bad=true;}
-    if(sch.length<2){$("#e-sch").textContent='Please enter your school.';bad=true;}
-    if(L.centers.length&&!ctr){$("#e-ctr").textContent='Please select your center.';bad=true;}
-    if(L.payMethods.length&&!pay){$("#e-pay").textContent='Please select how you pay.';bad=true;}
-    if(bad) return;
+["nm","nic","bc","gen","em","pw","pw2","mob","wa","sch","bat","ctr","pay"].forEach(x=>$("#e-"+x).textContent='');
+$("#msg").innerHTML='';
+const nm=$("#nm").value.trim(), nic=$("#nic").value.trim().toUpperCase(),
+      em=$("#em").value.trim().toLowerCase(), pw=$("#pw").value, pw2=$("#pw2").value;
+const bc=$("#bc").value.trim().toUpperCase(), gen=$("#gen").value;
+const ph=v=>/^(\+94|0)\d{9}$/.test(v.replace(/[\s-]/g,''));
+const mob=$("#mob").value.trim(), wa=$("#wa").value.trim(), sch=$("#sch").value.trim();
+const bat=$("#bat").value, ctr=$("#ctr").value, pay=$("#pay").value;
+let bad=false;
+
+// Text / input fields
+if(nm.length<3){$("#e-nm").textContent='Please enter your full name.';bad=true;}
+if(!gen){$("#e-gen").textContent='Please select your gender.';bad=true;}
+if(!NIC_RE.test(nic)){$("#e-nic").textContent='Invalid NIC. Use 9 digits + V/X (old) or 12 digits (new).';bad=true;}
+if(!BC_RE.test(bc)){$("#e-bc").textContent='Enter your 8-character barcode number.';bad=true;}
+if(!EMAIL_RE.test(em)){$("#e-em").textContent='Please enter a valid email address.';bad=true;}
+if(!ph(mob)){$("#e-mob").textContent='Enter a valid mobile number.';bad=true;}
+if(!ph(wa)){$("#e-wa").textContent='Enter a valid WhatsApp number.';bad=true;}
+if(sch.length<2){$("#e-sch").textContent='Please enter your school.';bad=true;}
+
+// Dropdowns — now ALWAYS required, not conditional
+if(!bat){$("#e-bat").textContent='Please select your batch.';bad=true;}
+if(!ctr){$("#e-ctr").textContent='Please select your exam center.';bad=true;}
+if(!pay){$("#e-pay").textContent='Please select how you pay.';bad=true;}
+
+// Password
+if(pwScore(pw)<2){$("#e-pw").textContent='Use at least 8 characters with both letters and numbers.';bad=true;}
+if(pw!==pw2){$("#e-pw2").textContent='Passwords do not match.';bad=true;}
+
+if(bad) return;
     busy(true);
     $("#btn").disabled = true;
     try{
