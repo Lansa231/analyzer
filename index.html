@@ -1370,9 +1370,19 @@ function tabStudents({roster,rosterAll}){
     <td>${esc(s.mobile||'—')}${s.whatsapp?`<br><span class="sub" style="margin:0">WA ${esc(s.whatsapp)}</span>`:''}</td><td>${esc(s.school||'—')}</td><td>${esc(s.payMethod||'—')}</td>
     <td style="text-align:right;white-space:nowrap">${adm&&s.signedUp?`<button class="btn btn-ghost btn-sm" data-edit="${s.uid}" data-name="${esc(s.fullName)}">Edit</button> `:''}
     <button class="btn btn-danger btn-sm" data-rm="${esc(s.nic)}" data-rnic="${esc(s.realNic||'')}" data-rbc="${esc(s.barcode||'')}" data-uid="${s.uid||''}">Remove</button></td></tr>`;
+    const sumCard=(()=>{
+    const B=rosterAll.filter(r=>r.batch===state.batch);
+    const by={}; B.forEach(r=>{ const o=(by[r.center||'No center']??={s:0,n:0}); r.signedUp?o.s++:o.n++; });
+    const S=B.filter(r=>r.signedUp).length, N=B.length-S;
+    const rows=Object.keys(by).sort().map(c=>`<tr><td><b>${esc(c)}</b></td><td>${by[c].s+by[c].n}</td><td><span class="pill good">${by[c].s}</span></td><td><span class="pill warn">${by[c].n}</span></td></tr>`).join('');
+    return `<div class="card"><h2>📋 Sign-up status — ${esc(state.batch)}</h2>
+      <div class="grid g4"><div class="stat"><div class="num">${B.length}</div><div class="lbl">All students</div></div><div class="stat"><div class="num">${S}</div><div class="lbl">Signed up</div></div><div class="stat"><div class="num">${N}</div><div class="lbl">Not signed up</div></div></div>
+      <div class="tbl-wrap" style="margin-top:12px"><table><tr><th>Center</th><th>All</th><th>Signed up</th><th>Not signed up</th></tr>${rows}<tr><td><b>Total</b></td><td><b>${B.length}</b></td><td><b>${S}</b></td><td><b>${N}</b></td></tr></table></div>
+      <p class="sub" style="margin-top:8px">"Not signed up" means a teacher added the student (with marks) but they haven't created an account yet.</p></div>`;
+  })();
   const table=a=>a.length?`<div class="tbl-wrap"><table><tr><th>Name</th><th>NIC</th><th>Barcode</th><th>Batch</th><th>Center</th><th>Contact</th><th>School</th><th>Paid via</th><th></th></tr>${a.map(row).join('')}</table></div>`:'<p class="sub">No students found.</p>';
   $("#tabBody").innerHTML=`
-  <div class="card"><h2>🔎 Find a student</h2>
+  ${sumCard}<div class="card"><h2>🔎 Find a student</h2>
     <input id="q" placeholder="Search by NIC, barcode or name"><div id="qres"></div></div>
   <div class="card"><h2>Add Student to ${esc(state.batch)}</h2>
     <p class="sub" style="margin:0 0 4px">Add a student with their barcode or NIC (either one) and enter marks straight away — they can sign up later with the same NIC and barcode.</p>
@@ -1741,7 +1751,20 @@ function tabMarks({students,papers}){
         </div>
       </div>`).join('') : (profile.isAdmin?'<p class="sub">No papers yet — create one above.</p>':'<p class="sub">No papers yet — the developer creates the papers.</p>')}
   </div>
-  <div id="marksPane"></div>`;
+  <div class="card"><h2>📋 Marks entered</h2>     ${papers.length?`<label style="margin-top:0">Paper</label><select id="mkStatSel">${papers.map(p=>`<option value="${p.id}"${sel&&p.id===sel.id?' selected':''}>${esc(p.title)} (${esc(p.date||'no date')})</option>`).join('')}</select>`:''}     <div id="mkStat"><p class="sub">No papers yet.</p></div></div>   <div id="marksPane"></div>`;
+    { const selEl=$("#mkStatSel"), host=$("#mkStat");
+    const draw=()=>{
+      const p=papers.find(x=>x.id===selEl.value); if(!p) return;
+      const has=s=>p.scores?.[s.id]!=null, by={};
+      students.forEach(s=>{ const o=(by[s.center||'No center']??={a:0,e:0}); o.a++; if(has(s)) o.e++; });
+      const A=students.length, E=students.filter(has).length;
+      host.innerHTML=`<div class="grid g4" style="margin-top:10px"><div class="stat"><div class="num">${A}</div><div class="lbl">All students</div></div><div class="stat"><div class="num">${E}</div><div class="lbl">Marks entered</div></div><div class="stat"><div class="num">${A-E}</div><div class="lbl">Not entered</div></div></div>
+      <div class="tbl-wrap" style="margin-top:12px"><table><tr><th>Center</th><th>All</th><th>Marks entered</th><th>Not entered</th></tr>
+      ${Object.keys(by).sort().map(c=>`<tr><td><b>${esc(c)}</b></td><td>${by[c].a}</td><td><span class="pill good">${by[c].e}</span></td><td><span class="pill warn">${by[c].a-by[c].e}</span></td></tr>`).join('')}
+      <tr><td><b>Total</b></td><td><b>${A}</b></td><td><b>${E}</b></td><td><b>${A-E}</b></td></tr></table></div>`;
+    };
+    if(selEl){ selEl.onchange=draw; draw(); $("#marksPane").addEventListener('change',draw); }
+  }
   if($("#cpBtn")) $("#cpBtn").onclick=async()=>{
     const title=$("#cpTitle").value.trim(), max=parseInt($("#cpMax").value), date=$("#cpDate").value;
     const m=$("#cpMsg"); m.innerHTML='';
