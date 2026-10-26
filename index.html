@@ -1340,9 +1340,15 @@ async function studentView(){
     if(!s){ const bd=await getDoc(doc(db,'barcodes',nic.startsWith('BC')?nic.slice(2):nic)); if(bd.exists()){ const sd=await getDoc(doc(db,'students',bd.data().uid)); if(sd.exists()) s={id:sd.id,signedUp:true,...sd.data()}; } }
     if(!s){ const pd=await getDoc(doc(db,'pending',nic)); if(pd.exists()) s={signedUp:false,nic,...pd.data()}; }
     if(!s || (!adm && (s.center||'')!==(profile.center||''))){ app.innerHTML=`${back}<div class="card"><p class="sub">Student not found${adm?'':' in your center'}.</p></div>`; return; }
-    const papersAll=(await getDocs(collection(db,'papers'))).docs.map(d=>({id:d.id,...d.data()}));
-    const mk=(await getDocs(collection(db,'marks'))).docs.map(d=>d.data());
-    papersAll.forEach(p=>{ p.scores={...(p.scores||{})}; mk.forEach(m=>{ if(m.pid===p.id) p.scores[m.nic]=m.mark; }); });
+const papersAll=(await getDocs(collection(db,'papers'))).docs.map(d=>({id:d.id,...d.data()}));
+const mk=(await getDocs(collection(db,'marks'))).docs.map(d=>({...d.data(), _docId:d.id}));
+papersAll.forEach(p=>{
+  p.scores = {...(p.scores||{})};
+  mk.forEach(m=>{
+    const match = m.pid===p.id || (m.pid==null && m._docId && m._docId.startsWith(p.id+'_'));
+    if (match) p.scores[m.nic]=m.mark;
+  });
+});
     const batch=s.batch||BATCHES[0];
     const rows=papersAll.filter(p=>(p.batch||BATCHES[0])===batch&&p.scores?.[nic]!=null)
       .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')))
@@ -1844,7 +1850,8 @@ function drawMarksPane(students,papers){
   const pane=$("#marksPane"); if(!pane) return;
   const selPapers=papers.filter(p=>p.id===state.selPaper);
   const sel=selPapers[0];
-  if(!sel){ pane.innerHTML=''; return; }   const list=students.filter(s=>sel.att?.[s.id]||sel.scores?.[s.id]!=null);
+  if(!sel){ pane.innerHTML=''; return; }
+  const list=students.filter(s=>sel.att?.[s.id]||sel.scores?.[s.id]!=null);
   pane.innerHTML = `
   <div class="card">
     <h2>✏️ Marks — ${esc(sel.subject)}: ${esc(sel.title)} <span class="sub" style="display:inline">(max ${sel.max})</span> <span id="svLbl" class="saved" style="margin-left:8px"></span></h2>
@@ -1862,9 +1869,51 @@ function drawMarksPane(students,papers){
     const v=inp.value===''?null:Math.max(0,Math.min(sel.max,Math.round((parseFloat(inp.value)||0)*100)/100));
     $("#svLbl").textContent='○ saving…';
     try{
-      if(v==null){ delete sel.scores[nic]; await deleteDoc(doc(db,'marks',sel.id+'_'+nic)); }
-      else{ sel.scores[nic]=v; await setDoc(doc(db,'marks',sel.id+'_'+nic),{pid:sel.id,nic,mark:v,name:st.fullName,center:st.center||'',batch:sel.batch||state.batch,by:profile.fullName||''}); }
+      if(v==null){
+        delete sel.scores[nic];
+        await deleteDoc(doc(db,'marks',sel.id+'_'+nic));
+      } else {
+        sel.scores[nic]=v;
+        await setDoc(doc(db,'marks',sel.id+'_'+nic),{
+          pid:sel.id, nic, mark:v,
+          name:st.fullName, center:st.center||'',
+          batch:sel.batch||state.batch, by:profile.fullName||''
+        });
+      }
       $("#svLbl").textContent='✓ saved';
+
+      // ---- refresh the papers snapshot the ranking widgets read from ----
+      const [papSnap2, mkSnap2] = await Promise.all([
+        getDocs(collection(db,'papers')),
+        getDocs(collection(db,'marks'))
+      ]);
+      const freshAll = papSnap2.docs.map(d=>({id:d.id, ...d.data()}));
+      const freshMarks = mkSnap2.docs.map(d=>({...d.data(), _docId:d.id}));
+      freshAll.forEach(p=>{
+        p.scores = {...(p.scores||{})};
+        p.meta   = {};
+        freshMarks.forEach(m=>{
+          const match = m.pid===p.id || (m.pid==null && m._docId && m._docId.startsWith(p.id+'_'));
+          if (match) { p.scores[m.nic]=m.mark; p.meta[m.nic]={n:m.name,c:m.center||''}; }
+        });
+      });
+
+      // mutate the same array the tabs hold — so Rankings / All Marks / Analytics see it
+      const freshBatch = freshAll.filter(p=>(p.batch||BATCHES[0])===state.batch)
+                                 .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+      papers.length = 0;
+      papers.push(...freshBatch);
+
+      // update the paper object `sel` still points at (its scores were rebuilt above)
+      const refreshedSel = freshBatch.find(p=>p.id===sel.id);
+      if (refreshedSel) sel.scores = refreshedSel.scores;
+
+      // redraw ONLY the marquee in place (keeps focus in the current input)
+      const marq = document.querySelector('.marq');
+      if (marq) {
+        const freshRoster = students.filter(r=>r.batch===state.batch);
+        marq.outerHTML = rankMarquee(freshRoster, papers);
+      }
     }catch(e){ $("#svLbl").textContent='⚠ '+friendly(e); }
   });
 }
