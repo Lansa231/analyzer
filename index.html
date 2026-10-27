@@ -1169,12 +1169,23 @@ async function stuDash(){
     const bestRow = rowsP[marks.indexOf(best)];
 
     // RANK WIDGET
+    const isOnlineStudent = /online/i.test(String(profile.center || ''));
     let rankWidget = '';
     const rankedPapers = rowsP.filter(r => r.p._rank);
     if(rankedPapers.length){
       const lastRanked = rankedPapers[rankedPapers.length - 1];
       const myRank = lastRanked.p._rank;
-      if(myRank <= 100){
+      if(isOnlineStudent){
+        // Online student: own pool, own rank, never claimed as "top 100"
+        rankWidget = `
+          <div class="card" style="background:linear-gradient(135deg,#bfdbfe,#93c5fd);border:none;color:#1e3a8a;display:flex;align-items:center;gap:16px;padding:18px;margin-bottom:20px">
+            <div style="font-size:2.5rem;line-height:1">🌐</div>
+            <div>
+              <div style="font-weight:800;font-size:1.1rem;color:#1e3a8a">Your rank among online students</div>
+              <div style="font-weight:600;font-size:.92rem;margin-top:2px">Rank #${myRank} — ${esc(lastRanked.p.title)}</div>
+            </div>
+          </div>`;
+      } else if(myRank <= 100){
         rankWidget = `
           <div class="card" style="background:linear-gradient(135deg,#fef08a,#fde047);border:none;color:#422006;display:flex;align-items:center;gap:16px;padding:18px;margin-bottom:20px">
             <div style="font-size:2.5rem;line-height:1">🏆</div>
