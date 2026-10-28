@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 :root{
   --bg:#f1f8f3; --card:#ffffff; --ink:#12281c; --muted:#5a7364; --line:#dfece4;
@@ -1302,6 +1303,111 @@ async function stuDash(){
   const first = await load().catch(()=>[]);
   renderBody(first);
 }
+  /* ============================================================
+   Universal barcode scanner (camera → text)
+   - Uses BarcodeDetector when available (Android/Edge/Samsung)
+   - Falls back to html5-qrcode (loaded from CDN) on iOS Safari
+   - Renders a modal with a live camera preview and a cancel button
+   - Resolves with the decoded string, or null if cancelled
+   ============================================================ */
+async function openBarcodeScanner(){
+  return new Promise(async (resolve) => {
+    // --- Build modal -------------------------------------------------------
+    const modal = document.createElement('div');
+    modal.id = 'scanModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:16px';
+    modal.innerHTML = `
+      <div style="background:#000;border-radius:16px;overflow:hidden;max-width:520px;width:100%;position:relative">
+        <div id="scanVideoHost" style="position:relative;background:#000;aspect-ratio:1;width:100%">
+          <video id="scanVideo" playsinline muted autoplay style="width:100%;height:100%;object-fit:cover"></video>
+          <div style="position:absolute;inset:16% 12%;border:2px solid #4ade80;border-radius:12px;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.35)"></div>
+        </div>
+        <div style="padding:14px 16px;color:#fff;text-align:center">
+          <div style="font-weight:700;font-size:.95rem">Point the camera at the barcode</div>
+          <div class="sub" style="color:#a7f3d0;margin-top:4px;font-size:.78rem">It fills the box automatically.</div>
+          <button class="btn btn-ghost btn-sm" id="scanCancel" style="margin-top:12px">Cancel</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    const video    = document.getElementById('scanVideo');
+    const cancelBtn= document.getElementById('scanCancel');
+    let   stream   = null;
+    let   html5    = null;
+    let   stopped  = false;
+
+    const cleanup = () => {
+      if(stopped) return; stopped = true;
+      try { if(html5) html5.stop().then(()=>html5.clear()).catch(()=>{}); } catch(_){}
+      try { if(stream) stream.getTracks().forEach(t=>t.stop()); } catch(_){}
+      modal.remove();
+    };
+
+    cancelBtn.onclick = () => { cleanup(); resolve(null); };
+    modal.addEventListener('click', e => { if(e.target === modal){ cleanup(); resolve(null); } });
+
+    // --- Try native BarcodeDetector first ----------------------------------
+    const hasNative = 'BarcodeDetector' in window;
+    if(hasNative){
+      try{
+        const supported = await BarcodeDetector.getSupportedFormats();
+        // Prefer the common 1D barcode formats; fall back to anything available.
+        const wanted = ['code_128','code_39','ean_13','ean_8','upc_a','upc_e','itf','codabar','qr_code'].filter(f=>supported.includes(f));
+        const detector = new BarcodeDetector({ formats: wanted.length ? wanted : undefined });
+        stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
+        video.srcObject = stream;
+        await video.play().catch(()=>{});
+        const tick = async () => {
+          if(stopped) return;
+          try{
+            const codes = await detector.detect(video);
+            if(codes && codes.length){
+              const raw = (codes[0].rawValue || '').trim().toUpperCase();
+              if(raw){ cleanup(); resolve(raw); return; }
+            }
+          }catch(_){}
+          setTimeout(tick, 200);
+        };
+        tick();
+        return;
+      }catch(e){
+        // Permission denied or detector failed → fall through to html5-qrcode fallback
+        cleanup();
+        if(e && (e.name === 'NotAllowedError' || e.name === 'NotFoundError')){
+          alert('Camera access was blocked. Please allow camera access and try again.');
+          resolve(null); return;
+        }
+        // re-create the modal for the fallback path
+        document.body.appendChild(modal);
+        stopped = false;
+      }
+    }
+
+    // --- Fallback: html5-qrcode --------------------------------------------
+    if(typeof Html5Qrcode === 'undefined'){
+      cleanup();
+      alert('Camera scanning is not available in this browser. Please type the barcode.');
+      resolve(null);
+      return;
+    }
+    try{
+      html5 = new Html5Qrcode('scanVideoHost', { formatsToSupport: undefined, verbose: false });
+      await html5.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 260, height: 200 } },
+        (decodedText) => {
+          const raw = String(decodedText||'').trim().toUpperCase();
+          if(raw){ cleanup(); resolve(raw); }
+        },
+        () => {}
+      );
+    }catch(e){
+      cleanup();
+      alert('Could not start the camera: ' + (e && e.message ? e.message : 'unknown error'));
+      resolve(null);
+    }
+  });
+}
 /* ============================== EXAMINER: AUTH ============================== */
 function examinerAuth(){
   app.innerHTML = `<div class="card auth-card">
@@ -1487,8 +1593,12 @@ function examinerStudents({papers, students, att, batch}){
           <select id="eaP">${papers.length ? papers.map(x=>`<option value="${x.id}"${selPaper && x.id===selPaper.id?' selected':''}>${esc(x.title)} (${esc(x.date||'no date')})</option>`).join('') : '<option>No papers yet</option>'}</select></div>
         <div><label style="margin-top:0">Day</label>
           <input id="eaDay" type="date" value="${selDay}"></div>
-        <div><label style="margin-top:0">Barcode (or NIC)</label>
-          <input id="eaB" placeholder="Scan or type, then press Enter" autocomplete="off" maxlength="12"></div>
+             <div style="flex:1;min-width:200px"><label style="margin-top:0">Barcode (or NIC)</label>
+          <div style="display:flex;gap:6px;align-items:stretch">
+            <input id="eaB" placeholder="Scan or type, then press Enter" autocomplete="off" maxlength="12" style="flex:1;min-width:0">
+            <button type="button" id="eaScan" class="btn btn-ghost" style="width:auto;margin:0;padding:0 14px;font-size:1.15rem" title="Scan barcode with camera" aria-label="Scan barcode with camera">📷</button>
+          </div>
+        </div>
         <button class="btn btn-primary" id="eaAdd" style="width:auto;margin:0">+ Mark present</button>
       </div>
       <div id="eaMsg"></div>
@@ -1534,6 +1644,12 @@ function examinerStudents({papers, students, att, batch}){
     catch(e){ busy(false); m.innerHTML = `<div class="err">${esc(friendly(e))}</div>`; }
   };
   $("#eaAdd").onclick = addAtt;
+    $("#eaScan").onclick = async () => {
+    const code = await openBarcodeScanner();
+    if(!code) return;
+    $("#eaB").value = code;
+    await addAtt();
+  };
   $("#eaB").addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); addAtt(); } });
 
   document.querySelectorAll('[data-rm-day]').forEach(b => b.onclick = async () => {
@@ -1851,8 +1967,13 @@ function tabStudents({roster,rosterAll,papers}){
       const list=Object.values(p.att).sort((a,b)=>(b.at||0)-(a.at||0));
       box.innerHTML=`<div class="card"><h2>✅ Paper attendance <span class="sub" style="display:inline">· only teachers &amp; developers can see this</span></h2>
         <div class="row"><div><label style="margin-top:0">Paper</label><select id="atP">${papers.map(x=>`<option value="${x.id}"${x.id===p.id?' selected':''}>${esc(x.title)} (${esc(x.date||'no date')})</option>`).join('')}</select></div>
-        <div><label style="margin-top:0">Barcode (or NIC)</label><input id="atB" placeholder="Scan or type, then press Enter" autocomplete="off" maxlength="12"></div>
-        <button class="btn btn-primary" id="atAdd" style="width:auto;margin:0">+ Mark present</button></div>
+          <div style="flex:1;min-width:200px"><label style="margin-top:0">Barcode (or NIC)</label>
+          <div style="display:flex;gap:6px;align-items:stretch">
+            <input id="atB" placeholder="Scan or type, then press Enter" autocomplete="off" maxlength="12" style="flex:1;min-width:0">
+            <button type="button" id="atScan" class="btn btn-ghost" style="width:auto;margin:0;padding:0 14px;font-size:1.15rem" title="Scan barcode with camera" aria-label="Scan barcode with camera">📷</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="atAdd" style="width:auto;margin:0">+ Mark present</button>
         <div id="atMsg"></div>
         <p class="sub" style="margin:10px 0 6px"><b>${list.length}</b> student${list.length===1?'':'s'} attended this paper. They now appear in the Marks tab for this paper.</p>
         ${list.length?`<div class="tbl-wrap"><table><tr><th>#</th><th>Name</th><th>Barcode</th><th>Center</th><th></th></tr>${list.map((a,i)=>`<tr><td>${list.length-i}</td><td><b>${esc(a.name||a.nic)}</b></td><td class="mono">${esc(a.barcode||'—')}</td><td>${esc(a.center||'—')}</td><td style="text-align:right"><button class="btn btn-danger btn-sm" data-at-rm="${esc(a.nic)}">Remove</button></td></tr>`).join('')}</table></div>`:''}</div>`;
@@ -1870,6 +1991,12 @@ function tabStudents({roster,rosterAll,papers}){
         catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
       };
       $("#atAdd").onclick=add;
+            $("#atScan").onclick = async () => {
+        const code = await openBarcodeScanner();
+        if(!code) return;
+        $("#atB").value = code;
+        await add();
+      };
       $("#atB").addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); add(); } });
       document.querySelectorAll('[data-at-rm]').forEach(b=>b.onclick=async()=>{
         if(!confirm('Remove this student from the attendance list?')) return;
