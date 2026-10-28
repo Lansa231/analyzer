@@ -1505,9 +1505,10 @@ async function examinerDash(){
     getDocs(query(collection(db,'students'), where('center','==', profile.center||''))).catch(()=>null),
     getDocs(query(collection(db,'attendance'), where('center','==', profile.center||''))).catch(()=>null)
   ]);
-  const papers  = papSnap ? papSnap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>(p.batch||BATCHES[0])===batch) : [];
-  const students = stuSnap ? stuSnap.docs.map(d=>({id:d.id,...d.data()})) : [];
-  const att      = attSnap ? attSnap.docs.map(d=>({...d.data(), _docId:d.id})) : [];
+  const papers      = papSnap ? papSnap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>(p.batch||BATCHES[0])===batch) : [];
+  const studentsAll = stuSnap ? stuSnap.docs.map(d=>({id:d.id,...d.data()})) : [];
+  const students    = studentsAll.filter(s=>(s.batch||BATCHES[0])===batch);
+  const att         = attSnap ? attSnap.docs.map(d=>({...d.data(), _docId:d.id})) : [];
 
   app.innerHTML = `
     <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
@@ -1537,7 +1538,7 @@ async function examinerDash(){
     state.etab=b.dataset.etab; examinerDash();
   });
 
-  if(state.etab === 'students') examinerStudents({papers, students, att, batch});
+  if(state.etab === 'students')   if(state.etab === 'students') examinerStudents({papers, students, studentsAll, att, batch});;
   else examinerProfile();
 }
 
@@ -1569,7 +1570,7 @@ function examinerProfile(){
   };
 }
 
-function examinerStudents({papers, students, att, batch}){
+function examinerStudents({papers, students, studentsAll, att, batch}){{papers, students, att, batch}){
   const host = $("#etabBody"); if(!host) return;
   const selPaper = papers.find(x=>x.id===state.attPaper) || papers[0] || null;
   if(selPaper) state.attPaper = selPaper.id;
@@ -1611,11 +1612,35 @@ function examinerStudents({papers, students, att, batch}){
             <td style="text-align:right"><button class="btn btn-danger btn-sm" data-rm-day="${esc(nic)}">Remove</button></td></tr>`;
         }).join('')}</table></div>` : ''}
     </div>
-    <div class="card"><h2>👨‍🎓 Students in ${esc(profile.center||'—')} (${students.length})</h2>
-      <p class="sub" style="margin:0 0 8px">Showing name, school, barcode only.</p>
-      ${students.length ? `<div class="tbl-wrap"><table><tr><th>Name</th><th>School</th><th>Barcode</th></tr>
-        ${students.map(s=>`<tr><td>${esc(s.fullName||'')}</td><td>${esc(s.school||'—')}</td><td class="mono">${esc(s.barcode||'—')}</td></tr>`).join('')}
-      </table></div>` : '<p class="sub">No students yet in your center.</p>'}
+        <div class="card"><h2>👨‍🎓 All students in ${esc(profile.center||'—')} (${(studentsAll||[]).length})</h2>
+      <p class="sub" style="margin:0 0 12px">Grouped by batch · name, school, barcode only.</p>
+      ${(function renderGroups(){
+        const groups = {};
+        (studentsAll||[]).forEach(s=>{ const b = s.batch || BATCHES[0]; (groups[b] ??= []).push(s); });
+        const knownKeys = BATCHES.filter(b => groups[b]);
+        const extraKeys = Object.keys(groups).filter(k => !BATCHES.includes(k));
+        const keys = knownKeys.concat(extraKeys);
+        if(!keys.length) return '<p class="sub">No students yet in your center.</p>';
+        return keys.map(b => {
+          const list = groups[b].slice().sort((a,c)=>String(a.fullName||'').localeCompare(String(c.fullName||'')));
+          const isActive = b === batch;
+          return `<div style="margin-bottom:18px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+              <span class="pill ${isActive?'brand':''}" style="font-weight:800">🎓 ${esc(b)}</span>
+              <span class="sub" style="margin:0">· ${list.length} student${list.length===1?'':'s'}</span>
+              ${isActive ? '<span class="sub" style="margin:0;color:var(--brand);font-weight:700">· active</span>' : ''}
+            </div>
+            <div class="tbl-wrap"><table>
+              <tr><th>Name</th><th>School</th><th>Barcode</th></tr>
+              ${list.map(s=>`<tr>
+                <td>${esc(s.fullName||'')}</td>
+                <td>${esc(s.school||'—')}</td>
+                <td class="mono">${esc(s.barcode||'—')}</td>
+              </tr>`).join('')}
+            </table></div>
+          </div>`;
+        }).join('');
+      })()}
     </div>`;
 
   if($("#eaP")){
