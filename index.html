@@ -1538,7 +1538,7 @@ async function examinerDash(){
     state.etab=b.dataset.etab; examinerDash();
   });
 
-  if(state.etab === 'students')   if(state.etab === 'students') examinerStudents({papers, students, studentsAll, att, batch});;
+  if(state.etab === 'students') examinerStudents({papers, students, studentsAll, att, batch});
   else examinerProfile();
 }
 
@@ -1570,7 +1570,7 @@ function examinerProfile(){
   };
 }
 
-function examinerStudents({papers, students, studentsAll, att, batch}){{papers, students, att, batch}){
+function examinerStudents({papers, students, studentsAll, att, batch}){
   const host = $("#etabBody"); if(!host) return;
   const selPaper = papers.find(x=>x.id===state.attPaper) || papers[0] || null;
   if(selPaper) state.attPaper = selPaper.id;
