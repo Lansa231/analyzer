@@ -2467,7 +2467,6 @@ function openExaminerAttendanceModal(ex, papersAll, rosterAll){
     return [];
   };
 
-  // Collect attendance marked by this examiner across all papers
   const byPaper = {};
   (papersAll||[]).forEach(p => {
     Object.values(p.att||{}).forEach(a => {
@@ -2475,6 +2474,8 @@ function openExaminerAttendanceModal(ex, papersAll, rosterAll){
     });
   });
   const paperIds = Object.keys(byPaper);
+
+  let selectedPaper = '';
 
   const modal = document.createElement('div');
   modal.id = 'exmAttModal';
@@ -2488,46 +2489,77 @@ function openExaminerAttendanceModal(ex, papersAll, rosterAll){
         </div>
         <button class="btn btn-ghost btn-sm" id="exmClose">✕ Close</button>
       </div>
+
       <h3 style="font-size:1rem;margin:0 0 8px">📅 Marked Attendance</h3>
-      ${!paperIds.length ? '<p class="sub">This examiner has not marked attendance on any paper yet.</p>' :
-        paperIds.map(pid => {
-          const pInfo = byPaper[pid];
-          const byDate = {};
-          pInfo.records.forEach(r => { daysOf(r).forEach(d => { (byDate[d] ??= []).push(r); }); });
-          const dates = Object.keys(byDate).sort().reverse();
-          return `<div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--line)">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-              <span class="pill brand" style="font-weight:800">📄 ${esc(pInfo.title||'Paper')}</span>
-              <span class="sub" style="margin:0">${esc(pInfo.date||'no date')}</span>
-            </div>
-            ${dates.map(d => {
-              const list = byDate[d].slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
-              return `<div style="margin:12px 0 0 12px">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
-                  <span class="pill" style="background:var(--brand-soft);color:var(--brand);font-weight:700">📅 ${esc(d)}</span>
-                  <span class="sub" style="margin:0">· ${list.length} student${list.length===1?'':'s'}</span>
-                </div>
-                <div class="tbl-wrap"><table>
-                  <tr><th>#</th><th>Name</th><th>School</th><th>Barcode</th></tr>
-                  ${list.map((a,i)=>{
-                    const s = (rosterAll||[]).find(x=>x.id===a.nic) || {};
-                    return `<tr>
-                      <td>${i+1}</td>
-                      <td><b>${esc(a.name||a.nic)}</b></td>
-                      <td>${esc(s.school||'—')}</td>
-                      <td class="mono">${esc(a.barcode||'—')}</td>
-                    </tr>`;
-                  }).join('')}
-                </table></div>
-              </div>`;
-            }).join('')}
-          </div>`;
-        }).join('')
-      }
+
+      ${!paperIds.length ? '<p class="sub">This examiner has not marked attendance on any paper yet.</p>' : `
+        <div class="row" style="margin-bottom:14px">
+          <div style="flex:1;min-width:220px">
+            <label style="margin-top:0">Paper</label>
+            <select id="exmAttP">
+              <option value="">— All papers —</option>
+              ${paperIds.map(pid => {
+                const info = byPaper[pid];
+                return `<option value="${esc(pid)}">${esc(info.title||'Paper')} (${esc(info.date||'no date')}) · ${info.records.length}</option>`;
+              }).join('')}
+            </select>
+          </div>
+        </div>
+      `}
+
+      <div id="exmAttBody"></div>
     </div>`;
+
   document.body.appendChild(modal);
   modal.querySelector('#exmClose').onclick = () => modal.remove();
   modal.onclick = e => { if(e.target === modal) modal.remove(); };
+
+  const renderBody = () => {
+    const body = modal.querySelector('#exmAttBody');
+    if(!body) return;
+    const pids = selectedPaper ? [selectedPaper] : paperIds;
+    if(!pids.length){ body.innerHTML = '<p class="sub">No attendance to show.</p>'; return; }
+
+    body.innerHTML = pids.map(pid => {
+      const pInfo = byPaper[pid];
+      const byDate = {};
+      pInfo.records.forEach(r => { daysOf(r).forEach(d => { (byDate[d] ??= []).push(r); }); });
+      const dates = Object.keys(byDate).sort().reverse();
+      const totalStudents = new Set(pInfo.records.map(r => r.nic)).size;
+
+      return `<div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--line)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          <span class="pill brand" style="font-weight:800">📄 ${esc(pInfo.title||'Paper')}</span>
+          <span class="sub" style="margin:0">${esc(pInfo.date||'no date')} · ${totalStudents} student${totalStudents===1?'':'s'} across ${dates.length} date${dates.length===1?'':'s'}</span>
+        </div>
+        ${dates.length ? dates.map(d => {
+          const list = byDate[d].slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+          return `<div style="margin:12px 0 0 12px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+              <span class="pill" style="background:var(--brand-soft);color:var(--brand);font-weight:700">📅 ${esc(d)}</span>
+              <span class="sub" style="margin:0">· ${list.length} student${list.length===1?'':'s'}</span>
+            </div>
+            <div class="tbl-wrap"><table>
+              <tr><th>#</th><th>Name</th><th>School</th><th>Barcode</th></tr>
+              ${list.map((a,i)=>{
+                const s = (rosterAll||[]).find(x=>x.id===a.nic) || {};
+                return `<tr>
+                  <td>${i+1}</td>
+                  <td><b>${esc(a.name||a.nic)}</b></td>
+                  <td>${esc(s.school||'—')}</td>
+                  <td class="mono">${esc(a.barcode||'—')}</td>
+                </tr>`;
+              }).join('')}
+            </table></div>
+          </div>`;
+        }).join('') : '<p class="sub" style="margin-left:12px">No dates recorded for this paper.</p>'}
+      </div>`;
+    }).join('');
+  };
+
+  const sel = modal.querySelector('#exmAttP');
+  if(sel) sel.onchange = e => { selectedPaper = e.target.value; renderBody(); };
+  renderBody();
 }
 function tabRequests({requests}){
   const pend=requests.filter(r=>r.status==='pending');
