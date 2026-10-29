@@ -506,7 +506,7 @@ function bindTheme(){ const b=$("#themeBtn"); if(b) b.onclick=()=>{ setTheme(doc
 /* ============================== STATE ============================== */
 let auth=null, db=null, user=null, role=null, profile=null;
 let signingUp=false, authLoad=null;
-let state = {batch:'2027 A/L',center:'All',rankPaper:null, tab:'marks', selPaper:null, stuSubject:'All', settings:null, marqueePaperId:null, etab:'profile', attPaper:null, attDay:null };
+let state = {batch:'2027 A/L',center:'All',rankPaper:null, tab:'marks', selPaper:null, stuSubject:'All', settings:null, marqueePaperId:null, etab:'profile', attPaper:null, attDay:null, attLogPaper:null };
 let unsubStu = null;
 
 /* ============================== ROUTER ============================== */
@@ -1531,9 +1531,10 @@ async function examinerDash(){
           <div class="av">${esc((profile.fullName||'?').charAt(0).toUpperCase())}</div>
           <div><b>${esc(profile.fullName||'')}</b><small>Examiner · ${esc(profile.center||'')}</small></div>
         </div>
-        <div class="tabs">
+              <div class="tabs">
           <button data-etab="profile" class="${(state.etab||'profile')==='profile'?'active':''}">👤 Profile</button>
           <button data-etab="students" class="${state.etab==='students'?'active':''}">👨‍🎓 Students</button>
+          <button data-etab="attendance" class="${state.etab==='attendance'?'active':''}">📅 Attendance</button>
         </div>
       </aside>
       <div class="dash-main" id="etabBody"></div>
@@ -1546,7 +1547,8 @@ async function examinerDash(){
     state.etab=b.dataset.etab; examinerDash();
   });
 
-  if(state.etab === 'students') examinerStudents({papers, students, studentsAll, att, batch});
+   if(state.etab === 'students') examinerStudents({papers, students, studentsAll, att, batch});
+  else if(state.etab === 'attendance') examinerAttendance({papers, students, studentsAll, att, batch});
   else examinerProfile();
 }
 
@@ -1667,10 +1669,10 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
     const days = (attMap[nic]?.days || []).slice();
     if(days.includes(selDay)){ m.innerHTML = `<div class="err">${esc(s.fullName)} is already marked present on ${esc(selDay)}.</div>`; $("#eaB").value=''; return; }
     days.push(selDay);
-    const rec = {
+        const rec = {
       pid: selPaper.id, nic, barcode: s.barcode||'', name: s.fullName||'',
       center: s.center||profile.center||'', batch: selPaper.batch||state.batch,
-      day: selDay, days, by: profile.fullName||'', at: Date.now()
+      day: selDay, days, by: profile.fullName||'', byUid: user.uid || '', at: Date.now()
     };
     busy(true);
     try{ await setDoc(doc(db,'attendance', selPaper.id+'_'+nic), rec, {merge:true}); busy(false); examinerDash(); }
@@ -1699,6 +1701,70 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
       busy(false); examinerDash();
     }catch(e){ busy(false); alert(friendly(e)); }
   });
+}
+  function examinerAttendance({papers, students, studentsAll, att, batch}){
+  const host = $("#etabBody"); if(!host) return;
+  const selPaper = papers.find(x=>x.id===state.attLogPaper) || papers[0] || null;
+  if(selPaper) state.attLogPaper = selPaper.id;
+
+  const myName = profile.fullName || '';
+  const isMine = r => (r.byUid && r.byUid === user.uid) || (!r.byUid && r.by === myName);
+
+  const records = selPaper ? att.filter(a => a.pid === selPaper.id).filter(isMine) : [];
+
+  const daysOf = r => {
+    const ds = r.days || (r.day ? [r.day] : []);
+    if(ds.length) return ds;
+    if(r.at){ const d=new Date(r.at); return [d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')]; }
+    return [];
+  };
+
+  const byDate = {};
+  records.forEach(r => { daysOf(r).forEach(d => { (byDate[d] ??= []).push(r); }); });
+  const dates = Object.keys(byDate).sort().reverse();
+
+  const schoolOf = nic => {
+    const s = (studentsAll||[]).find(x=>String(x.skey||x.nic||'').toUpperCase()===String(nic||'').toUpperCase());
+    return s ? (s.school || '—') : '—';
+  };
+
+  host.innerHTML = `<div class="card">
+    <h2>📅 My Attendance Records</h2>
+    <p class="sub" style="margin:0 0 8px">Students you marked present, grouped by date.</p>
+    <div class="row">
+      <div><label style="margin-top:0">Paper</label>
+        <select id="eaLogP">
+          ${papers.length ? papers.map(x=>`<option value="${x.id}"${selPaper && x.id===selPaper.id?' selected':''}>${esc(x.title)} (${esc(x.date||'no date')})</option>`).join('') : '<option>No papers yet</option>'}
+        </select>
+      </div>
+    </div>
+    ${!papers.length ? '<p class="sub" style="margin:12px 0 0">No papers for this batch yet.</p>' :
+      !dates.length ? '<p class="sub" style="margin:12px 0 0">You have not marked any students present on this paper yet.</p>' :
+      dates.map(d => {
+        const list = byDate[d].slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+        return `<div style="margin-top:18px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+            <span class="pill brand" style="font-weight:800">📅 ${esc(d)}</span>
+            <span class="sub" style="margin:0">· ${list.length} student${list.length===1?'':'s'}</span>
+          </div>
+          <div class="tbl-wrap"><table>
+            <tr><th>#</th><th>Name</th><th>School</th><th>Barcode</th></tr>
+            ${list.map((a,i)=>`<tr>
+              <td>${i+1}</td>
+              <td><b>${esc(a.name||a.nic)}</b></td>
+              <td>${esc(schoolOf(a.nic))}</td>
+              <td class="mono">${esc(a.barcode||'—')}</td>
+            </tr>`).join('')}
+          </table></div>
+        </div>`;
+      }).join('')
+    }
+  </div>`;
+
+  if($("#eaLogP")) $("#eaLogP").onchange = e => {
+    state.attLogPaper = e.target.value;
+    examinerAttendance({papers, students, studentsAll, att, batch});
+  };
 }
 /* ============================== TEACHER AUTH ============================== */
 function teacherAuth(){
@@ -2347,23 +2413,24 @@ function tabTeachers({teachers,admins}){
   document.querySelectorAll('[data-rmt]').forEach(b=>b.onclick=async()=>{ if(!confirm('Remove this teacher?')) return; busy(true); try{ await deleteDoc(doc(db,'teachers',b.dataset.rmt)); await deleteAuthUser(b.dataset.rmt).catch(()=>{}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
   document.querySelectorAll('[data-demote]').forEach(b=>b.onclick=async()=>{ if(!confirm('Remove developer access?')) return; busy(true); try{ await deleteDoc(doc(db,'admins',b.dataset.demote)); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
 }
-function tabExaminers({examiners}){
+function tabExaminers({examiners, papersAll, rosterAll}){
   $("#tabBody").innerHTML = `<div class="card"><h2>📋 All examining instructors (${examiners.length})</h2>
     ${examiners.length ? `<div class="tbl-wrap"><table><tr><th>Name</th><th>Email</th><th>NIC</th><th>Center</th><th>Class</th><th>Status</th><th></th></tr>
       ${examiners.map(e=>`<tr>
-        <td><b>${esc(e.fullName||'')}</b></td>
+        <td><b><a class="nl" href="#" data-exm-view="${e.id}" style="cursor:pointer">${esc(e.fullName||'')}</a></b></td>
         <td>${esc(e.email||'')}</td>
         <td class="mono">${esc(e.nic||'—')}</td>
         <td>${esc(e.center||'—')}</td>
         <td>${esc(e.className||'—')}</td>
         <td>${e.verified?'<span class="vbadge">✔ Verified</span>':'<span class="sub" style="display:inline">(not verified)</span>'}</td>
         <td style="white-space:nowrap;text-align:right">
+          <button class="btn btn-ghost btn-sm" data-exm-view="${e.id}">📊 Attendance</button>
           <button class="btn btn-ghost btn-sm" data-etv="${e.id}" data-ev="${e.verified?1:0}">${e.verified?'Unverify':'Verify'}</button>
           <button class="btn btn-ghost btn-sm" data-ectr="${e.id}" data-cur="${esc(e.center||'')}">Center</button>
           <button class="btn btn-danger btn-sm" data-ermt="${e.id}">Remove</button>
         </td></tr>`).join('')}
     </table></div>` : '<p class="sub">No examining instructors yet.</p>'}
-    <p class="sub" style="margin-top:10px">Verify each instructor's sign-up before they can take attendance.</p>
+    <p class="sub" style="margin-top:10px">Verify each instructor's sign-up before they can take attendance. Click a name or the 📊 Attendance button to see that examiner's marked attendance.</p>
   </div>`;
   document.querySelectorAll('[data-etv]').forEach(b=>b.onclick=async()=>{
     busy(true);
@@ -2384,6 +2451,83 @@ function tabExaminers({examiners}){
     catch(e){ alert(friendly(e)); }
     busy(false); teacherDash();
   });
+  document.querySelectorAll('[data-exm-view]').forEach(b=>b.onclick=e=>{
+    e.preventDefault();
+    const ex = examiners.find(x=>x.id===b.dataset.exmView);
+    if(ex) openExaminerAttendanceModal(ex, papersAll, rosterAll);
+  });
+}
+
+function openExaminerAttendanceModal(ex, papersAll, rosterAll){
+  const isTheirs = r => (r.byUid && r.byUid === ex.id) || (!r.byUid && r.by === (ex.fullName || ''));
+  const daysOf = r => {
+    const ds = r.days || (r.day ? [r.day] : []);
+    if(ds.length) return ds;
+    if(r.at){ const d=new Date(r.at); return [d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')]; }
+    return [];
+  };
+
+  // Collect attendance marked by this examiner across all papers
+  const byPaper = {};
+  (papersAll||[]).forEach(p => {
+    Object.values(p.att||{}).forEach(a => {
+      if(isTheirs(a)) (byPaper[p.id] ??= {title:p.title, date:p.date, records:[]}).records.push(a);
+    });
+  });
+  const paperIds = Object.keys(byPaper);
+
+  const modal = document.createElement('div');
+  modal.id = 'exmAttModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto';
+  modal.innerHTML = `
+    <div style="background:var(--card);border-radius:16px;max-width:900px;width:100%;max-height:88vh;overflow-y:auto;padding:24px;box-shadow:var(--shadow)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <div>
+          <h2 style="margin:0">📋 ${esc(ex.fullName||'Examiner')}</h2>
+          <p class="sub" style="margin:4px 0 0">${esc(ex.center||'—')} · ${esc(ex.email||'—')} · NIC ${esc(ex.nic||'—')}${ex.className?' · '+esc(ex.className):''}${ex.verified?' · <span class="vbadge">✔ Verified</span>':' · (not verified)'}</p>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="exmClose">✕ Close</button>
+      </div>
+      <h3 style="font-size:1rem;margin:0 0 8px">📅 Marked Attendance</h3>
+      ${!paperIds.length ? '<p class="sub">This examiner has not marked attendance on any paper yet.</p>' :
+        paperIds.map(pid => {
+          const pInfo = byPaper[pid];
+          const byDate = {};
+          pInfo.records.forEach(r => { daysOf(r).forEach(d => { (byDate[d] ??= []).push(r); }); });
+          const dates = Object.keys(byDate).sort().reverse();
+          return `<div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--line)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+              <span class="pill brand" style="font-weight:800">📄 ${esc(pInfo.title||'Paper')}</span>
+              <span class="sub" style="margin:0">${esc(pInfo.date||'no date')}</span>
+            </div>
+            ${dates.map(d => {
+              const list = byDate[d].slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+              return `<div style="margin:12px 0 0 12px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+                  <span class="pill" style="background:var(--brand-soft);color:var(--brand);font-weight:700">📅 ${esc(d)}</span>
+                  <span class="sub" style="margin:0">· ${list.length} student${list.length===1?'':'s'}</span>
+                </div>
+                <div class="tbl-wrap"><table>
+                  <tr><th>#</th><th>Name</th><th>School</th><th>Barcode</th></tr>
+                  ${list.map((a,i)=>{
+                    const s = (rosterAll||[]).find(x=>x.id===a.nic) || {};
+                    return `<tr>
+                      <td>${i+1}</td>
+                      <td><b>${esc(a.name||a.nic)}</b></td>
+                      <td>${esc(s.school||'—')}</td>
+                      <td class="mono">${esc(a.barcode||'—')}</td>
+                    </tr>`;
+                  }).join('')}
+                </table></div>
+              </div>`;
+            }).join('')}
+          </div>`;
+        }).join('')
+      }
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector('#exmClose').onclick = () => modal.remove();
+  modal.onclick = e => { if(e.target === modal) modal.remove(); };
 }
 function tabRequests({requests}){
   const pend=requests.filter(r=>r.status==='pending');
