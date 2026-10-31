@@ -62,25 +62,15 @@ header{box-shadow:0 1px 0 rgba(201,162,74,.28)}
 .vbadge{background:var(--good-bg);color:var(--good)}
 th{background:linear-gradient(var(--bg),var(--brand-soft))}
 
-/* ---------- Premium icons: gradient tiles with duotone glyphs ---------- */
-.svgi{--a:#22a06b;--b:#0b6b4a;width:1.5em;height:1.5em;padding:.3em;margin-right:.35em;border-radius:.46em;color:#fff;vertical-align:-.38em;
-  background:linear-gradient(145deg,var(--a),var(--b));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -2px 4px rgba(0,0,0,.12),0 3px 8px -2px color-mix(in srgb,var(--b) 55%,transparent)}
-.svgi svg{width:100%!important;height:100%!important}
-.svgi.free{background:none;box-shadow:none;padding:0;border-radius:0}
-.svgi.rank{width:1.35em;height:1.7em;vertical-align:-.5em;margin-right:.4em}
-.ma-trophy .svgi{width:1em;height:1em;margin:0;filter:drop-shadow(0 8px 12px rgba(201,162,74,.5))}
+/* ---------- Colourful illustrated icons (no tiles) ---------- */
+.svgi{width:1.35em;height:1.35em;padding:0;margin-right:.35em;border-radius:0;background:none;box-shadow:none;color:inherit;vertical-align:-.3em;filter:drop-shadow(0 2px 3px rgba(15,36,25,.22))}
+.svgi svg{width:100%!important;height:100%!important;display:block}
+.svgi.free{filter:none}
+.svgi.rank{width:1.35em;height:1.7em;vertical-align:-.5em;margin-right:.4em;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
 .lp .feat .fic,.lp .c-item .ic,.tg-card .ic,.crow .ic{background:none!important;padding:0!important}
-.crow .ic{display:block;width:40px;height:40px;flex:none}
-.fic .svgi,.c-item .ic .svgi,.tg-card .ic .svgi,.crow .ic .svgi{width:100%;height:100%;padding:24%;border-radius:13px;margin:0}
+.lp .feat .fic{width:46px;height:46px}
+.fic .svgi{width:42px;height:42px}.c-item .ic .svgi{width:36px;height:36px}.tg-card .ic .svgi{width:34px;height:34px}
+.crow .ic{display:block;width:36px;height:36px;flex:none}.crow .ic .svgi{width:100%;height:100%}
+.fic .svgi,.c-item .ic .svgi,.tg-card .ic .svgi,.crow .ic .svgi{margin:0}
 .click-ring,.rpl{display:none!important}
-.n-leaf{--a:#4ade80;--b:#15803d}.n-dna,.n-lock,.n-key,.n-card{--a:#2dd4bf;--b:#0f766e}
-.n-cap{--a:#a78bfa;--b:#6d28d9}.n-trend{--a:#34d399;--b:#047857}.n-file,.n-clipboard,.n-clock,.n-hourglass{--a:#fbbf24;--b:#d97706}
-.n-mobile,.n-phone,.n-chat,.n-check{--a:#4ade80;--b:#15803d}.n-send{--a:#5ac8fa;--b:#1d8fe0}
-.n-pin,.n-heart,.n-target{--a:#fb7185;--b:#be123c}.n-mail,.n-calendar,.n-mic{--a:#f472b6;--b:#be185d}
-.n-users,.n-book{--a:#60a5fa;--b:#3b5bdb}.n-user,.n-inbox{--a:#818cf8;--b:#4338ca}.n-play,.n-video{--a:#f87171;--b:#b91c1c}
-.n-sparkle,.n-trophy,.n-medal{--a:#f3d27a;--b:#b8861f}.n-pencil,.n-camera{--a:#a78bfa;--b:#7c3aed}
-.n-repeat,.n-chart{--a:#22d3ee;--b:#0e7490}.n-globe,.n-search,.n-monitor{--a:#60a5fa;--b:#2563eb}.n-building{--a:#60a5fa;--b:#1d4ed8}
-.n-alert{--a:#fbbf24;--b:#dc2626}.n-wrench,.n-gear{--a:#94a3b8;--b:#475569}.n-image{--a:#38bdf8;--b:#0369a1}
-.n-flask{--a:#c084fc;--b:#7e22ce}.n-sun{--a:#fcd34d;--b:#f59e0b}.n-moon{--a:#818cf8;--b:#4338ca}
 .face{color:#0f2419}
