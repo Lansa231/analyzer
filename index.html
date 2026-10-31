@@ -2074,7 +2074,8 @@ function tabStudents({roster,rosterAll,papers}){
             <button type="button" id="atScan" class="btn btn-ghost" style="width:auto;margin:0;padding:0 14px;font-size:1.15rem" title="Scan barcode with camera" aria-label="Scan barcode with camera">📷</button>
           </div>
         </div>
-        <button class="btn btn-primary" id="atAdd" style="width:auto;margin:0">+ Mark present</button>
+  <button class="btn btn-primary" id="atAdd" style="width:auto;margin:0">+ Mark present</button>
+        </div>
         <div id="atMsg"></div>
         <p class="sub" style="margin:10px 0 6px"><b>${list.length}</b> student${list.length===1?'':'s'} attended this paper. They now appear in the Marks tab for this paper.</p>
         ${list.length?`<div class="tbl-wrap"><table><tr><th>#</th><th>Name</th><th>Barcode</th><th>Center</th><th></th></tr>${list.map((a,i)=>`<tr><td>${list.length-i}</td><td><b>${esc(a.name||a.nic)}</b></td><td class="mono">${esc(a.barcode||'—')}</td><td>${esc(a.center||'—')}</td><td style="text-align:right"><button class="btn btn-danger btn-sm" data-at-rm="${esc(a.nic)}">Remove</button></td></tr>`).join('')}</table></div>`:''}</div>`;
