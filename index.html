@@ -527,12 +527,13 @@ window.CA={myRanks,esc,pct,grade,gCls,SUBJECTS,BATCHES,app,go,busy,friendly,stat
 function route(){
   if(unsubStu){ unsubStu(); unsubStu=null; }
   killCharts();
-  const r = location.hash.startsWith('#/student/') ? 'studentView' : (routes()[location.hash] || 'landing');
-  if(role==='examiner' && ['stuDash','teacherDash','studentView'].includes(r)) return go('#/examiner/dashboard');
+  const r = location.hash.startsWith('#/student/') ? 'studentView' : location.hash.startsWith('#/examiner-view/') ? 'examinerView' : (routes()[location.hash] || 'landing');
+  if(role==='examiner' && ['stuDash','teacherDash','studentView','examinerView'].includes(r)) return go('#/examiner/dashboard');
   if(r==='stuDash' && !(user && role==='student')) return go('#/login');
   if(r==='teacherDash' && !(user && role==='teacher')) return go('#/teacher');
   if(r==='examinerDash' && !(user && role==='examiner')) return go('#/examiner');
   if(r==='studentView' && !(user && role==='teacher' && (profile.isAdmin||profile.verified===true))) return go('#/teacher');
+  if(r==='examinerView' && !(user && role==='teacher' && profile.isAdmin)) return go('#/teacher');
   if(['landing','login','signup','forgot'].includes(r) && user && role==='student') return go('#/dashboard');
   if(['login','signup','forgot'].includes(r) && user && role==='teacher') return go('#/teacher/dashboard');
   if(['login','signup','forgot'].includes(r) && user && role==='examiner') return go('#/examiner/dashboard');
@@ -542,7 +543,7 @@ function route(){
   app.classList.toggle('landing-wide', r==='landing');
   const sf=document.getElementById('siteFoot'); if(sf) sf.style.display = (r==='landing')?'none':'';
   { const fail=e=>{ busy(false); app.innerHTML=`<div class="card" style="max-width:560px;margin:28px auto"><h2>⚠️ Something went wrong</h2><div class="err">${esc(friendly(e))}</div><p class="sub" style="margin-top:8px">Technical detail: ${esc(e&&e.message||String(e))}</p><button class="btn btn-primary" onclick="location.reload()" style="width:auto">Reload</button></div>`; };
-    try{ const out=({landing,login,signup,forgot,stuDash,teacherAuth,teacherDash,studentView,contact,examinerAuth,examinerDash})[r](); if(out&&out.catch) out.catch(fail); }catch(e){ fail(e); } }
+    try{ const out=({landing,login,signup,forgot,stuDash,teacherAuth,teacherDash,studentView,contact,examinerAuth,examinerDash,examinerView})[r](); if(out&&out.catch) out.catch(fail); }catch(e){ fail(e); } }
   try{ document.dispatchEvent(new CustomEvent('ca:view',{detail:{name:r}})); }catch(e){}
   window.scrollTo(0,0);
 }
@@ -597,7 +598,7 @@ function renderHdr(r){
   } else {
     nav.innerHTML = '';
   }
-  if(user && (r==='stuDash'||r==='teacherDash'||r==='studentView'||r==='examinerDash')){
+  if(user && (r==='stuDash'||r==='teacherDash'||r==='studentView'||r==='examinerDash'||r==='examinerView')){
     const roleLabel = role==='teacher'  ? (profile&&profile.isAdmin?'🛠 Developer':'👩‍🏫 Teacher')
                     : role==='examiner' ? '📋 Examiner'
                     : '🎓 Student';
@@ -2420,14 +2421,14 @@ function tabExaminers({examiners, papersAll, rosterAll}){
   $("#tabBody").innerHTML = `<div class="card"><h2>📋 All examining instructors (${examiners.length})</h2>
     ${examiners.length ? `<div class="tbl-wrap"><table><tr><th>Name</th><th>Email</th><th>NIC</th><th>Center</th><th>Class</th><th>Status</th><th></th></tr>
       ${examiners.map(e=>`<tr>
-        <td><b><a class="nl" href="#" data-exm-view="${e.id}" style="cursor:pointer">${esc(e.fullName||'')}</a></b></td>
+        <td><b><a class="nl" href="#/examiner-view/${e.id}">${esc(e.fullName||'')}</a></b></td>
         <td>${esc(e.email||'')}</td>
         <td class="mono">${esc(e.nic||'—')}</td>
         <td>${esc(e.center||'—')}</td>
         <td>${esc(e.className||'—')}</td>
         <td>${e.verified?'<span class="vbadge">✔ Verified</span>':'<span class="sub" style="display:inline">(not verified)</span>'}</td>
         <td style="white-space:nowrap;text-align:right">
-          <button class="btn btn-ghost btn-sm" data-exm-view="${e.id}">📊 Attendance</button>
+          <a class="btn btn-ghost btn-sm" href="#/examiner-view/${e.id}">Details</a>
           <button class="btn btn-ghost btn-sm" data-etv="${e.id}" data-ev="${e.verified?1:0}">${e.verified?'Unverify':'Verify'}</button>
           <button class="btn btn-ghost btn-sm" data-ectr="${e.id}" data-cur="${esc(e.center||'')}">Center</button>
           <button class="btn btn-danger btn-sm" data-ermt="${e.id}">Remove</button>
@@ -2460,7 +2461,98 @@ function tabExaminers({examiners, papersAll, rosterAll}){
     if(ex) openExaminerAttendanceModal(ex, papersAll, rosterAll);
   });
 }
+/* ============================== EXAMINER PROFILE PAGE (developer only) ==============================
+   Paste this whole function into the <script type="module"> in index.html,
+   for example right above:  function openExaminerAttendanceModal(...)
+   URL: #/examiner-view/<examiner uid> */
+async function examinerView(){
+  const id = decodeURIComponent(location.hash.slice('#/examiner-view/'.length));
+  const back = '<p><a href="#/teacher/dashboard">← Back to dashboard</a></p>';
+  app.innerHTML = `${back}<div class="card"><p class="sub">Loading…</p></div>`;
+  try{
+    const [exDoc, papSnap, attSnap, stuSnap] = await Promise.all([
+      getDoc(doc(db,'examiners',id)),
+      getDocs(collection(db,'papers')),
+      getDocs(collection(db,'attendance')),
+      getDocs(collection(db,'students')).catch(()=>null)
+    ]);
+    if(!exDoc.exists()){ app.innerHTML = `${back}<div class="card"><p class="sub">Examiner not found.</p></div>`; return; }
+    const ex = { id, ...exDoc.data() };
+    const papersAll = papSnap.docs.map(d=>({id:d.id,...d.data()}));
+    // records this examiner marked (older records without byUid are matched by name)
+    const mine = attSnap.docs.map(d=>d.data())
+      .filter(a => (a.byUid && a.byUid===id) || (!a.byUid && a.by===(ex.fullName||'')));
+    const school = {};
+    if(stuSnap) stuSnap.docs.forEach(d=>{ const s=d.data(); school[skeyOf(s)] = s.school || '—'; });
+    const daysOf = r => {
+      const ds = r.days || (r.day ? [r.day] : []);
+      if(ds.length) return ds;
+      if(r.at){ const d=new Date(r.at); return [d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')]; }
+      return [];
+    };
+    const info = (k,v)=>`<div><span class="sub">${k}</span><br><b>${esc(v||'—')}</b></div>`;
 
+    const render = () => {
+      const batch = BATCHES.includes(state.exBatch) ? state.exBatch : BATCHES[0];
+      const papers = papersAll.filter(p=>(p.batch||BATCHES[0])===batch)
+        .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+      const ids = new Set(papers.map(p=>p.id));
+      const recs = mine.filter(a=>ids.has(a.pid));
+      const people = new Set(recs.map(a=>a.nic)).size;
+      const entries = recs.reduce((n,r)=>n+Math.max(1,daysOf(r).length),0);
+      const withAtt = new Set(recs.map(a=>a.pid)).size;
+
+      const paperBlock = p => {
+        const rs = recs.filter(a=>a.pid===p.id);
+        const byDate = {};
+        rs.forEach(r=>daysOf(r).forEach(d=>(byDate[d] ??= []).push(r)));
+        const dates = Object.keys(byDate).sort().reverse();
+        const n = new Set(rs.map(r=>r.nic)).size;
+        return `<details class="card"${rs.length?' open':''}>
+          <summary style="cursor:pointer;font-weight:800;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            ${esc(p.title)} <span class="sub" style="margin:0;font-weight:500">${esc(p.date||'no date')}</span>
+            <span class="pill ${rs.length?'good':'warn'}">${n} student${n===1?'':'s'}</span>
+          </summary>
+          ${dates.length ? dates.map(d=>{
+            const list = byDate[d].slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+            return `<div style="margin-top:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+                <span class="pill brand">📅 ${esc(d)}</span>
+                <span class="sub" style="margin:0">· ${list.length} student${list.length===1?'':'s'}</span>
+              </div>
+              <div class="tbl-wrap"><table>
+                <tr><th>#</th><th>Name</th><th>School</th><th>Barcode</th></tr>
+                ${list.map((a,i)=>`<tr><td>${i+1}</td><td><b>${esc(a.name||a.nic)}</b></td><td>${esc(school[String(a.nic||'').toUpperCase()]||'—')}</td><td class="mono">${esc(a.barcode||'—')}</td></tr>`).join('')}
+              </table></div></div>`;
+          }).join('') : '<p class="sub" style="margin-top:10px">This examiner has not marked anyone on this paper.</p>'}
+        </details>`;
+      };
+
+      app.innerHTML = `${back}
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center">
+            <div><b style="font-size:1.15rem">📋 ${esc(ex.fullName||'Examiner')}</b>
+              ${ex.verified?'<span class="vbadge">✔ Verified</span>':'<span class="pill warn">Not verified</span>'}</div>
+            <span class="pill brand">Examiner</span>
+          </div>
+          <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:12px">
+            ${info('Gender',ex.gender)}${info('NIC',ex.nic)}${info('Attended class',ex.className)}${info('Exam center',ex.center)}${info('Email',ex.email)}
+          </div>
+        </div>
+        <div class="tabs">${BATCHES.map(b=>`<button data-xb="${b}" class="${b===batch?'active':''}">🎓 ${b}</button>`).join('')}</div>
+        <div class="grid g4" style="margin-bottom:20px">
+          <div class="stat"><div class="num">${papers.length}</div><div class="lbl">Papers in ${esc(batch)}</div></div>
+          <div class="stat"><div class="num">${withAtt}</div><div class="lbl">Papers with attendance</div></div>
+          <div class="stat"><div class="num">${people}</div><div class="lbl">Different students</div></div>
+          <div class="stat"><div class="num">${entries}</div><div class="lbl">Attendance marked</div></div>
+        </div>
+        ${papers.length ? papers.map(paperBlock).join('') : '<div class="card"><p class="sub">No papers in this batch yet.</p></div>'}`;
+
+      document.querySelectorAll('[data-xb]').forEach(b=>b.onclick=()=>{ state.exBatch = b.dataset.xb; render(); });
+    };
+    render();
+  }catch(e){ app.innerHTML = `${back}<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; }
+}
 function openExaminerAttendanceModal(ex, papersAll, rosterAll){
   const isTheirs = r => (r.byUid && r.byUid === ex.id) || (!r.byUid && r.by === (ex.fullName || ''));
   const daysOf = r => {
