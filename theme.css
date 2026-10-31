@@ -54,16 +54,6 @@ header{box-shadow:0 1px 0 rgba(201,162,74,.28)}
 .lp .class-card:nth-child(2)::before{background:linear-gradient(#3b5bdb,#6d8bff)}
 .lp .class-card:nth-child(3)::before{background:linear-gradient(#7c3aed,#b18cff)}
 .lp .class-card:nth-child(1) .loc .svgi{color:#0b6b4a}
-.lp .feat:nth-child(1) .fic{background:#dff3e8;color:#0b6b4a}
-.lp .feat:nth-child(2) .fic{background:#e3e9ff;color:#3b5bdb}
-.lp .feat:nth-child(3) .fic{background:#efe6ff;color:#7c3aed}
-.lp .feat:nth-child(4) .fic{background:#d9f3f5;color:#0e9aa7}
-.lp .feat:nth-child(5) .fic{background:var(--gold-soft);color:#a8801f}
-.lp .feat:nth-child(6) .fic{background:#fde6ee;color:#e0457b}
-.lp .c-item:nth-child(1) .ic{background:#dff3e8}.lp .c-item:nth-child(2) .ic{background:#d7f5df}
-.lp .c-item:nth-child(3) .ic{background:#e0f2fd}.lp .c-item:nth-child(4) .ic{background:#e3e9ff}
-.lp .c-item:nth-child(5) .ic{background:#fde6ee}.lp .c-item:nth-child(6) .ic{background:var(--gold-soft)}
-.lp .tg-card .ic{background:#e0f2fd}
 .stat .num{background:linear-gradient(120deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent}
 .stat{border-top:3px solid var(--gold)}
 .lp .teacher-tags span{background:var(--gold-soft);color:#7a5c14}
@@ -72,21 +62,25 @@ header{box-shadow:0 1px 0 rgba(201,162,74,.28)}
 .vbadge{background:var(--good-bg);color:var(--good)}
 th{background:linear-gradient(var(--bg),var(--brand-soft))}
 
-/* ---------- Colour-coded icons (not inside buttons / dark banners) ---------- */
-.n-leaf,.n-check{color:#16a34a}.n-dna,.n-card,.n-lock,.n-key{color:#0d9488}
-.n-cap,.n-flask,.n-pencil,.n-camera{color:#7c3aed}.n-book,.n-users,.n-user,.n-globe,.n-inbox,.n-building,.n-search,.n-monitor{color:#3b5bdb}
-.n-trend{color:#059669}.n-chart,.n-repeat{color:#0891b2}.n-file,.n-clipboard,.n-clock,.n-hourglass{color:#d97706}
-.n-mobile,.n-phone{color:#16a34a}.n-chat{color:#22c55e}.n-mail,.n-calendar,.n-mic{color:#e0457b}
-.n-send{color:#2AABEE}.n-pin,.n-heart{color:#e11d48}.n-sparkle,.n-trophy,.n-medal{color:#c9a24a}
-.n-alert,.n-video,.n-target,.n-play{color:#dc2626}.n-wrench,.n-gear{color:#64748b}
-.n-image{color:#0ea5e9}.n-moon{color:#6366f1}.n-sun{color:#f59e0b}
-.svgi.gold{color:#d9a93a}.svgi.silver{color:#94a3b8}.svgi.bronze{color:#c2773a}
-[data-theme="dark"] .svgi{filter:brightness(1.3) saturate(1.1)}
-.btn .svgi,.tabs button.active .svgi,.lp-hero .svgi,.portal-banner .svgi,.hero.photo .svgi,.lp-foot .mark .svgi,.foot-contact .svgi,.nav-mobile .btn-gold .svgi,.side .svgi{color:inherit;filter:none}
-.btn-ghost .svgi{color:var(--brand)}
-.lp-hero-badge .svgi{color:#f6e3a1}
-.lp .feat .fic .svgi,.lp .c-item .ic .svgi{color:inherit;filter:none}
-.lp .c-item:nth-child(1) .ic{color:#0b6b4a}.lp .c-item:nth-child(2) .ic{color:#16a34a}.lp .c-item:nth-child(3) .ic{color:#2AABEE}
-.lp .c-item:nth-child(4) .ic{color:#3b5bdb}.lp .c-item:nth-child(5) .ic{color:#e0457b}.lp .c-item:nth-child(6) .ic{color:#a8801f}
-.tg-card .ic{color:#2AABEE}
+/* ---------- Premium icons: gradient tiles with duotone glyphs ---------- */
+.svgi{--a:#22a06b;--b:#0b6b4a;width:1.5em;height:1.5em;padding:.3em;margin-right:.35em;border-radius:.46em;color:#fff;vertical-align:-.38em;
+  background:linear-gradient(145deg,var(--a),var(--b));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -2px 4px rgba(0,0,0,.12),0 3px 8px -2px color-mix(in srgb,var(--b) 55%,transparent)}
+.svgi svg{width:100%!important;height:100%!important}
+.svgi.free{background:none;box-shadow:none;padding:0;border-radius:0}
+.svgi.rank{width:1.35em;height:1.7em;vertical-align:-.5em;margin-right:.4em}
+.ma-trophy .svgi{width:1em;height:1em;margin:0;filter:drop-shadow(0 8px 12px rgba(201,162,74,.5))}
+.lp .feat .fic,.lp .c-item .ic,.tg-card .ic,.crow .ic{background:none!important;padding:0!important}
+.crow .ic{display:block;width:40px;height:40px;flex:none}
+.fic .svgi,.c-item .ic .svgi,.tg-card .ic .svgi,.crow .ic .svgi{width:100%;height:100%;padding:24%;border-radius:13px;margin:0}
+.click-ring,.rpl{display:none!important}
+.n-leaf{--a:#4ade80;--b:#15803d}.n-dna,.n-lock,.n-key,.n-card{--a:#2dd4bf;--b:#0f766e}
+.n-cap{--a:#a78bfa;--b:#6d28d9}.n-trend{--a:#34d399;--b:#047857}.n-file,.n-clipboard,.n-clock,.n-hourglass{--a:#fbbf24;--b:#d97706}
+.n-mobile,.n-phone,.n-chat,.n-check{--a:#4ade80;--b:#15803d}.n-send{--a:#5ac8fa;--b:#1d8fe0}
+.n-pin,.n-heart,.n-target{--a:#fb7185;--b:#be123c}.n-mail,.n-calendar,.n-mic{--a:#f472b6;--b:#be185d}
+.n-users,.n-book{--a:#60a5fa;--b:#3b5bdb}.n-user,.n-inbox{--a:#818cf8;--b:#4338ca}.n-play,.n-video{--a:#f87171;--b:#b91c1c}
+.n-sparkle,.n-trophy,.n-medal{--a:#f3d27a;--b:#b8861f}.n-pencil,.n-camera{--a:#a78bfa;--b:#7c3aed}
+.n-repeat,.n-chart{--a:#22d3ee;--b:#0e7490}.n-globe,.n-search,.n-monitor{--a:#60a5fa;--b:#2563eb}.n-building{--a:#60a5fa;--b:#1d4ed8}
+.n-alert{--a:#fbbf24;--b:#dc2626}.n-wrench,.n-gear{--a:#94a3b8;--b:#475569}.n-image{--a:#38bdf8;--b:#0369a1}
+.n-flask{--a:#c084fc;--b:#7e22ce}.n-sun{--a:#fcd34d;--b:#f59e0b}.n-moon{--a:#818cf8;--b:#4338ca}
 .face{color:#0f2419}

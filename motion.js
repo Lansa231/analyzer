@@ -57,20 +57,26 @@ const Z = (a, b) => String.fromCodePoint(a, 0x200D, b);
 const M = {
 '🌿':'leaf','🌱':'leaf','🍃':'leaf','🧬':'dna','🎓':'cap','📈':'trend','📄':'file','🔒':'lock','📱':'mobile',
 '✈':'send','📍':'pin','📞':'phone','💬':'chat','✉':'mail','📘':'users','▶':'play','🕒':'clock','👋':'sparkle',
-'✏':'pencil','🔁':'repeat','🔄':'repeat','🏆':'trophy','🥇':'medal:gold','🥈':'medal:silver','🥉':'medal:bronze',
+'✏':'pencil','🔁':'repeat','🔄':'repeat','🏆':'trophy','🥇':'rank:1','🥈':'rank:2','🥉':'rank:3',
 '🏅':'medal','🌐':'globe','⚠':'alert','⏳':'hourglass','🔧':'wrench','🛠':'wrench','🔑':'key','📋':'clipboard',
 '✅':'check','✔':'check','📅':'calendar','📷':'camera','🖼':'image','📝':'pencil','🔬':'flask','🎤':'mic',
 '📚':'book','📊':'chart','📹':'video','📨':'inbox','⚙':'gear','🏫':'building','💳':'card','🎯':'target',
 '☀':'sun','🌙':'moon','🔎':'search','📺':'monitor','📭':'inbox','🧑‍🏫':'user',
-[Z(0x1F469,0x1F3EB)]:'user',[Z(0x1F9D1,0x1F3EB)]:'user',[Z(0x1F468,0x1F393)]:'users',[Z(0x1F468,0x2695)]:'heart',
-'🥇':'medal:gold'
+[Z(0x1F469,0x1F3EB)]:'user',[Z(0x1F9D1,0x1F3EB)]:'user',[Z(0x1F468,0x1F393)]:'users',[Z(0x1F468,0x2695)]:'heart'
 };
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const RE = new RegExp('(' + Object.keys(M).sort((a, b) => b.length - a.length).map(esc).join('|') + ')\\uFE0F?', 'gu');
 const FB = /[\u{1F000}-\u{1FAFF}\uFE0F]/gu;   // any leftover emoji gets dropped
-const icon = key => {
-  const [n, c] = key.split(':');
-  return `<span class="svgi n-${n} ${c || ''}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${P[n]}</svg></span>`;
+const GL = 'fill="#fff" fill-opacity=".3" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
+const RANK = { 1:['#dc2626','g-gold','#5b3b00'], 2:['#3b5bdb','g-silver','#1f2937'], 3:['#0d9488','g-bronze','#4a2208'] };
+const rank = k => { const r = RANK[k]; return `<span class="svgi free rank" aria-hidden="true"><svg viewBox="0 0 32 40"><path d="M8 0h7l5 15h-7zM24 0h-7l-5 15h7z" fill="${r[0]}"/><circle cx="16" cy="26" r="13" fill="url(#${r[1]})"/><circle cx="16" cy="26" r="9.6" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="1.4"/><text x="16" y="31" text-anchor="middle" font-size="14" font-weight="800" fill="${r[2]}" font-family="Inter,sans-serif">${k}</text></svg></span>`; };
+const nbadge = k => `<span class="svgi free rank" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="url(#g-green)"/><circle cx="16" cy="16" r="11" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="1.2"/><text x="16" y="${k > 99 ? 19.5 : 21}" text-anchor="middle" font-size="${k > 99 ? 10 : k > 9 ? 12 : 14}" font-weight="800" fill="#fff" font-family="Inter,sans-serif">${k}</text></svg></span>`;
+const CUP = '<span class="svgi free" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M18 6h28v16c0 9-6 15-14 15S18 31 18 22Z" fill="url(#g-gold)"/><path d="M18 12H8c0 9 4 14 11 15M46 12h10c0 9-4 14-11 15" fill="none" stroke="url(#g-gold)" stroke-width="4" stroke-linecap="round"/><path d="M28 36h8v10h-8z" fill="url(#g-gold)"/><path d="M20 50h24l3 8H17z" fill="url(#g-bronze)"/><path d="M23 10h5v12c0 5 2 8 4 10-6-1-9-6-9-12Z" fill="#fff" fill-opacity=".4"/></svg></span>';
+const icon = (key, ctx) => {
+  let [n, c] = key.split(':');
+  if (n === 'rank') { if (ctx && ctx.closest('.marq-item')) return rank(+c); n = 'trophy'; }
+  if (n === 'trophy' && ctx && ctx.closest('.ma-trophy')) return CUP;
+  return `<span class="svgi n-${n}" aria-hidden="true"><svg viewBox="0 0 24 24" ${GL}>${P[n]}</svg></span>`;
 };
 const SKIP = /^(SCRIPT|STYLE|TEXTAREA|OPTION|SELECT|INPUT|TITLE|SVG|NOSCRIPT)$/;
 
@@ -83,7 +89,7 @@ function swap(node) {
   const txt = t => document.createTextNode(t.replace(FB, ''));
   while ((m = RE.exec(s))) {
     if (m.index > last) frag.append(txt(s.slice(last, m.index)));
-    const t = document.createElement('template'); t.innerHTML = icon(M[m[1]] || M[m[1].replace(/\uFE0F/g, '')]);
+    const t = document.createElement('template'); t.innerHTML = icon(M[m[1]] || M[m[1].replace(/\uFE0F/g, '')], node.parentElement);
     frag.append(t.content); last = RE.lastIndex;
   }
   frag.append(txt(s.slice(last)));
@@ -124,6 +130,10 @@ function enhance(root) {
   root.querySelectorAll('.face:not([data-i])').forEach(f => {            // initials instead of animal faces
     const b = f.parentElement.querySelector('b'), name = (b ? b.textContent : '').replace(/^\s*#\d+\s*/, '').trim();
     f.textContent = (name[0] || '?').toUpperCase(); f.dataset.i = 1; });
+  root.querySelectorAll('.marq-item b:not([data-r])').forEach(b => {    // rank badges for #4, #5 ...
+    b.dataset.r = 1; const t = b.firstChild;
+    if (t && t.nodeType === 3) { const m = t.nodeValue.match(/^\s*#(\d+)\s*/);
+      if (m) { const tp = document.createElement('template'); tp.innerHTML = nbadge(+m[1]); t.nodeValue = t.nodeValue.slice(m[0].length); b.prepend(tp.content); } } });
   if (RM) return;
   root.querySelectorAll(CT).forEach(el => { if (!seen.has(el)) { seen.add(el); io.observe(el); } });
   root.querySelectorAll(RV).forEach(el => {
@@ -140,22 +150,11 @@ new MutationObserver(ms => {
   ms.forEach(m => { m.addedNodes.forEach(n => queue.add(n)); if (m.type === 'characterData') queue.add(m.target); });
   if (!raf) raf = requestAnimationFrame(flush);
 }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+const stops = c => c.map((x, i) => `<stop offset="${[0, .5, 1][i]}" stop-color="${x}"/>`).join('');
+document.body.insertAdjacentHTML('beforeend', '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>' +
+  [['g-gold', ['#fff1b8', '#e2bd5c', '#b8861f']], ['g-silver', ['#ffffff', '#cbd5e1', '#8392a5']], ['g-bronze', ['#ffd9b0', '#d98b4a', '#9a5320']], ['g-green', ['#5eead4', '#14a37f', '#0b6b4a']]]
+    .map(([id, c]) => `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">${stops(c)}</linearGradient>`).join('') + '</defs></svg>');
 queue.add(document.body); flush();
-
-/* ---------- Click effects ---------- */
-const RIP = '.btn,.tabs button,.nav-link,.foot-contact,.nav-toggle,.nav-mobile a';
-document.addEventListener('pointerdown', e => {
-  if (e.button || RM) return;
-  const ring = document.createElement('div'); ring.className = 'click-ring';
-  ring.style.left = e.clientX + 'px'; ring.style.top = e.clientY + 'px';
-  document.body.appendChild(ring); setTimeout(() => ring.remove(), 600);
-  const t = e.target.closest(RIP);
-  if (t && !t.disabled) {
-    const r = t.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2, s = document.createElement('span');
-    s.className = 'rpl'; s.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px`;
-    t.appendChild(s); setTimeout(() => s.remove(), 700);
-  }
-}, { passive: true });
 
 /* ---------- Hover spotlight that follows the cursor ---------- */
 if (FINE && !RM) {
