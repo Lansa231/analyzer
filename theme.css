@@ -1,0 +1,92 @@
+/* ===== S.K. Wellala — premium colour theme (load AFTER motion.css) =====
+   Deep emerald + champagne gold + ivory, with jewel-tone accents for icons and cards. */
+:root{
+  --bg:#f3f6f1; --card:#ffffff; --ink:#0f2419; --muted:#5b7165; --line:#e1eae2;
+  --brand:#0b6b4a; --brand2:#14a37f; --brand-soft:#e2f3ea; --brand-bg:#e2f3ea;
+  --gold:#c9a24a; --gold-soft:#f7efd6;
+  --sapphire:#3b5bdb; --amethyst:#7c3aed; --rose:#e0457b; --amber:#d98a0b; --teal:#0e9aa7;
+  --good:#0b6b4a; --good-bg:#d9f1e4; --warn:#a96a06; --warn-bg:#fbefcf; --bad:#be1e3c; --bad-bg:#fde4e8;
+  --shadow:0 10px 30px rgba(8,60,40,.10); --radius:18px;
+}
+[data-theme="dark"]{
+  --bg:#07130e; --card:#0e2118; --ink:#e8f3ec; --muted:#8fb09e; --line:#1b3829;
+  --brand:#34d399; --brand2:#5eead4; --brand-soft:#123a2a; --brand-bg:#123a2a;
+  --gold:#e6c36a; --gold-soft:#3a2f10;
+  --good:#4ade80; --good-bg:#10351f; --warn:#fbbf24; --warn-bg:#40300a; --bad:#fb7185; --bad-bg:#4a1a24;
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+}
+body{background:
+  radial-gradient(1100px 560px at 88% -8%,rgba(201,162,74,.12),transparent 60%),
+  radial-gradient(900px 520px at -8% 8%,rgba(20,163,127,.13),transparent 55%),
+  var(--bg);background-attachment:fixed}
+::selection{background:rgba(201,162,74,.38)}
+header{box-shadow:0 1px 0 rgba(201,162,74,.28)}
+.logo span{background:linear-gradient(110deg,#0b6b4a,#14a37f 55%,#c9a24a)!important;-webkit-background-clip:text!important;background-clip:text!important}
+[data-theme="dark"] .logo span{background:linear-gradient(110deg,#34d399,#5eead4 55%,#e6c36a)!important;-webkit-background-clip:text!important;background-clip:text!important}
+
+/* ---------- Gold buttons ---------- */
+.lp .btn-gold,header .btn-gold,.nav-mobile .btn-gold{background:linear-gradient(135deg,#ecd08a,#c9a24a 55%,#b38a2c)!important;color:#2a1d03!important;box-shadow:0 6px 18px rgba(201,162,74,.38)!important}
+.btn-primary,.lp .btn-primary-solid,.tabs button.active{background:linear-gradient(120deg,#0b6b4a,#14a37f)}
+.tabs button.active{border-color:transparent}
+
+/* ---------- Hero + portal banner ---------- */
+.lp-hero-bg{background:
+  linear-gradient(105deg,rgba(4,38,28,.58) 0%,rgba(6,58,44,.46) 60%,rgba(8,84,72,.56) 100%),
+  radial-gradient(circle at 80% 18%,rgba(201,162,74,.30),transparent 52%),
+  url('hero-photo.jpg') center/cover no-repeat,
+  linear-gradient(135deg,#052e22,#0b6b4a 55%,#14a37f)}
+@media(max-width:760px){.lp-hero-bg{background:
+  linear-gradient(180deg,rgba(4,38,28,.4) 0%,rgba(4,38,28,.6) 55%,rgba(4,38,28,.82) 100%),
+  radial-gradient(circle at 85% 12%,rgba(201,162,74,.28),transparent 55%),
+  url('hero-photo.jpg') 80% 22%/cover no-repeat,
+  linear-gradient(135deg,#052e22,#0b6b4a 55%,#14a37f)!important}}
+.lp-hero h1 em,.lp .portal-in h2 em{background:linear-gradient(100deg,#f6e3a1,#e2bd5c);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lp .portal-banner{background:linear-gradient(115deg,rgba(4,38,28,.6),rgba(4,38,28,.84)),linear-gradient(135deg,#052e22,#0b6b4a 55%,#0e8f78)}
+.lp .mock-bar i{background:linear-gradient(90deg,#e2bd5c,#34d399)}
+.lp-trust{border-top:3px solid var(--gold)}
+.lp h2.sec em{background:linear-gradient(95deg,#0b6b4a,#14a37f 60%,#c9a24a);-webkit-background-clip:text;background-clip:text;color:transparent}
+[data-theme="dark"] .lp h2.sec em{background:linear-gradient(95deg,#34d399,#5eead4 60%,#e6c36a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lp .kicker .idx{background:var(--gold-soft);color:#8a6a1c}
+[data-theme="dark"] .lp .kicker .idx{color:var(--gold)}
+
+/* ---------- Jewel-tone cards ---------- */
+.lp .class-card:nth-child(1)::before{background:linear-gradient(#0b6b4a,#14a37f)}
+.lp .class-card:nth-child(2)::before{background:linear-gradient(#3b5bdb,#6d8bff)}
+.lp .class-card:nth-child(3)::before{background:linear-gradient(#7c3aed,#b18cff)}
+.lp .class-card:nth-child(1) .loc .svgi{color:#0b6b4a}
+.lp .feat:nth-child(1) .fic{background:#dff3e8;color:#0b6b4a}
+.lp .feat:nth-child(2) .fic{background:#e3e9ff;color:#3b5bdb}
+.lp .feat:nth-child(3) .fic{background:#efe6ff;color:#7c3aed}
+.lp .feat:nth-child(4) .fic{background:#d9f3f5;color:#0e9aa7}
+.lp .feat:nth-child(5) .fic{background:var(--gold-soft);color:#a8801f}
+.lp .feat:nth-child(6) .fic{background:#fde6ee;color:#e0457b}
+.lp .c-item:nth-child(1) .ic{background:#dff3e8}.lp .c-item:nth-child(2) .ic{background:#d7f5df}
+.lp .c-item:nth-child(3) .ic{background:#e0f2fd}.lp .c-item:nth-child(4) .ic{background:#e3e9ff}
+.lp .c-item:nth-child(5) .ic{background:#fde6ee}.lp .c-item:nth-child(6) .ic{background:var(--gold-soft)}
+.lp .tg-card .ic{background:#e0f2fd}
+.stat .num{background:linear-gradient(120deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat{border-top:3px solid var(--gold)}
+.lp .teacher-tags span{background:var(--gold-soft);color:#7a5c14}
+.lp .teacher-tags span:hover{background:var(--brand);color:#fff}
+.pill.brand{background:var(--brand-soft);color:var(--brand)}
+.vbadge{background:var(--good-bg);color:var(--good)}
+th{background:linear-gradient(var(--bg),var(--brand-soft))}
+
+/* ---------- Colour-coded icons (not inside buttons / dark banners) ---------- */
+.n-leaf,.n-check{color:#16a34a}.n-dna,.n-card,.n-lock,.n-key{color:#0d9488}
+.n-cap,.n-flask,.n-pencil,.n-camera{color:#7c3aed}.n-book,.n-users,.n-user,.n-globe,.n-inbox,.n-building,.n-search,.n-monitor{color:#3b5bdb}
+.n-trend{color:#059669}.n-chart,.n-repeat{color:#0891b2}.n-file,.n-clipboard,.n-clock,.n-hourglass{color:#d97706}
+.n-mobile,.n-phone{color:#16a34a}.n-chat{color:#22c55e}.n-mail,.n-calendar,.n-mic{color:#e0457b}
+.n-send{color:#2AABEE}.n-pin,.n-heart{color:#e11d48}.n-sparkle,.n-trophy,.n-medal{color:#c9a24a}
+.n-alert,.n-video,.n-target,.n-play{color:#dc2626}.n-wrench,.n-gear{color:#64748b}
+.n-image{color:#0ea5e9}.n-moon{color:#6366f1}.n-sun{color:#f59e0b}
+.svgi.gold{color:#d9a93a}.svgi.silver{color:#94a3b8}.svgi.bronze{color:#c2773a}
+[data-theme="dark"] .svgi{filter:brightness(1.3) saturate(1.1)}
+.btn .svgi,.tabs button.active .svgi,.lp-hero .svgi,.portal-banner .svgi,.hero.photo .svgi,.lp-foot .mark .svgi,.foot-contact .svgi,.nav-mobile .btn-gold .svgi,.side .svgi{color:inherit;filter:none}
+.btn-ghost .svgi{color:var(--brand)}
+.lp-hero-badge .svgi{color:#f6e3a1}
+.lp .feat .fic .svgi,.lp .c-item .ic .svgi{color:inherit;filter:none}
+.lp .c-item:nth-child(1) .ic{color:#0b6b4a}.lp .c-item:nth-child(2) .ic{color:#16a34a}.lp .c-item:nth-child(3) .ic{color:#2AABEE}
+.lp .c-item:nth-child(4) .ic{color:#3b5bdb}.lp .c-item:nth-child(5) .ic{color:#e0457b}.lp .c-item:nth-child(6) .ic{color:#a8801f}
+.tg-card .ic{color:#2AABEE}
+.face{color:#0f2419}

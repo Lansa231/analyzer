@@ -70,7 +70,7 @@ const RE = new RegExp('(' + Object.keys(M).sort((a, b) => b.length - a.length).m
 const FB = /[\u{1F000}-\u{1FAFF}\uFE0F]/gu;   // any leftover emoji gets dropped
 const icon = key => {
   const [n, c] = key.split(':');
-  return `<span class="svgi ${c || ''}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${P[n]}</svg></span>`;
+  return `<span class="svgi n-${n} ${c || ''}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${P[n]}</svg></span>`;
 };
 const SKIP = /^(SCRIPT|STYLE|TEXTAREA|OPTION|SELECT|INPUT|TITLE|SVG|NOSCRIPT)$/;
 
