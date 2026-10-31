@@ -1,0 +1,101 @@
+/* ===== S.K. Wellala — motion layer (load AFTER the inline <style> blocks) ===== */
+:root{--ease:cubic-bezier(.22,.8,.3,1)}
+html{scroll-behavior:smooth}
+
+/* ---------- Icons (replace emoji) ---------- */
+.svgi{display:inline-flex;width:1.15em;height:1.15em;vertical-align:-.2em;margin-right:.15em;flex:none;transition:transform .3s var(--ease)}
+.svgi svg{width:100%;height:100%;display:block}
+.svgi:only-child{margin:0}
+.svgi.gold{color:#d9a93a}.svgi.silver{color:#94a3b8}.svgi.bronze{color:#c2773a}
+.tg-card .ic{color:#2AABEE}
+.c-item .ic,.crow .ic,.lp-trust i{color:var(--brand)}
+.btn:hover .svgi,.feat:hover .fic .svgi,.c-item:hover .svgi,.tg-card:hover .svgi,.teacher-tags span:hover .svgi{transform:scale(1.18) rotate(-6deg)}
+.lp-hero-badge .svgi{animation:sway 3.2s ease-in-out infinite;transform-origin:50% 90%}
+@keyframes sway{50%{transform:rotate(14deg)}}
+
+/* ---------- Floating emoji background -> soft drifting light ---------- */
+.bgfx{display:none!important}
+body::before,body::after{content:"";position:fixed;z-index:-1;border-radius:50%;filter:blur(80px);pointer-events:none;opacity:.32}
+body::before{width:420px;height:420px;left:-120px;top:18%;background:rgba(34,160,107,.4);animation:orb1 24s ease-in-out infinite alternate}
+body::after{width:380px;height:380px;right:-110px;bottom:4%;background:rgba(217,169,58,.3);animation:orb2 28s ease-in-out infinite alternate}
+[data-theme="dark"] body::before,[data-theme="dark"] body::after{opacity:.2}
+@keyframes orb1{to{transform:translate(160px,-120px) scale(1.2)}}
+@keyframes orb2{to{transform:translate(-180px,100px) scale(1.15)}}
+
+/* ---------- Buttons: lift, press, shine, ripple ---------- */
+.btn,.tabs button,.foot-contact,.nav-link,.nav-toggle{position:relative;overflow:hidden;transition:transform .18s var(--ease),box-shadow .25s,filter .2s,background .2s,color .2s,border-color .2s}
+.nav-link{display:inline-block}
+.btn:not(:disabled):hover,.foot-contact:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(21,128,61,.22)}
+.btn:not(:disabled):active,.tabs button:active,.foot-contact:active,.nav-toggle:active{transform:translateY(0) scale(.95)}
+.btn-gold::after,.btn-primary::after,.btn-primary-solid::after,.foot-contact::after{content:"";position:absolute;top:0;left:-70%;width:45%;height:100%;pointer-events:none;background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-20deg);transition:left .65s var(--ease)}
+.btn-gold:hover::after,.btn-primary:hover::after,.btn-primary-solid:hover::after,.foot-contact:hover::after{left:130%}
+.rpl{position:absolute;border-radius:50%;pointer-events:none;background:currentColor;opacity:.3;transform:scale(0);animation:rpl .65s ease-out forwards}
+@keyframes rpl{to{transform:scale(1);opacity:0}}
+.click-ring{position:fixed;z-index:9999;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--brand);pointer-events:none;animation:ring .55s ease-out forwards}
+@keyframes ring{to{transform:scale(4.5);opacity:0}}
+
+/* ---------- Tabs, nav, header ---------- */
+.tabs button:hover:not(.active){border-color:var(--brand);color:var(--brand);transform:translateY(-1px)}
+.tabs button.active{box-shadow:0 6px 16px rgba(21,128,61,.28)}
+.nav-link::after{content:"";position:absolute;left:14px;right:14px;bottom:4px;height:2px;border-radius:2px;background:var(--brand);transform:scaleX(0);transition:transform .3s var(--ease)}
+.nav-link:hover::after,.nav-link.active::after{transform:scaleX(1)}
+.nav-link.active{color:var(--brand)!important}
+header.scrolled{box-shadow:0 6px 24px rgba(20,80,40,.12)}
+.logo{transition:letter-spacing .3s var(--ease)}
+.logo:hover{letter-spacing:.075em}
+.nav-mobile a{transition:background .15s,padding-left .2s var(--ease)}
+.nav-mobile a:hover{padding-left:20px}
+
+/* ---------- Cards: lift + cursor spotlight ---------- */
+.card,.class-card,.feat,.c-item,.tg-card,.stat,.pdfcard{position:relative}
+.card::after,.class-card::after,.feat::after,.c-item::after,.tg-card::after,.stat::after,.pdfcard::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),rgba(34,160,107,.17),transparent 70%)}
+.card:hover::after,.class-card:hover::after,.feat:hover::after,.c-item:hover::after,.tg-card:hover::after,.stat:hover::after,.pdfcard:hover::after{opacity:1}
+.card{transition:border-color .25s,box-shadow .25s}
+.card:hover{border-color:var(--brand-soft)}
+.stat,.pdfcard{transition:transform .25s var(--ease),border-color .25s,box-shadow .25s}
+.stat:hover,.pdfcard:hover{transform:translateY(-3px);border-color:var(--brand);box-shadow:var(--shadow)}
+.pdfcard img{transition:transform .5s var(--ease)}
+.pdfcard:hover img{transform:scale(1.06)}
+.lp .class-card::before{transition:width .3s var(--ease)}
+.lp .class-card:hover::before{width:8px}
+.lp .class-row{transition:padding-left .2s var(--ease),background .2s}
+.lp .class-row:hover{padding-left:8px;background:var(--brand-soft);border-radius:8px}
+.lp .teacher-tags span{transition:transform .2s var(--ease),background .2s,color .2s}
+.lp .teacher-tags span:hover{transform:translateY(-2px);background:var(--brand);color:#fff}
+#centers div[style*="box-shadow"]{transition:transform .2s var(--ease),border-color .2s,background .2s}
+#centers div[style*="box-shadow"]:hover{transform:translateX(5px);border-color:var(--brand);background:var(--brand-soft)}
+
+/* ---------- Tables, lists, inputs ---------- */
+td{transition:background .2s}
+tr:hover td{background:var(--brand-soft)}
+tr:hover td:first-child{box-shadow:inset 3px 0 0 var(--brand)}
+.list-item,.paper-row,.crow{transition:background .2s,padding-left .2s var(--ease)}
+.list-item:hover,.paper-row:hover{background:var(--brand-soft);padding-left:10px;border-radius:10px}
+input,select,textarea{transition:border-color .2s,box-shadow .2s,background .2s}
+input:focus,select:focus,textarea:focus{box-shadow:0 0 0 4px rgba(34,160,107,.18)}
+.pill{transition:transform .2s var(--ease)}
+.pill:hover{transform:scale(1.07)}
+.switch:active .slider:before{width:22px}
+
+/* ---------- Entrances ---------- */
+@keyframes up{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+.lp-hero-in>*{opacity:0;animation:up .85s var(--ease) forwards}
+.lp-hero-in>:nth-child(1){animation-delay:.05s}.lp-hero-in>:nth-child(2){animation-delay:.18s}
+.lp-hero-in>:nth-child(3){animation-delay:.32s}.lp-hero-in>:nth-child(4){animation-delay:.46s}
+.lp-hero-in>:nth-child(5){animation-delay:.6s}
+.lp-hero-bg::before{content:"";position:absolute;width:520px;height:520px;right:-120px;top:-170px;border-radius:50%;background:radial-gradient(circle,rgba(253,230,138,.35),transparent 65%);animation:drift 14s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate(-100px,80px) scale(1.15)}}
+#app>.card,#app>.split,#tabBody>.card,#stuBody>*{animation:up .4s var(--ease) both}
+.rv{opacity:0;transform:translateY(28px) scale(.98);transition:opacity .7s var(--ease),transform .7s var(--ease)!important}
+.rv.in{opacity:1;transform:none}
+.bar,.mock-bar i,.gb-track>div{transform-origin:left;animation:grow 1s var(--ease) both}
+@keyframes grow{from{transform:scaleX(0)}}
+
+/* ---------- Marquee avatars (initials instead of animal faces) ---------- */
+.face{font-size:1rem;font-weight:800;color:#12281c;letter-spacing:0;transition:transform .25s var(--ease)}
+.marq-item:hover .face{transform:scale(1.14) rotate(-4deg)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+  .lp-hero-in>*{opacity:1}.rv{opacity:1;transform:none}
+}
