@@ -1,6 +1,8 @@
 /* Class Analyzer API — Cloudflare Pages Function (same address as the website, at /api) + D1.
    Firebase still handles logins; this Worker checks the Firebase login token and applies the same
-   permission rules the site used in Firestore. Bindings needed: DB (D1 database), FIREBASE_PROJECT_ID (text). */
+   permission rules the site used in Firestore.
+   Bindings needed: DB (D1 database), FIREBASE_PROJECT_ID (text), FIREBASE_SERVICE_ACCOUNT (secret, only for deleting logins).
+   Save this file as  functions/api.js  in your GitHub repo. */
 
 class Deny extends Error {}
 class Missing extends Error {}
@@ -35,36 +37,53 @@ async function verify(tok, pid) {
 const row = async (env, col, id) => { const r = await env.DB.prepare('SELECT data FROM docs WHERE col=?1 AND id=?2').bind(col, id).first(); return r ? JSON.parse(r.data) : null; };
 const put = (env, col, id, data) => env.DB.prepare('INSERT INTO docs(col,id,data) VALUES(?1,?2,?3) ON CONFLICT(col,id) DO UPDATE SET data=excluded.data').bind(col, id, JSON.stringify(data)).run();
 
+/* ---------- who is calling ---------- */
 function ctxOf(env, uid) {
   const c = { env, uid, m: {}, signedIn: !!uid };
   c.get = async (col, id) => { const k = col + '/' + id; if (!(k in c.m)) c.m[k] = await row(env, col, id); return c.m[k]; };
   c.isAdmin = async () => !!uid && !!(await c.get('admins', uid));
   c.teacher = async () => uid ? c.get('teachers', uid) : null;
   c.isTeacher = async () => { if (await c.isAdmin()) return true; const t = await c.teacher(); return !!t && t.verified === true; };
-  c.examiner  = async () => uid ? c.get('examiners', uid) : null;   c.isExaminer = async () => { const e = await c.examiner(); return !!e && e.verified === true; };   c.sameCenter = async cn => {     if (await c.isAdmin()) return true;     if (await c.isTeacher())  return ((await c.teacher()).center  || '') === (cn || '');     if (await c.isExaminer()) return ((await c.examiner()).center || '') === (cn || '');     return false;   };
-   c.approver = async () => uid ? c.get('approvers', uid) : null;
+  c.examiner = async () => uid ? c.get('examiners', uid) : null;
+  c.isExaminer = async () => { const e = await c.examiner(); return !!e && e.verified === true; };
+  c.approver = async () => uid ? c.get('approvers', uid) : null;
   c.isApprover = async () => { const a = await c.approver(); return !!a && a.verified === true; };
-   return c;
+  c.sameCenter = async cn => {
+    if (await c.isAdmin()) return true;
+    if (await c.isTeacher()) return ((await c.teacher()).center || '') === (cn || '');
+    if (await c.isExaminer()) return ((await c.examiner()).center || '') === (cn || '');
+    return false;
+  };
+  return c;
 }
 
 /* ---------- who may read what ---------- */
 async function canRead(c, col, id, d) {
   switch (col) {
     case 'nics': case 'barcodes': case 'pending': case 'settings': return true;
-            case 'payments': return (await c.isTeacher()) || (await c.isExaminer()) || (await c.isApprover());
-    case 'admins': case 'teachers': case 'changeRequests': case 'examiners': case 'approvers': return c.signedIn && (c.uid === id || await c.isAdmin());
+    case 'payments': return (await c.isTeacher()) || (await c.isExaminer()) || (await c.isApprover());
+    case 'admins': case 'teachers': case 'changeRequests': case 'examiners': case 'approvers':
+      return c.signedIn && (c.uid === id || await c.isAdmin());
     case 'students':
-      if (!c.signedIn) return false; if (c.uid === id) return true; if (await c.isApprover()) return true;
+      if (!c.signedIn) return false;
+      if (c.uid === id) return true;
+      if (await c.isApprover()) return true;
       return d ? await c.sameCenter(d.center) : await c.isTeacher();
-    case 'papers': if (await c.isTeacher() || await c.isExaminer()) return true; return c.signedIn && (!d || d.published === true);
+    case 'papers':
+      if (await c.isTeacher() || await c.isExaminer()) return true;
+      return c.signedIn && (!d || d.published === true);
     case 'marks': {
-      if (await c.isTeacher()) return true; if (!c.signedIn) return false; if (!d) return true;
+      if (await c.isTeacher()) return true;
+      if (!c.signedIn) return false;
+      if (!d) return true;
       const s = await c.get('students', c.uid); if (!s || d.nic !== skeyOf(s)) return false;
       const p = await c.get('papers', d.pid); return !!p && p.published === true;
     }
-            case 'attendance': return ((await c.isTeacher()) || (await c.isExaminer())) && (d ? await c.sameCenter(d.center) : true);
+    case 'attendance':
+      return ((await c.isTeacher()) || (await c.isExaminer())) && (d ? await c.sameCenter(d.center) : true);
     case 'fileLists': {
-      if (await c.isTeacher()) return true; if (!c.signedIn) return false;
+      if (await c.isTeacher()) return true;
+      if (!c.signedIn) return false;
       const s = await c.get('students', c.uid); return !!s && String(s.batch || '').split(' ')[0] === id;
     }
   }
@@ -76,23 +95,31 @@ async function canWrite(c, col, id, ex, patch, final) {
   const isNew = !ex, adm = await c.isAdmin(), s = c.signedIn;
   const changed = Object.keys(patch).filter(k => JSON.stringify(patch[k]) !== JSON.stringify(ex && ex[k]));
   switch (col) {
-   case 'admins': case 'fileLists': case 'settings': return adm;
+    case 'admins': case 'fileLists': case 'settings': return adm;
+    case 'examiners':
+      if (adm) return true;
+      if (!s || c.uid !== id) return false;
+      if (isNew) return final.verified === false;
+      return changed.every(k => ['fullName', 'gender', 'className'].includes(k));
     case 'approvers':
       if (adm) return true;
       if (!s || c.uid !== id) return false;
       if (isNew) return final.verified === false;
-      return changed.every(k => ['fullName','gender','mobile'].includes(k));
+      return changed.every(k => ['fullName', 'gender', 'mobile'].includes(k));
     case 'payments':
       if (adm) return true;
-      return (await c.isApprover()) && final.paid === true && id === final.nic + '_' + final.month;    case 'approvers':       if (adm) return true;       if (!s || c.uid !== id) return false;       if (isNew) return final.verified === false;       return changed.every(k => ['fullName','gender','mobile'].includes(k));     case 'payments':       if (adm) return true;       return (await c.isApprover()) && final.paid === true && id === final.nic + '_' + final.month;     case 'examiners':       if (adm) return true;       if (!s || c.uid !== id) return false;       if (isNew) return final.verified === false;       return changed.every(k => ['fullName','gender','className'].includes(k));
+      return (await c.isApprover()) && final.paid === true
+        && /^\d{4}-(0[1-9]|1[0-2])$/.test(String(final.month || ''))
+        && id === final.nic + '_' + final.month;
     case 'teachers':
-      if (adm) return true; if (!s || c.uid !== id) return false;
+      if (adm) return true;
+      if (!s || c.uid !== id) return false;
       if (isNew) { if (final.verified !== false) return false; const reg = await c.get('settings', 'registration'); return !(reg && reg.teacherSignupOpen === false); }
       return (final.verified ?? false) === (ex.verified ?? false) && (final.nickname ?? '') === (ex.nickname ?? '');
     case 'students':
       if (adm) return true;
-        if (isNew) return s && c.uid === id && final.verified === false && /^[A-Za-z0-9]{8}$/.test(String(final.barcode || ''));
-       if (s && c.uid === id && changed.every(k => ['mobile', 'whatsapp', 'school', 'payMethod'].includes(k))) return true;
+      if (isNew) return s && c.uid === id && final.verified === false && /^[A-Za-z0-9]{8}$/.test(String(final.barcode || ''));
+      if (s && c.uid === id && changed.every(k => ['mobile', 'whatsapp', 'school', 'payMethod'].includes(k))) return true;
       if (!(await c.isTeacher())) return false;
       return (await c.sameCenter(ex.center)) && (final.verified ?? false) === (ex.verified ?? false);
     case 'changeRequests': return adm || (s && c.uid === id && final.uid === c.uid && final.status === 'pending');
@@ -100,26 +127,29 @@ async function canWrite(c, col, id, ex, patch, final) {
     case 'pending': return await c.sameCenter(final.center || '');
     case 'papers': if (adm) return true; return !isNew && (await c.isTeacher()) && changed.every(k => k === 'published' || k === 'ranksPublished');
     case 'marks': return id === final.pid + '_' + final.nic && await c.sameCenter(final.center || '');
-            case 'attendance': return id === final.pid + '_' + final.nic && await c.sameCenter(final.center || '');
+    case 'attendance': return id === final.pid + '_' + final.nic && await c.sameCenter(final.center || '');
   }
   return false;
 }
+
+/* ---------- who may delete what ---------- */
 async function canDelete(c, col, id, ex) {
   const adm = await c.isAdmin();
   switch (col) {
     case 'admins': return adm && !(ex && ex.owner === true) && c.uid !== id;
     case 'students': return ex ? ((await c.isTeacher()) && await c.sameCenter(ex.center)) : false;
     case 'changeRequests': case 'papers': case 'fileLists': case 'settings': return adm;
-         case 'teachers': return adm && c.uid !== id && !(await c.get('admins', id));
-    case 'approvers': return adm && c.uid !== id;
-    case 'payments': return adm || await c.isApprover();     case 'examiners': return adm && c.uid !== id;
+    case 'teachers': return adm && c.uid !== id && !(await c.get('admins', id));
+    case 'examiners': case 'approvers': return adm && c.uid !== id;
+    case 'payments': return adm || await c.isApprover();
     case 'nics': case 'barcodes': return await c.isTeacher();
     case 'pending': return c.signedIn;
     case 'marks': return ex ? ((await c.isTeacher()) && await c.sameCenter(ex.center)) : c.signedIn;
-            case 'attendance': return ex ? await c.sameCenter(ex.center) : ((await c.isTeacher()) || (await c.isExaminer()));
+    case 'attendance': return ex ? await c.sameCenter(ex.center) : ((await c.isTeacher()) || (await c.isExaminer()));
   }
   return false;
 }
+
 /* ---------- delete a Firebase login (needs the FIREBASE_SERVICE_ACCOUNT secret) ---------- */
 const b64 = b => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const b64s = s => b64(new TextEncoder().encode(s));
@@ -144,13 +174,15 @@ const clean = d => { const o = {}; for (const [k, v] of Object.entries(d || {}))
 /* ---------- request handler ---------- */
 async function handle(b, uid, env) {
   const c = ctxOf(env, uid), { op, col } = b; let id = b.id;
-    if (op !== 'myranks' && op !== 'deleteuser' && !COLS.includes(col)) deny('Unknown collection');
+  if (op !== 'myranks' && op !== 'deleteuser' && !COLS.includes(col)) deny('Unknown collection');
+
   if (op === 'get') {
     const d = await c.get(col, String(id));
     if (!(await canRead(c, col, String(id), d))) deny();
     return { data: d };
   }
-     if (op === 'deleteuser') {
+
+  if (op === 'deleteuser') {
     if (!(await c.isAdmin())) deny();
     const target = String(b.uid || '');
     if (!target || target === c.uid || (await c.get('admins', target))) deny('Developers cannot be removed this way.');
@@ -159,6 +191,7 @@ async function handle(b, uid, env) {
     try { await deleteLogin(env, target); } catch (e) { deny('Could not delete the Firebase login: ' + e.message); }
     return { ok: true };
   }
+
   if (op === 'myranks') {
     /* each student sees only their OWN rank, and only if they are in the top 100 of that paper across all centers (Online center ignored) */
     if (!c.signedIn) deny();
@@ -170,7 +203,7 @@ async function handle(b, uid, env) {
       if (p.published !== true || p.ranksPublished !== true || (p.batch || '2027 A/L') !== batch) continue;
       const rows = ((await env.DB.prepare("SELECT data FROM docs WHERE col='marks' AND COALESCE(json_extract(data,'$.pid'),'')=?1").bind(r.id).all()).results || []).map(x => JSON.parse(x.data));
       const mine = rows.find(x => x.nic === key);
-           if (!mine) { ranks[r.id] = null; continue; }
+      if (!mine) { ranks[r.id] = null; continue; }
       const online = ONLINE_RE.test(s.center || '');
       const pool = rows.filter(x => ONLINE_RE.test(x.center || '') === online);
       const rank = 1 + pool.filter(x => x.mark > mine.mark).length;
@@ -178,35 +211,40 @@ async function handle(b, uid, env) {
     }
     return { ranks };
   }
+
   if (op === 'list') {
     let wh = (b.where || []).filter(w => w.op === '==' && /^\w+$/.test(w.f));
     const only = (f, v) => { wh = [...wh.filter(w => w.f !== f), { f, op: '==', v }]; };
-      if (col === 'students') {
+    if (col === 'students') {
       if (!(await c.isAdmin())) {
-        if (await c.isTeacher())       only('center', (await c.teacher()).center  || '');
-        else if (await c.isExaminer()) only('center', (await c.examiner()).center || '');         else if (await c.isApprover()) { /* approvers see all centers */ }
+        if (await c.isTeacher()) only('center', (await c.teacher()).center || '');
+        else if (await c.isExaminer()) only('center', (await c.examiner()).center || '');
+        else if (await c.isApprover()) { /* approvers see every center */ }
         else deny();
       }
     } else if (col === 'pending') {
       if (!(await c.isAdmin())) { if (!(await c.isTeacher())) deny(); only('center', (await c.teacher()).center || ''); }
     } else if (col === 'papers') {
       if (!(await c.isTeacher()) && !(await c.isExaminer())) { if (!c.signedIn) deny(); only('published', true); }
-    }
-    else if (col === 'marks' || col === 'fileLists') { if (!(await c.isTeacher())) deny(); }
-    else if (col === 'attendance') {
+    } else if (col === 'marks' || col === 'fileLists') {
+      if (!(await c.isTeacher())) deny();
+    } else if (col === 'attendance') {
       if (!(await c.isTeacher()) && !(await c.isExaminer())) deny();
       if (!(await c.isAdmin())) {
         if (await c.isTeacher()) only('center', (await c.teacher()).center || '');
-        else                     only('center', (await c.examiner()).center || '');
+        else only('center', (await c.examiner()).center || '');
       }
-    }
-    else if (['admins', 'teachers', 'changeRequests', 'nics', 'barcodes', 'examiners''approvers'].includes(col)) { if (!(await c.isAdmin())) deny(); }
-    else deny();
+    } else if (col === 'payments') {
+      if (!(await c.isAdmin()) && !(await c.isApprover())) deny();
+    } else if (['admins', 'teachers', 'changeRequests', 'nics', 'barcodes', 'examiners', 'approvers'].includes(col)) {
+      if (!(await c.isAdmin())) deny();
+    } else deny();
     const params = [col]; let sql = 'SELECT id,data FROM docs WHERE col=?1';
     wh.forEach(w => { params.push(w.v === true ? 1 : w.v === false ? 0 : w.v); sql += ` AND COALESCE(json_extract(data,'$.${w.f}'),'')=?${params.length}`; });
     const r = await env.DB.prepare(sql).bind(...params).all();
     return { docs: (r.results || []).map(x => ({ id: x.id, data: JSON.parse(x.data) })) };
   }
+
   if (op === 'set' || op === 'update' || op === 'add') {
     if (op === 'add') id = crypto.randomUUID().replace(/-/g, '').slice(0, 20);
     id = String(id);
@@ -218,6 +256,7 @@ async function handle(b, uid, env) {
     await put(env, col, id, final);
     return { id };
   }
+
   if (op === 'delete') {
     id = String(id);
     const ex = await c.get(col, id);
@@ -225,6 +264,7 @@ async function handle(b, uid, env) {
     await env.DB.prepare('DELETE FROM docs WHERE col=?1 AND id=?2').bind(col, id).run();
     return { ok: true };
   }
+
   deny('Unknown operation');
 }
 
