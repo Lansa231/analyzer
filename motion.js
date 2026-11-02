@@ -169,3 +169,77 @@ if (FINE && !RM) {
 /* ---------- Header shadow on scroll ---------- */
 addEventListener('scroll', () => { const h = document.querySelector('header'); if (h) h.classList.toggle('scrolled', scrollY > 8); }, { passive: true });
 })();
+/* ============================================================
+   MOBILE DASHBOARD DRAWER — wire the hamburger + overlay
+   ============================================================ */
+(function(){
+  const checkDrawer = () => {
+    const sidebar = document.querySelector('.sidebar');
+    let ham     = document.getElementById('dashHamburger');
+    let overlay = document.getElementById('dashOverlay');
+
+    // Hide on pages with no sidebar (landing, login, student page, etc.)
+    if (!sidebar) {
+      if (ham) ham.classList.add('hidden');
+      if (overlay) { overlay.classList.remove('open'); overlay.classList.add('hidden'); }
+      return;
+    }
+
+    // Create once
+    if (!ham) {
+      ham = document.createElement('button');
+      ham.id = 'dashHamburger';
+      ham.className = 'dash-hamburger';
+      ham.setAttribute('aria-label', 'Open menu');
+      ham.setAttribute('aria-expanded', 'false');
+      ham.innerHTML = '<span></span><span></span><span></span>';
+      document.body.appendChild(ham);
+    }
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'dashOverlay';
+      overlay.className = 'dash-overlay';
+      document.body.appendChild(overlay);
+    }
+    ham.classList.remove('hidden');
+    overlay.classList.remove('hidden');
+
+    // Close-on-tab-click, wired once per sidebar instance
+    if (sidebar.dataset.drawerWired !== '1') {
+      sidebar.dataset.drawerWired = '1';
+      sidebar.querySelectorAll('button').forEach(b => {
+        b.addEventListener('click', () => {
+          sidebar.classList.remove('open');
+          ham.classList.remove('open');
+          overlay.classList.remove('open');
+          ham.setAttribute('aria-expanded', 'false');
+        });
+      });
+    }
+
+    // Open/close handlers — wired once ever
+    if (ham.dataset.wired !== '1') {
+      ham.dataset.wired = '1';
+      ham.addEventListener('click', () => {
+        const s = document.querySelector('.sidebar');
+        if (!s) return;
+        const open = !s.classList.contains('open');
+        s.classList.toggle('open', open);
+        ham.classList.toggle('open', open);
+        overlay.classList.toggle('open', open);
+        ham.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      overlay.addEventListener('click', () => {
+        const s = document.querySelector('.sidebar');
+        if (!s) return;
+        s.classList.remove('open');
+        ham.classList.remove('open');
+        overlay.classList.remove('open');
+        ham.setAttribute('aria-expanded', 'false');
+      });
+    }
+  };
+
+  // `features.js` rebuilds the sidebar on a 300ms watcher — match that timing
+  setInterval(checkDrawer, 300);
+})();
