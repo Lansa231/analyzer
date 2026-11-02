@@ -5,7 +5,7 @@
 class Deny extends Error {}
 class Missing extends Error {}
 const deny = m => { throw new Deny(m); };
-const COLS = ['admins','teachers','students','changeRequests','nics','barcodes','pending','papers','marks','fileLists','settings','attendance','examiners'];
+const COLS = ['admins','teachers','students','changeRequests','nics','barcodes','pending','papers','marks','fileLists','settings','attendance','examiners','approvers','payments'];
 const ONLINE_RE = /online/i;   // a center whose name contains "online" is the Online paper center (left out of all-center ranks)
 const skeyOf = s => String((s && (s.skey || s.nic)) || '').toUpperCase();
 
@@ -42,16 +42,19 @@ function ctxOf(env, uid) {
   c.teacher = async () => uid ? c.get('teachers', uid) : null;
   c.isTeacher = async () => { if (await c.isAdmin()) return true; const t = await c.teacher(); return !!t && t.verified === true; };
   c.examiner  = async () => uid ? c.get('examiners', uid) : null;   c.isExaminer = async () => { const e = await c.examiner(); return !!e && e.verified === true; };   c.sameCenter = async cn => {     if (await c.isAdmin()) return true;     if (await c.isTeacher())  return ((await c.teacher()).center  || '') === (cn || '');     if (await c.isExaminer()) return ((await c.examiner()).center || '') === (cn || '');     return false;   };
-  return c;
+   c.approver = async () => uid ? c.get('approvers', uid) : null;
+  c.isApprover = async () => { const a = await c.approver(); return !!a && a.verified === true; };
+   return c;
 }
 
 /* ---------- who may read what ---------- */
 async function canRead(c, col, id, d) {
   switch (col) {
     case 'nics': case 'barcodes': case 'pending': case 'settings': return true;
-    case 'admins': case 'teachers': case 'changeRequests': case 'examiners': return c.signedIn && (c.uid === id || await c.isAdmin());
+            case 'payments': return (await c.isTeacher()) || (await c.isExaminer()) || (await c.isApprover());
+    case 'admins': case 'teachers': case 'changeRequests': case 'examiners': case 'approvers': return c.signedIn && (c.uid === id || await c.isAdmin());
     case 'students':
-      if (!c.signedIn) return false; if (c.uid === id) return true;
+      if (!c.signedIn) return false; if (c.uid === id) return true; if (await c.isApprover()) return true;
       return d ? await c.sameCenter(d.center) : await c.isTeacher();
     case 'papers': if (await c.isTeacher() || await c.isExaminer()) return true; return c.signedIn && (!d || d.published === true);
     case 'marks': {
@@ -73,7 +76,15 @@ async function canWrite(c, col, id, ex, patch, final) {
   const isNew = !ex, adm = await c.isAdmin(), s = c.signedIn;
   const changed = Object.keys(patch).filter(k => JSON.stringify(patch[k]) !== JSON.stringify(ex && ex[k]));
   switch (col) {
-    case 'admins': case 'fileLists': case 'settings': return adm;     case 'examiners':       if (adm) return true;       if (!s || c.uid !== id) return false;       if (isNew) return final.verified === false;       return changed.every(k => ['fullName','gender','className'].includes(k));
+   case 'admins': case 'fileLists': case 'settings': return adm;
+    case 'approvers':
+      if (adm) return true;
+      if (!s || c.uid !== id) return false;
+      if (isNew) return final.verified === false;
+      return changed.every(k => ['fullName','gender','mobile'].includes(k));
+    case 'payments':
+      if (adm) return true;
+      return (await c.isApprover()) && final.paid === true && id === final.nic + '_' + final.month;    case 'approvers':       if (adm) return true;       if (!s || c.uid !== id) return false;       if (isNew) return final.verified === false;       return changed.every(k => ['fullName','gender','mobile'].includes(k));     case 'payments':       if (adm) return true;       return (await c.isApprover()) && final.paid === true && id === final.nic + '_' + final.month;     case 'examiners':       if (adm) return true;       if (!s || c.uid !== id) return false;       if (isNew) return final.verified === false;       return changed.every(k => ['fullName','gender','className'].includes(k));
     case 'teachers':
       if (adm) return true; if (!s || c.uid !== id) return false;
       if (isNew) { if (final.verified !== false) return false; const reg = await c.get('settings', 'registration'); return !(reg && reg.teacherSignupOpen === false); }
@@ -99,7 +110,9 @@ async function canDelete(c, col, id, ex) {
     case 'admins': return adm && !(ex && ex.owner === true) && c.uid !== id;
     case 'students': return ex ? ((await c.isTeacher()) && await c.sameCenter(ex.center)) : false;
     case 'changeRequests': case 'papers': case 'fileLists': case 'settings': return adm;
-            case 'teachers': return adm && c.uid !== id && !(await c.get('admins', id));     case 'examiners': return adm && c.uid !== id;
+         case 'teachers': return adm && c.uid !== id && !(await c.get('admins', id));
+    case 'approvers': return adm && c.uid !== id;
+    case 'payments': return adm || await c.isApprover();     case 'examiners': return adm && c.uid !== id;
     case 'nics': case 'barcodes': return await c.isTeacher();
     case 'pending': return c.signedIn;
     case 'marks': return ex ? ((await c.isTeacher()) && await c.sameCenter(ex.center)) : c.signedIn;
@@ -141,7 +154,7 @@ async function handle(b, uid, env) {
     if (!(await c.isAdmin())) deny();
     const target = String(b.uid || '');
     if (!target || target === c.uid || (await c.get('admins', target))) deny('Developers cannot be removed this way.');
-    if ((await c.get('students', target)) || (await c.get('teachers', target))) deny('Remove the records first.');
+    if ((await c.get('students', target)) || (await c.get('teachers', target)) || (await c.get('examiners', target)) || (await c.get('approvers', target))) deny('Remove the records first.');
     if (!env.FIREBASE_SERVICE_ACCOUNT) deny('FIREBASE_SERVICE_ACCOUNT is not set in Cloudflare.');
     try { await deleteLogin(env, target); } catch (e) { deny('Could not delete the Firebase login: ' + e.message); }
     return { ok: true };
@@ -171,7 +184,7 @@ async function handle(b, uid, env) {
       if (col === 'students') {
       if (!(await c.isAdmin())) {
         if (await c.isTeacher())       only('center', (await c.teacher()).center  || '');
-        else if (await c.isExaminer()) only('center', (await c.examiner()).center || '');
+        else if (await c.isExaminer()) only('center', (await c.examiner()).center || '');         else if (await c.isApprover()) { /* approvers see all centers */ }
         else deny();
       }
     } else if (col === 'pending') {
@@ -187,7 +200,7 @@ async function handle(b, uid, env) {
         else                     only('center', (await c.examiner()).center || '');
       }
     }
-    else if (['admins', 'teachers', 'changeRequests', 'nics', 'barcodes', 'examiners'].includes(col)) { if (!(await c.isAdmin())) deny(); }
+    else if (['admins', 'teachers', 'changeRequests', 'nics', 'barcodes', 'examiners''approvers'].includes(col)) { if (!(await c.isAdmin())) deny(); }
     else deny();
     const params = [col]; let sql = 'SELECT id,data FROM docs WHERE col=?1';
     wh.forEach(w => { params.push(w.v === true ? 1 : w.v === false ? 0 : w.v); sql += ` AND COALESCE(json_extract(data,'$.${w.f}'),'')=?${params.length}`; });
