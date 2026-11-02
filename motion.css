@@ -206,3 +206,31 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 4px rgba(34,160,107,.18
 
   .dash-main { padding-top: 56px !important; }
 }
+/* ============================================================
+   SEE MORE — shown under any .tbl-wrap table with > 20 rows
+   ============================================================ */
+.tbl-see-more {
+  display: block;
+  margin: 10px auto 0;
+  padding: 8px 22px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: .82rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease;
+}
+.tbl-see-more:hover {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+.tbl-see-more:active {
+  transform: scale(.97);
+}
+@media (max-width: 760px) {
+  .tbl-see-more { font-size: .78rem; padding: 7px 16px; }
+}
