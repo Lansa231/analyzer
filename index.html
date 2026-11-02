@@ -2244,7 +2244,7 @@ async function teacherDash(){
        <button data-tab="allmarks" class="${state.tab==='allmarks'?'active':''}">🌐 All Marks</button>
     <button data-tab="videos" class="${state.tab==='videos'?'active':''}">📹 Videos</button>
     ${window.CA.tabs.map(t=>`<button data-tab="x_${t.id}" class="${state.tab==='x_'+t.id?'active':''}">${t.label}</button>`).join('')}
-    ${adm?`<button data-tab="teachers" class="${state.tab==='teachers'?'active':''}">🧑‍🏫 Teachers</button><button data-tab="examiners" class="${state.tab==='examiners'?'active':''}">📋 Examiners</button><button data-tab="approvers" class="${state.tab==='approvers'?'active':''}">💳 Payment Approvers</button><button data-tab="admin" class="${state.tab==='admin'?'active':''}">⚙️ Centers &amp; Payments</button><button data-tab="requests" class="${state.tab==='requests'?'active':''}">📨 Requests${pendReq?` (${pendReq})`:''}</button><button data-tab="files" class="${state.tab==='files'?'active':''}">📚 Marking PDFs</button>`:''}
+    ${adm?`<button data-tab="teachers" class="${state.tab==='teachers'?'active':''}">🧑‍🏫 Teachers</button><button data-tab="examiners" class="${state.tab==='examiners'?'active':''}">📋 Examiners</button><button data-tab="approvers" class="${state.tab==='approvers'?'active':''}">💳 Payment Approvers</button><button data-tab="payments" class="${state.tab==='payments'?'active':''}">💰 Payments</button><button data-tab="admin" class="${state.tab==='admin'?'active':''}">⚙️ Centers &amp; Payments</button><button data-tab="requests" class="${state.tab==='requests'?'active':''}">📨 Requests${pendReq?` (${pendReq})`:''}</button><button data-tab="files" class="${state.tab==='files'?'active':''}">📚 Marking PDFs</button>`:''}
   </div>
   <div id="tabBody"></div>`;
 
@@ -2255,8 +2255,8 @@ async function teacherDash(){
   };
   document.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>{ state.batch=b.dataset.batch; state.selPaper=null; state.rankPaper=null; teacherDash(); });
   if($("#ctrSel")) $("#ctrSel").onchange=e=>{ state.center=e.target.value; teacherDash(); };
-  if(!adm && ['teachers','admin','requests','files','approvers'].includes(state.tab)) state.tab='students';
-  const tabs={students:tabStudents,marks:tabMarks,analytics:tabAnalytics,ranks:tabRanks,allmarks:tabAllMarks,requests:tabRequests,files:tabFiles,teachers:tabTeachers,examiners:tabExaminers,approvers:tabApprovers,admin:tabAdmin,videos:tabVideos};
+  if(!adm && ['teachers','admin','requests','files','approvers','payments'].includes(state.tab)) state.tab='students';
+  const tabs={students:tabStudents,marks:tabMarks,analytics:tabAnalytics,ranks:tabRanks,allmarks:tabAllMarks,requests:tabRequests,files:tabFiles,teachers:tabTeachers,examiners:tabExaminers,approvers:tabApprovers,payments:tabPaymentsAdmin,admin:tabAdmin,videos:tabVideos};
   const ctx={students:roster,roster,rosterAll,pending,papers,papersAll,teachers,examiners,adm,admins,requests};
   const xt=window.CA.tabs.find(t=>'x_'+t.id===state.tab);
   if(xt){ try{ xt.render({...ctx,el:$("#tabBody")}); }catch(e){ $("#tabBody").innerHTML=`<div class="card"><div class="err">${esc(e.message)}</div></div>`; } }
@@ -2856,6 +2856,16 @@ async function examinerView(){
     };
     render();
   }catch(e){ app.innerHTML = `${back}<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; }
+}
+  async function tabPaymentsAdmin(){
+  $("#tabBody").innerHTML = '<div class="card"><p class="sub">Loading…</p></div>';
+  try {
+    const ss = await getDocs(collection(db,'students'));
+    const students = ss.docs.map(d => ({ id: d.id, ...d.data() }));
+    approverPayments({ students });
+  } catch(e) {
+    $("#tabBody").innerHTML = `<div class="card"><div class="err">${esc(friendly(e))}</div></div>`;
+  }
 }
 function openExaminerAttendanceModal(ex, papersAll, rosterAll){
   const isTheirs = r => (r.byUid && r.byUid === ex.id) || (!r.byUid && r.by === (ex.fullName || ''));
