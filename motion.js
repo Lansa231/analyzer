@@ -243,3 +243,59 @@ addEventListener('scroll', () => { const h = document.querySelector('header'); i
   // `features.js` rebuilds the sidebar on a 300ms watcher — match that timing
   setInterval(checkDrawer, 300);
 })();
+/* ============================================================
+   SEE MORE — auto-truncate every .tbl-wrap table to 20 rows
+   Adds a "See more" button under the table that reveals the rest.
+   Runs on a 300ms interval (same cadence as the rest of the app)
+   so it catches newly rendered tables on every route/tab change.
+   ============================================================ */
+(function(){
+  const LIMIT = 20;
+
+  const processWrap = wrap => {
+    if (!wrap || wrap.dataset.seeMoreDone === '1') return;
+    const table = wrap.querySelector(':scope > table');
+    if (!table) return;
+
+    // Split header row(s) from body rows.
+    // A row counts as "header" if it has any <th>.
+    const allRows = Array.from(table.querySelectorAll('tr'));
+    const bodyRows = allRows.filter(r => !r.querySelector('th'));
+    if (bodyRows.length <= LIMIT) return;
+
+    wrap.dataset.seeMoreDone = '1';
+
+    const hidden   = bodyRows.slice(LIMIT);
+    const total    = bodyRows.length;
+    const overflow = total - LIMIT;
+
+    hidden.forEach(r => { r.style.display = 'none'; });
+
+    let expanded = false;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tbl-see-more';
+    btn.textContent = `See more (${overflow} more)`;
+
+    btn.addEventListener('click', () => {
+      expanded = !expanded;
+      hidden.forEach(r => { r.style.display = expanded ? '' : 'none'; });
+      btn.textContent = expanded
+        ? `Show less (${total} total)`
+        : `See more (${overflow} more)`;
+    });
+
+    // Place the button right after the table's scroll wrap, so it
+    // sits outside the horizontal-scroll area and stays centered.
+    wrap.insertAdjacentElement('afterend', btn);
+  };
+
+  const scan = () => {
+    document.querySelectorAll('.tbl-wrap').forEach(processWrap);
+  };
+
+  // Initial scan + repeat, so new tables (from tab switches, filters,
+  // search results, examiner-view drill-downs, etc.) are handled too.
+  scan();
+  setInterval(scan, 300);
+})();
