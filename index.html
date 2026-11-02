@@ -514,7 +514,7 @@ let unsubStu = null;
 /* ============================== ROUTER ============================== */
 const routes = () => ({
   '':'landing', '#/':'landing', '#/login':'login', '#/signup':'signup', '#/forgot':'forgot',
-  '#/dashboard':'stuDash', '#/contact':'contact', '#/teacher':'teacherAuth', '#/teacher/dashboard':'teacherDash',   '#/examiner':'examinerAuth', '#/examiner/dashboard':'examinerDash'
+  '#/dashboard':'stuDash', '#/contact':'contact', '#/teacher':'teacherAuth', '#/teacher/dashboard':'teacherDash',   '#/examiner':'examinerAuth', '#/examiner/dashboard':'examinerDash', '#/approver':'approverAuth', '#/approver/dashboard':'approverDash'
 });
 window.addEventListener('hashchange', route);
 
@@ -539,11 +539,15 @@ function route(){
   if(['login','signup','forgot'].includes(r) && user && role==='examiner') return go('#/examiner/dashboard');
   if(r==='teacherAuth' && user && role==='teacher') return go('#/teacher/dashboard');
   if(r==='examinerAuth' && user && role==='examiner') return go('#/examiner/dashboard');
+    if(role==='approver' && ['stuDash','teacherDash','studentView','examinerDash'].includes(r)) return go('#/approver/dashboard');
+  if(r==='approverDash' && !(user && role==='approver')) return go('#/approver');
+  if(['login','signup','forgot'].includes(r) && user && role==='approver') return go('#/approver/dashboard');
+  if(r==='approverAuth' && user && role==='approver') return go('#/approver/dashboard');
   renderHdr(r);
   app.classList.toggle('landing-wide', r==='landing');
   const sf=document.getElementById('siteFoot'); if(sf) sf.style.display = (r==='landing')?'none':'';
   { const fail=e=>{ busy(false); app.innerHTML=`<div class="card" style="max-width:560px;margin:28px auto"><h2>⚠️ Something went wrong</h2><div class="err">${esc(friendly(e))}</div><p class="sub" style="margin-top:8px">Technical detail: ${esc(e&&e.message||String(e))}</p><button class="btn btn-primary" onclick="location.reload()" style="width:auto">Reload</button></div>`; };
-    try{ const out=({landing,login,signup,forgot,stuDash,teacherAuth,teacherDash,studentView,contact,examinerAuth,examinerDash,examinerView})[r](); if(out&&out.catch) out.catch(fail); }catch(e){ fail(e); } }
+    try{ const out=({landing,login,signup,forgot,stuDash,teacherAuth,teacherDash,studentView,contact,examinerAuth,examinerDash,examinerViewapproverAuth,approverDash})[r](); if(out&&out.catch) out.catch(fail); }catch(e){ fail(e); } }
   try{ document.dispatchEvent(new CustomEvent('ca:view',{detail:{name:r}})); }catch(e){}
   window.scrollTo(0,0);
 }
@@ -600,7 +604,7 @@ function renderHdr(r){
   }
   if(user && (r==='stuDash'||r==='teacherDash'||r==='studentView'||r==='examinerDash'||r==='examinerView')){
     const roleLabel = role==='teacher'  ? (profile&&profile.isAdmin?'🛠 Developer':'👩‍🏫 Teacher')
-                    : role==='examiner' ? '📋 Examiner'
+                    : role==='examiner' ? '📋 Examiner'                     : role==='approver' ? '💳 Payment Approver'
                     : '🎓 Student';
     h.innerHTML = `<span class="pill brand">${roleLabel}</span> ${themeBtn()} <button class="btn btn-danger btn-sm" id="logoutBtn">Log out</button>`;
     $("#logoutBtn").onclick = async ()=>{ if(unsubStu){unsubStu();unsubStu=null;} await signOut(auth); };
@@ -643,7 +647,8 @@ function bootFirebase(cfg){
   catch(e){ return setupScreen('Could not connect: '+e.message); }
   authLoad=async u=>{
     let lookupErr=null; user=u; role=null; profile=null;
-    if(u){
+    if(u){ try{ const ap=await getDoc(doc(db,'approvers',u.uid)); if(ap.exists()){ role='approver'; profile=ap.data(); } }catch(_){} }
+    if(u && !role){
       try{
         const t=await getDoc(doc(db,'teachers',u.uid));
         if(t.exists()){
@@ -950,6 +955,7 @@ function login(){
     <div id="msg"></div>
     <p class="hint" style="text-align:center">New student? <a href="#/signup">Create an account</a></p>
     <p class="hint" style="text-align:center;font-size:.75rem">Are you an examining instructor? <a href="#/examiner">Examiner portal →</a></p>
+    
   </div>`;
   $("#btn").onclick=async()=>{
     const msg=$("#msg"); msg.innerHTML=''; busy(true);
@@ -1615,7 +1621,7 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
         </div>
         <button class="btn btn-primary" id="eaAdd" style="width:auto;margin:0">+ Mark present</button>
       </div>
-      <div id="eaMsg"></div>
+      <div id="eaMsg"></div><div id="eaWidget"></div>
       <p class="sub" style="margin:10px 0 6px"><b>${presentToday.length}</b> student${presentToday.length===1?'':'s'} attended on ${esc(selDay)}.</p>
       ${presentToday.length ? `<div class="tbl-wrap"><table><tr><th>#</th><th>Name</th><th>Barcode</th><th>School</th><th></th></tr>
         ${presentToday.map((nic,i)=>{
@@ -1661,24 +1667,25 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
     $("#eaDay").onchange = e => { state.attDay = e.target.value; examinerDash(); };
   }
 
+    if(state.lastScan){ attendanceWidget($("#eaWidget"), state.lastScan, true); state.lastScan = null; }
   const addAtt = async () => {
     if(!selPaper) return;
     const v = $("#eaB").value.trim().toUpperCase();
-    const m = $("#eaMsg"); m.innerHTML = '';
+    const m = $("#eaMsg"); m.innerHTML = ''; $("#eaWidget").innerHTML = '';
     if(!v) return;
     const s = students.find(r => String(r.barcode||'').toUpperCase()===v || String(r.nic||'').toUpperCase()===v || String(r.skey||'').toUpperCase()===v);
     if(!s){ m.innerHTML = `<div class="err">No student found with "${esc(v)}" in your center.</div>`; return $("#eaB").select(); }
     const nic = String(s.skey||s.nic||'').toUpperCase();
     const days = (attMap[nic]?.days || []).slice();
-    if(days.includes(selDay)){ m.innerHTML = `<div class="err">${esc(s.fullName)} is already marked present on ${esc(selDay)}.</div>`; $("#eaB").value=''; return; }
+    if(days.includes(selDay)){ m.innerHTML = `<div class="err">${esc(s.fullName)} is already marked present on ${esc(selDay)}.</div>`; $("#eaB").value=''; attendanceWidget($("#eaWidget"), s, false); return; }
     days.push(selDay);
-        const rec = {
+    const rec = {
       pid: selPaper.id, nic, barcode: s.barcode||'', name: s.fullName||'',
       center: s.center||profile.center||'', batch: selPaper.batch||state.batch,
       day: selDay, days, by: profile.fullName||'', byUid: user.uid || '', at: Date.now()
     };
     busy(true);
-    try{ await setDoc(doc(db,'attendance', selPaper.id+'_'+nic), rec, {merge:true}); busy(false); examinerDash(); }
+    try{ await setDoc(doc(db,'attendance', selPaper.id+'_'+nic), rec, {merge:true}); busy(false); state.lastScan = s; examinerDash(); }
     catch(e){ busy(false); m.innerHTML = `<div class="err">${esc(friendly(e))}</div>`; }
   };
   $("#eaAdd").onclick = addAtt;
@@ -1767,6 +1774,303 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
   if($("#eaLogP")) $("#eaLogP").onchange = e => {
     state.attLogPaper = e.target.value;
     examinerAttendance({papers, students, studentsAll, att, batch});
+  };
+}
+  /* ============================== PAYMENT APPROVING — new code ==============================
+   Paste this whole file into the <script type="module"> in index.html,
+   directly ABOVE the line:  /* ============================== TEACHER AUTH ============================== *​/
+   Collections used: approvers/{uid}, payments/{studentKey_YYYY-MM}, settings/payment */
+
+/* ---------- helpers ---------- */
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const ymNow = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+const ymLabel = ym => { const [y, m] = String(ym).split('-'); return MONTHS[(+m || 1) - 1] + ' ' + y; };
+const ymOptions = () => { const d = new Date(), o = []; for (let i = -6; i <= 6; i++) { const x = new Date(d.getFullYear(), d.getMonth() + i, 1); o.push(x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0')); } return o; };
+const CLASS_OPTS = {
+  '2028 A/L': ['Paper + Theory', 'Paper Only'],
+  '2027 A/L': ['Paper Only', 'Theory + Paper', 'Revision + Paper', 'Revision + Theory + Paper']
+};
+async function paySettingOn() {      // developer switch (default ON)
+  try { const s = await getDoc(doc(db, 'settings', 'payment')); return !(s.exists() && s.data().showOnAttendance === false); }
+  catch (e) { return false; }
+}
+
+/* Widget shown when a barcode is entered/scanned in attendance */
+async function attendanceWidget(host, s, added) {
+  if (!host) return;
+  const ym = ymNow(); let pay = '';
+  if (await paySettingOn()) {
+    let paid = false;
+    try { const d = await getDoc(doc(db, 'payments', skeyOf(s) + '_' + ym)); paid = d.exists() && d.data().paid !== false; } catch (e) {}
+    pay = paid
+      ? `<div class="ok" style="font-size:1rem;font-weight:700;padding:12px 14px">✅ Paid for ${esc(ymLabel(ym))}</div>`
+      : `<div class="err" style="font-size:1rem;font-weight:700;padding:12px 14px">❌ Hasn't paid for ${esc(ymLabel(ym))}</div>`;
+  }
+  host.innerHTML = `<div class="card" style="margin:12px 0 0;border:2px solid var(--brand)">
+    <div style="font-size:1.1rem;font-weight:800">${esc(s.fullName || '')}</div>
+    <div class="sub" style="margin-top:4px">Barcode <b>${esc(s.barcode || '—')}</b> · NIC <b>${esc(s.realNic || s.nic || '—')}</b></div>
+    ${pay}${added ? `<div class="ok">✅ ${esc(s.fullName || '')} added</div>` : ''}</div>`;
+}
+
+/* ============================== APPROVER: AUTH ============================== */
+function approverAuth() {
+  app.innerHTML = `<div class="card auth-card">
+    <h2>💳 Payment Approving</h2>
+    <div class="tabs" style="margin-bottom:6px"><button id="aIn" class="active">Sign In</button><button id="aUp">Create Account</button></div>
+    <div id="afIn">
+      <label>Email</label><input id="aem" type="email" placeholder="you@email.com" autocomplete="email">
+      <label>Password</label><input id="apw" type="password" placeholder="Your password" autocomplete="current-password">
+      <div style="text-align:right;margin-top:6px"><a href="#" id="aForgot" style="font-size:.82rem">Forgot password?</a></div>
+      <button class="btn btn-primary" id="ainBtn">Sign In</button>
+    </div>
+    <div id="afUp" style="display:none">
+      <label>Full Name</label><input id="aunm" placeholder="e.g. Mr. Perera">
+      <label>Gender</label><select id="augen"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select>
+      <label>NIC Number</label><input id="aunic" placeholder="123456789V or 200012345678" maxlength="12">
+      <label>Mobile Number</label><input id="aumob" type="tel" placeholder="07X XXX XXXX">
+      <label>Email</label><input id="auem" type="email" placeholder="you@email.com">
+      <label>Password (min 8 chars)</label><input id="aupw" type="password" placeholder="Choose a strong password">
+      <button class="btn btn-primary" id="aupBtn">Create Payment Approver Account</button>
+    </div>
+    <div id="amsg"></div>
+    <p class="hint" style="text-align:center;margin-top:12px">A developer must verify your account before you can use it.</p>
+    <p class="hint" style="text-align:center;font-size:.75rem"><a href="#/login">← Student login</a></p>
+  </div>`;
+  const msg = h => { $("#amsg").innerHTML = h; };
+  $("#aIn").onclick = () => { $("#aIn").classList.add('active'); $("#aUp").classList.remove('active'); $("#afIn").style.display = 'block'; $("#afUp").style.display = 'none'; };
+  $("#aUp").onclick = () => { $("#aUp").classList.add('active'); $("#aIn").classList.remove('active'); $("#afUp").style.display = 'block'; $("#afIn").style.display = 'none'; };
+  $("#aForgot").onclick = async e => {
+    e.preventDefault(); const em = $("#aem").value.trim(); msg('');
+    if (!EMAIL_RE.test(em)) return msg('<div class="err">Type your email above first, then click Forgot password.</div>');
+    busy(true);
+    try { await sendPasswordResetEmail(auth, em); busy(false); msg('<div class="ok">✅ Reset link sent!</div>'); }
+    catch (err) { busy(false); msg(`<div class="err">${esc(friendly(err))}</div>`); }
+  };
+  $("#ainBtn").onclick = async () => {
+    msg(''); busy(true);
+    try { await signInWithEmailAndPassword(auth, $("#aem").value.trim(), $("#apw").value); }
+    catch (e) { busy(false); msg(`<div class="err">${esc(friendly(e))}</div>`); }
+  };
+  $("#aupBtn").onclick = async () => {
+    msg('');
+    const nm = $("#aunm").value.trim(), gen = $("#augen").value, nic = $("#aunic").value.trim().toUpperCase(),
+          mob = $("#aumob").value.trim(), em = $("#auem").value.trim(), pw = $("#aupw").value;
+    if (nm.length < 3) return msg('<div class="err">Please enter your full name.</div>');
+    if (!gen) return msg('<div class="err">Please select your gender.</div>');
+    if (!NIC_RE.test(nic)) return msg('<div class="err">Invalid NIC.</div>');
+    if (!/^(\+94|0)\d{9}$/.test(mob.replace(/[\s-]/g, ''))) return msg('<div class="err">Enter a valid mobile number.</div>');
+    if (!EMAIL_RE.test(em)) return msg('<div class="err">Please enter a valid email.</div>');
+    if (pw.length < 8) return msg('<div class="err">Password must be at least 8 characters.</div>');
+    busy(true);
+    try {
+      signingUp = true;
+      const cred = await createUserWithEmailAndPassword(auth, em, pw);
+      try {
+        await updateProfile(cred.user, { displayName: nm });
+        await setDoc(doc(db, 'approvers', cred.user.uid), { fullName: nm, gender: gen, nic, mobile: mob, email: em, verified: false, createdAt: serverTimestamp() });
+      } catch (writeErr) {
+        try { await deleteUser(cred.user); } catch (_) {}
+        signingUp = false; busy(false);
+        return msg(`<div class="err">Setup failed: ${esc(friendly(writeErr))}. Try again.</div>`);
+      }
+      signingUp = false;
+      await authLoad(auth.currentUser);
+      busy(false);
+      go('#/approver/dashboard');
+    } catch (e) { signingUp = false; busy(false); msg(`<div class="err">${esc(friendly(e))}</div>`); }
+  };
+}
+
+/* ============================== APPROVER: DASHBOARD ============================== */
+async function approverDash() {
+  if (!profile) return;
+  if (profile.verified !== true) {
+    app.innerHTML = `<div class="card auth-card"><h2>⏳ Awaiting verification</h2>
+      <p class="sub">Your account is created. A developer must verify it before you can check payments.</p>
+      <button class="btn btn-primary" id="apCheck">Check again</button></div>`;
+    $("#apCheck").onclick = async () => {
+      try { const e = await getDoc(doc(db, 'approvers', user.uid)); if (e.exists()) profile = e.data(); } catch (_) {}
+      approverDash();
+    };
+    return;
+  }
+  const tab = state.atab || 'profile';
+  app.innerHTML = `<div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div><b style="font-size:1.05rem">💳 ${esc(profile.fullName || 'Payment Approver')}</b> <span class="pill brand">Payment Approving</span></div></div>
+    <div class="tabs">
+      <button data-atab="profile" class="${tab === 'profile' ? 'active' : ''}">👤 Profile</button>
+      <button data-atab="students" class="${tab === 'students' ? 'active' : ''}">👨‍🎓 Students</button>
+      <button data-atab="payments" class="${tab === 'payments' ? 'active' : ''}">💳 Payments</button>
+    </div><div id="atabBody"><div class="card"><p class="sub">Loading…</p></div></div>`;
+  document.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { state.atab = b.dataset.atab; approverDash(); });
+  if (tab === 'profile') return approverProfile();
+  try {
+    const [ss, L] = await Promise.all([getDocs(collection(db, 'students')), getLists()]);
+    const students = ss.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (tab === 'students') approverStudents({ students, centers: L.centers });
+    else approverPayments({ students });
+  } catch (e) { $("#atabBody").innerHTML = `<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; }
+}
+
+function approverProfile() {
+  const host = $("#atabBody"), p = profile;
+  const row = (k, v) => `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div class="sub" style="margin:0">${k}</div><b>${esc(v || '—')}</b></div>`;
+  host.innerHTML = `<div class="card"><h2>👤 My Profile</h2>
+    ${row('Full Name', p.fullName)}${row('Gender', p.gender)}${row('NIC', p.nic)}${row('Mobile', p.mobile)}${row('Email', p.email)}
+    <p class="sub" style="margin-top:12px">🔒 NIC and email can only be changed by a developer.</p>
+    <button class="btn btn-primary" id="apEdit" style="width:auto;margin-top:12px">Edit name / gender / mobile</button></div>`;
+  $("#apEdit").onclick = () => {
+    host.innerHTML = `<div class="card"><h2>Edit My Details</h2>
+      <label>Full Name</label><input id="ap_n" value="${esc(p.fullName || '')}">
+      <label>Gender</label><select id="ap_g"><option value="">Select</option>${['Male', 'Female', 'Other'].map(g => `<option${g === p.gender ? ' selected' : ''}>${g}</option>`).join('')}</select>
+      <label>Mobile</label><input id="ap_m" type="tel" value="${esc(p.mobile || '')}">
+      <div class="row" style="margin-top:12px"><button class="btn btn-primary" id="ap_s" style="width:auto">Save</button><button class="btn btn-ghost" id="ap_x" style="width:auto">Cancel</button></div><div id="ap_msg"></div></div>`;
+    $("#ap_x").onclick = approverProfile;
+    $("#ap_s").onclick = async () => {
+      const d = { fullName: $("#ap_n").value.trim(), gender: $("#ap_g").value, mobile: $("#ap_m").value.trim() };
+      if (d.fullName.length < 3) return $("#ap_msg").innerHTML = '<div class="err">Please enter your full name.</div>';
+      if (!d.gender) return $("#ap_msg").innerHTML = '<div class="err">Please select a gender.</div>';
+      busy(true);
+      try { await updateDoc(doc(db, 'approvers', user.uid), d); Object.assign(profile, d); busy(false); approverProfile(); }
+      catch (e) { busy(false); $("#ap_msg").innerHTML = `<div class="err">${esc(friendly(e))}</div>`; }
+    };
+  };
+}
+
+/* Students tab: batch changer, center chooser, search, signed-up students center by center */
+function approverStudents({ students, centers }) {
+  const host = $("#atabBody");
+  const batch = BATCHES.includes(state.apBatch) ? state.apBatch : BATCHES[0];
+  const ctr = state.apCenter || 'All';
+  host.innerHTML = `<div class="tabs">${BATCHES.map(b => `<button data-apb="${b}" class="${b === batch ? 'active' : ''}">🎓 ${b}</button>`).join('')}</div>
+    <div class="card"><div class="row">
+      <div><label style="margin-top:0">Center</label><select id="apC"><option>All</option>${centers.map(c => `<option${c === ctr ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
+      <div style="flex:2;min-width:200px"><label style="margin-top:0">Search student</label><input id="apQ" placeholder="Name, NIC or barcode" value="${esc(state.apQ || '')}"></div>
+    </div></div><div id="apList"></div>`;
+  const draw = () => {
+    const q = (state.apQ || '').trim().toUpperCase();
+    let list = students.filter(s => (s.batch || BATCHES[0]) === batch && (ctr === 'All' || (s.center || '') === ctr));
+    if (q) list = list.filter(s => String(s.fullName || '').toUpperCase().includes(q) || String(s.nic || '').toUpperCase().includes(q) || String(s.barcode || '').toUpperCase().includes(q));
+    const by = {}; list.forEach(s => (by[s.center || 'No center'] ??= []).push(s));
+    $("#apList").innerHTML = Object.keys(by).sort().map(c => {
+      const a = by[c].sort((x, y) => String(x.fullName || '').localeCompare(String(y.fullName || '')));
+      return `<div class="card"><h2>🏫 ${esc(c)} <span class="sub" style="display:inline">· ${a.length} student${a.length === 1 ? '' : 's'}</span></h2>
+        <div class="tbl-wrap"><table><tr><th>Name</th><th>NIC</th><th>Barcode</th><th>Mobile</th><th>School</th></tr>
+        ${a.map(s => `<tr><td><b>${esc(s.fullName || '')}</b></td><td class="mono">${esc(s.nic || '—')}</td><td class="mono">${esc(s.barcode || '—')}</td><td>${esc(s.mobile || '—')}</td><td>${esc(s.school || '—')}</td></tr>`).join('')}
+        </table></div></div>`;
+    }).join('') || '<div class="card"><p class="sub">No students found.</p></div>';
+  };
+  draw();
+  document.querySelectorAll('[data-apb]').forEach(b => b.onclick = () => { state.apBatch = b.dataset.apb; approverDash(); });
+  $("#apC").onchange = e => { state.apCenter = e.target.value; approverDash(); };
+  $("#apQ").oninput = e => { state.apQ = e.target.value; draw(); };
+}
+
+/* Payments tab: find by barcode, then month + class + tick */
+function approverPayments({ students }) {
+  const host = $("#atabBody");
+  const info = (k, v) => `<div><span class="sub">${k}</span><br><b>${esc(v || '—')}</b></div>`;
+  host.innerHTML = `<div class="card"><h2>💳 Check a student's payment</h2>
+    <p class="sub" style="margin:0 0 8px">Type or scan the student's barcode.</p>
+    <div class="row"><div style="flex:1;min-width:200px"><label style="margin-top:0">Barcode</label>
+      <div style="display:flex;gap:6px;align-items:stretch"><input id="pyB" placeholder="Barcode number" maxlength="12" autocomplete="off" style="flex:1;min-width:0">
+      <button type="button" id="pyScan" class="btn btn-ghost" style="width:auto;margin:0;padding:0 14px" title="Scan with camera" aria-label="Scan with camera">📷</button></div></div>
+      <button class="btn btn-primary" id="pyGo" style="width:auto;margin:0">Search</button></div>
+    <div id="pyErr"></div></div><div id="pyRes"></div>`;
+
+  const showStudent = s => {
+    const batch = s.batch || BATCHES[0], opts = CLASS_OPTS[batch] || ['Paper Only'], cur = ymNow();
+    $("#pyRes").innerHTML = `<div class="card" style="border:2px solid var(--brand)">
+      <div style="font-size:1.15rem;font-weight:800">${esc(s.fullName || '')}</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:10px">${info('Barcode', s.barcode)}${info('NIC', s.nic)}${info('Center', s.center)}${info('Batch', batch)}</div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:16px 0 4px">
+      <div class="row">
+        <div><label>Month</label><select id="pyM">${ymOptions().map(m => `<option value="${m}"${m === cur ? ' selected' : ''}>${esc(ymLabel(m))}</option>`).join('')}</select></div>
+        <div><label>Class</label><select id="pyC">${opts.map(o => `<option>${esc(o)}</option>`).join('')}</select></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:10px;margin-top:16px;cursor:pointer;font-size:.9rem;color:var(--ink)">
+        <span class="switch"><input type="checkbox" id="pyT"><span class="slider"></span></span><span>Payment received</span></label>
+      <div id="pyMsg"></div></div>`;
+    const key = () => skeyOf(s) + '_' + $("#pyM").value;
+    const show = () => { $("#pyMsg").innerHTML = $("#pyT").checked ? `<div class="ok" style="font-size:1rem;padding:12px 14px"><b>${esc(s.fullName || '')}</b> Paid for <b>${esc(ymLabel($("#pyM").value))}</b></div>` : ''; };
+    const refresh = async () => {
+      $("#pyMsg").innerHTML = ''; busy(true);
+      try {
+        const d = await getDoc(doc(db, 'payments', key()));
+        const on = d.exists() && d.data().paid !== false;
+        $("#pyT").checked = on; if (on && d.data().cls) $("#pyC").value = d.data().cls;
+        show();
+      } catch (e) { $("#pyMsg").innerHTML = `<div class="err">${esc(friendly(e))}</div>`; }
+      busy(false);
+    };
+    const save = async () => {
+      const on = $("#pyT").checked; busy(true);
+      try {
+        if (on) await setDoc(doc(db, 'payments', key()), { nic: skeyOf(s), month: $("#pyM").value, cls: $("#pyC").value, paid: true, name: s.fullName || '', barcode: s.barcode || '', center: s.center || '', batch, by: profile.fullName || '', byUid: user.uid, at: Date.now() });
+        else await deleteDoc(doc(db, 'payments', key()));
+        busy(false); show();
+      } catch (e) { busy(false); $("#pyT").checked = !on; $("#pyMsg").innerHTML = `<div class="err">${esc(friendly(e))}</div>`; }
+    };
+    $("#pyM").onchange = refresh;
+    $("#pyT").onchange = save;
+    $("#pyC").onchange = () => { if ($("#pyT").checked) save(); };
+    refresh();
+  };
+
+  const find = () => {
+    const v = $("#pyB").value.trim().toUpperCase(); $("#pyErr").innerHTML = ''; $("#pyRes").innerHTML = '';
+    if (!v) return;
+    const s = students.find(x => String(x.barcode || '').toUpperCase() === v || String(x.nic || '').toUpperCase() === v || skeyOf(x) === v);
+    if (!s) { $("#pyErr").innerHTML = `<div class="err">No signed-up student found with "${esc(v)}".</div>`; return $("#pyB").select(); }
+    showStudent(s);
+  };
+  $("#pyGo").onclick = find;
+  $("#pyB").addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); find(); } });
+  $("#pyScan").onclick = async () => { const c = await openBarcodeScanner(); if (!c) return; $("#pyB").value = c; find(); };
+}
+
+/* ============================== DEVELOPER: Payment Approvers tab ============================== */
+async function tabApprovers() {
+  $("#tabBody").innerHTML = '<div class="card"><p class="sub">Loading…</p></div>';
+  const snap = await getDocs(collection(db, 'approvers')).catch(() => null);
+  const list = snap ? snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.fullName).localeCompare(String(b.fullName))) : [];
+  $("#tabBody").innerHTML = `<div class="card"><h2>💳 All payment approvers (${list.length})</h2>
+    ${list.length ? `<div class="tbl-wrap"><table><tr><th>Name</th><th>Email</th><th>NIC</th><th>Mobile</th><th>Status</th><th></th></tr>
+      ${list.map(a => `<tr><td><b>${esc(a.fullName || '')}</b></td><td>${esc(a.email || '')}</td><td class="mono">${esc(a.nic || '—')}</td><td>${esc(a.mobile || '—')}</td>
+        <td>${a.verified ? '<span class="vbadge">✔ Verified</span>' : '<span class="sub" style="display:inline">(not verified)</span>'}</td>
+        <td style="white-space:nowrap;text-align:right">
+          <button class="btn btn-ghost btn-sm" data-atv="${a.id}" data-v="${a.verified ? 1 : 0}">${a.verified ? 'Unverify' : 'Verify'}</button>
+          <button class="btn btn-danger btn-sm" data-atrm="${a.id}">Remove</button></td></tr>`).join('')}
+    </table></div>` : '<p class="sub">No payment approvers yet.</p>'}
+    <p class="sub" style="margin-top:10px">Verify each sign-up before they can use the portal. They sign up at <b>#/approver</b>.</p></div>`;
+  document.querySelectorAll('[data-atv]').forEach(b => b.onclick = async () => {
+    busy(true);
+    try { await updateDoc(doc(db, 'approvers', b.dataset.atv), { verified: b.dataset.v !== '1' }); } catch (e) { alert(friendly(e)); }
+    busy(false); tabApprovers();
+  });
+  document.querySelectorAll('[data-atrm]').forEach(b => b.onclick = async () => {
+    if (!confirm('Remove this payment approver?')) return;
+    busy(true);
+    try { await deleteDoc(doc(db, 'approvers', b.dataset.atrm)); await deleteAuthUser(b.dataset.atrm).catch(() => {}); } catch (e) { alert(friendly(e)); }
+    busy(false); tabApprovers();
+  });
+}
+
+/* ============================== DEVELOPER: on/off switch shown in the Examiners tab ============================== */
+async function paymentToggleCard() {
+  let on = true;
+  try { const s = await getDoc(doc(db, 'settings', 'payment')); if (s.exists() && s.data().showOnAttendance === false) on = false; } catch (e) {}
+  const body = $("#tabBody"); if (!body || state.tab !== 'examiners') return;
+  const box = document.createElement('div'); box.className = 'card';
+  box.innerHTML = `<label style="display:flex;align-items:center;gap:12px;margin:0;cursor:pointer;color:var(--ink);font-size:.9rem">
+      <span class="switch"><input type="checkbox" id="payTog" ${on ? 'checked' : ''}><span class="slider"></span></span>
+      <span><b>Show payment status when marking attendance</b><br><span class="sub" style="margin:0">Examiners see a green "Paid" or red "Hasn't paid" box for the current month. Attendance is marked either way.</span></span></label>
+    <div id="payTogMsg"></div>`;
+  body.prepend(box);
+  box.querySelector('#payTog').onchange = async e => {
+    const v = e.target.checked, m = box.querySelector('#payTogMsg');
+    try { await setDoc(doc(db, 'settings', 'payment'), { showOnAttendance: v }, { merge: true }); m.innerHTML = `<div class="ok">Saved — payment status is now ${v ? 'ON' : 'OFF'}.</div>`; }
+    catch (err) { e.target.checked = !v; m.innerHTML = `<div class="err">${esc(friendly(err))}</div>`; }
   };
 }
 /* ============================== TEACHER AUTH ============================== */
@@ -1940,7 +2244,7 @@ async function teacherDash(){
        <button data-tab="allmarks" class="${state.tab==='allmarks'?'active':''}">🌐 All Marks</button>
     <button data-tab="videos" class="${state.tab==='videos'?'active':''}">📹 Videos</button>
     ${window.CA.tabs.map(t=>`<button data-tab="x_${t.id}" class="${state.tab==='x_'+t.id?'active':''}">${t.label}</button>`).join('')}
-    ${adm?`<button data-tab="teachers" class="${state.tab==='teachers'?'active':''}">🧑‍🏫 Teachers</button><button data-tab="examiners" class="${state.tab==='examiners'?'active':''}">📋 Examiners</button><button data-tab="admin" class="${state.tab==='admin'?'active':''}">⚙️ Centers &amp; Payments</button><button data-tab="requests" class="${state.tab==='requests'?'active':''}">📨 Requests${pendReq?` (${pendReq})`:''}</button><button data-tab="files" class="${state.tab==='files'?'active':''}">📚 Marking PDFs</button>`:''}
+    ${adm?`<button data-tab="teachers" class="${state.tab==='teachers'?'active':''}">🧑‍🏫 Teachers</button><button data-tab="examiners" class="${state.tab==='examiners'?'active':''}">📋 Examiners</button><button data-tab="approvers" class="${state.tab==='approvers'?'active':''}">💳 Payment Approvers</button><button data-tab="admin" class="${state.tab==='admin'?'active':''}">⚙️ Centers &amp; Payments</button><button data-tab="requests" class="${state.tab==='requests'?'active':''}">📨 Requests${pendReq?` (${pendReq})`:''}</button><button data-tab="files" class="${state.tab==='files'?'active':''}">📚 Marking PDFs</button>`:''}
   </div>
   <div id="tabBody"></div>`;
 
@@ -1951,8 +2255,8 @@ async function teacherDash(){
   };
   document.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>{ state.batch=b.dataset.batch; state.selPaper=null; state.rankPaper=null; teacherDash(); });
   if($("#ctrSel")) $("#ctrSel").onchange=e=>{ state.center=e.target.value; teacherDash(); };
-  if(!adm && ['teachers','admin','requests','files'].includes(state.tab)) state.tab='students';
-  const tabs={students:tabStudents,marks:tabMarks,analytics:tabAnalytics,ranks:tabRanks,allmarks:tabAllMarks,requests:tabRequests,files:tabFiles,teachers:tabTeachers,examiners:tabExaminers,admin:tabAdmin,videos:tabVideos};
+  if(!adm && ['teachers','admin','requests','files','approvers'].includes(state.tab)) state.tab='students';
+  const tabs={students:tabStudents,marks:tabMarks,analytics:tabAnalytics,ranks:tabRanks,allmarks:tabAllMarks,requests:tabRequests,files:tabFiles,teachers:tabTeachers,examiners:tabExaminers,approvers:tabApprovers,admin:tabAdmin,videos:tabVideos};
   const ctx={students:roster,roster,rosterAll,pending,papers,papersAll,teachers,examiners,adm,admins,requests};
   const xt=window.CA.tabs.find(t=>'x_'+t.id===state.tab);
   if(xt){ try{ xt.render({...ctx,el:$("#tabBody")}); }catch(e){ $("#tabBody").innerHTML=`<div class="card"><div class="err">${esc(e.message)}</div></div>`; } }
@@ -2090,7 +2394,7 @@ function tabStudents({roster,rosterAll,papers}){
         if(p.att[s.id]){ m.innerHTML=`<div class="err">${esc(s.fullName)} is already marked present.</div>`; $("#atB").value=''; return; }
         const rec={pid:p.id,nic:s.id,barcode:s.barcode||'',name:s.fullName,center:s.center||'',batch:p.batch||state.batch,by:profile.fullName||'',at:Date.now()};
         busy(true);
-        try{ await setDoc(doc(db,'attendance',p.id+'_'+s.id),rec,{merge:true}); p.att[s.id]=rec; busy(false); draw(); $("#atMsg").innerHTML=`<div class="ok">✅ ${esc(s.fullName)} added.</div>`; $("#atB").focus(); }
+        try{ await setDoc(doc(db,'attendance',p.id+'_'+s.id),rec,{merge:true}); p.att[s.id]=rec; busy(false); draw(); attendanceWidget($("#atMsg"), s, true); $("#atB").focus(); }
         catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
       };
       $("#atAdd").onclick=add;
@@ -2417,7 +2721,7 @@ function tabTeachers({teachers,admins}){
   document.querySelectorAll('[data-rmt]').forEach(b=>b.onclick=async()=>{ if(!confirm('Remove this teacher?')) return; busy(true); try{ await deleteDoc(doc(db,'teachers',b.dataset.rmt)); await deleteAuthUser(b.dataset.rmt).catch(()=>{}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
   document.querySelectorAll('[data-demote]').forEach(b=>b.onclick=async()=>{ if(!confirm('Remove developer access?')) return; busy(true); try{ await deleteDoc(doc(db,'admins',b.dataset.demote)); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
 }
-function tabExaminers({examiners, papersAll, rosterAll}){
+function tabExaminers(ctx){ tabExaminers0(ctx); paymentToggleCard(); } function tabExaminers0({examiners, papersAll, rosterAll}){
   $("#tabBody").innerHTML = `<div class="card"><h2>📋 All examining instructors (${examiners.length})</h2>
     ${examiners.length ? `<div class="tbl-wrap"><table><tr><th>Name</th><th>Email</th><th>NIC</th><th>Center</th><th>Class</th><th>Status</th><th></th></tr>
       ${examiners.map(e=>`<tr>
