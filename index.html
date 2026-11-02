@@ -1907,8 +1907,8 @@ async function approverDash() {
   try {
     const [ss, L] = await Promise.all([getDocs(collection(db, 'students')), getLists()]);
     const students = ss.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (tab === 'students') approverStudents({ students, centers: L.centers });
-    else approverPayments({ students });
+    if (tab === 'students') approverStudents({ students, centers: L.centers, host: $("#atabBody") });
+    else approverPayments({ students, host: $("#atabBody") });
   } catch (e) { $("#atabBody").innerHTML = `<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; }
 }
 
@@ -1938,8 +1938,9 @@ function approverProfile() {
 }
 
 /* Students tab: batch changer, center chooser, search, signed-up students center by center */
-function approverStudents({ students, centers }) {
-  const host = $("#atabBody");
+function approverStudents({ students, centers, host }) {
+  host = host || $("#atabBody");
+  if (!host) return;
   const batch = BATCHES.includes(state.apBatch) ? state.apBatch : BATCHES[0];
   const ctr = state.apCenter || 'All';
   host.innerHTML = `<div class="tabs">${BATCHES.map(b => `<button data-apb="${b}" class="${b === batch ? 'active' : ''}">🎓 ${b}</button>`).join('')}</div>
@@ -1967,8 +1968,9 @@ function approverStudents({ students, centers }) {
 }
 
 /* Payments tab: find by barcode, then month + class + tick */
-function approverPayments({ students }) {
-  const host = $("#atabBody");
+function approverPayments({ students, host }) {
+  host = host || $("#atabBody");
+  if (!host) { console.error('[approverPayments] no host container'); return; }
   const info = (k, v) => `<div><span class="sub">${k}</span><br><b>${esc(v || '—')}</b></div>`;
   host.innerHTML = `<div class="card"><h2>💳 Check a student's payment</h2>
     <p class="sub" style="margin:0 0 8px">Type or scan the student's barcode.</p>
@@ -2857,12 +2859,12 @@ async function examinerView(){
     render();
   }catch(e){ app.innerHTML = `${back}<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; }
 }
-  async function tabPaymentsAdmin(){
+async function tabPaymentsAdmin(){
   $("#tabBody").innerHTML = '<div class="card"><p class="sub">Loading…</p></div>';
   try {
     const ss = await getDocs(collection(db,'students'));
     const students = ss.docs.map(d => ({ id: d.id, ...d.data() }));
-    approverPayments({ students });
+    approverPayments({ students, host: $("#tabBody") });
   } catch(e) {
     $("#tabBody").innerHTML = `<div class="card"><div class="err">${esc(friendly(e))}</div></div>`;
   }
