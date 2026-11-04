@@ -3280,6 +3280,10 @@ function drawMarksPane(students,papers){
       $("#svLbl").textContent='✓ saved';
 
       // ---- refresh the papers snapshot the ranking widgets read from ----
+      // preserve .att — the mark-save path has no business touching attendance
+      const oldAtt = {};
+      papers.forEach(p => { oldAtt[p.id] = p.att || {}; });
+
       const [papSnap2, mkSnap2] = await Promise.all([
         getDocs(collection(db,'papers')),
         getDocs(collection(db,'marks'))
@@ -3289,12 +3293,12 @@ function drawMarksPane(students,papers){
       freshAll.forEach(p=>{
         p.scores = {...(p.scores||{})};
         p.meta   = {};
+        p.att    = oldAtt[p.id] || {};                 // ← preserved
         freshMarks.forEach(m=>{
           const match = m.pid===p.id || (m.pid==null && m._docId && m._docId.startsWith(p.id+'_'));
           if (match) { p.scores[m.nic]=m.mark; p.meta[m.nic]={n:m.name,c:m.center||''}; }
         });
       });
-
       // mutate the same array the tabs hold — so Rankings / All Marks / Analytics see it
       const freshBatch = freshAll.filter(p=>(p.batch||BATCHES[0])===state.batch)
                                  .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
