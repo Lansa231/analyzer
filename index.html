@@ -3175,13 +3175,43 @@ function tabMarks({students,papers}){
     { const selEl=$("#mkStatSel"), host=$("#mkStat");
     const draw=()=>{
       const p=papers.find(x=>x.id===selEl.value); if(!p) return;
-      const has=s=>p.scores?.[s.id]!=null, by={};
-      students.forEach(s=>{ const o=(by[s.center||'No center']??={a:0,e:0}); o.a++; if(has(s)) o.e++; });
-      const A=students.length, E=students.filter(has).length;
-      host.innerHTML=`<div class="grid g4" style="margin-top:10px"><div class="stat"><div class="num">${A}</div><div class="lbl">All students</div></div><div class="stat"><div class="num">${E}</div><div class="lbl">Marks entered</div></div><div class="stat"><div class="num">${A-E}</div><div class="lbl">Not entered</div></div></div>
-      <div class="tbl-wrap" style="margin-top:12px"><table><tr><th>Center</th><th>All</th><th>Marks entered</th><th>Not entered</th></tr>
-      ${Object.keys(by).sort().map(c=>`<tr><td><b>${esc(c)}</b></td><td>${by[c].a}</td><td><span class="pill good">${by[c].e}</span></td><td><span class="pill warn">${by[c].a-by[c].e}</span></td></tr>`).join('')}
-      <tr><td><b>Total</b></td><td><b>${A}</b></td><td><b>${E}</b></td><td><b>${A-E}</b></td></tr></table></div>`;
+      const att = p.att    || {};   // { studentKey: attendanceRecord }
+      const sc  = p.scores || {};   // { studentKey: mark }
+      const inAtt  = s => att[s.id] != null;
+      const inMark = s => sc[s.id]  != null;
+
+      // For the currently-shown roster (already batch + centre filtered by the caller)
+      const attended       = students.filter(inAtt);
+      const markedAttended = attended.filter(inMark);
+      const extras         = students.filter(s => inMark(s) && !inAtt(s)); // mark entered without attendance
+
+      const A = attended.length;
+      const E = markedAttended.length;
+      const X = extras.length;
+
+      const by = {};
+      students.forEach(s => {
+        const c = s.center || 'No center';
+        const o = (by[c] ??= {a:0, e:0, x:0});
+        if (inAtt(s)) {
+          o.a++;
+          if (inMark(s)) o.e++;
+        } else if (inMark(s)) {
+          o.x++;
+        }
+      });
+
+      host.innerHTML = `<div class="grid g4" style="margin-top:10px">
+        <div class="stat"><div class="num">${A}</div><div class="lbl">Attended this paper</div></div>
+        <div class="stat"><div class="num">${E}</div><div class="lbl">Marks entered</div></div>
+        <div class="stat"><div class="num">${A - E}</div><div class="lbl">Not entered yet</div></div>
+        ${X ? `<div class="stat"><div class="num">${X}</div><div class="lbl">Marked, no attendance</div></div>` : ''}
+      </div>
+      <div class="tbl-wrap" style="margin-top:12px"><table>
+        <tr><th>Center</th><th>Attended</th><th>Marks entered</th><th>Not entered</th>${X ? '<th>Marked only</th>' : ''}</tr>
+        ${Object.keys(by).sort().map(c => `<tr><td><b>${esc(c)}</b></td><td>${by[c].a}</td><td><span class="pill good">${by[c].e}</span></td><td><span class="pill warn">${Math.max(0, by[c].a - by[c].e)}</span></td>${X ? `<td><span class="pill">${by[c].x}</span></td>` : ''}</tr>`).join('')}
+        <tr><td><b>Total</b></td><td><b>${A}</b></td><td><b>${E}</b></td><td><b>${A - E}</b></td>${X ? `<td><b>${X}</b></td>` : ''}</tr>
+      </table></div>`;
     };
     if(selEl){ selEl.onchange=draw; draw(); $("#marksPane").addEventListener('change',draw); }
   }
