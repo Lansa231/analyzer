@@ -450,7 +450,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, on
          signOut, sendPasswordResetEmail, updateProfile, deleteUser }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-         collection, query, where, onSnapshot, serverTimestamp, myRanks, deleteAuthUser }
+         collection, query, where, onSnapshot, serverTimestamp, myRanks, myMarks, deleteAuthUser }
   from "./d1-shim.js";
 
 /* ============================== HELPERS ============================== */
@@ -1153,17 +1153,13 @@ async function stuDash(){
     const nic = skeyOf(profile);
     const snap = await getDocs(q);
     const ps = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    let ranks = {};
-    try { ranks = (await myRanks()) || {}; } catch(e){ ranks = {}; }
-        await Promise.all(ps.map(async p => {
+    let ranks = {}, mine = {};
+    try { [ranks, mine] = await Promise.all([myRanks().catch(() => ({})), myMarks().catch(() => ({}))]); } catch(e){}
+    ps.forEach(p => {
       p.scores = {};
-      p._rank = null;
-      try {
-        const myDoc = await getDoc(doc(db,'marks', p.id + '_' + nic));
-        if (myDoc.exists()) p.scores[nic] = myDoc.data().mark;
-      } catch(e){}
-      if(p.ranksPublished) p._rank = ranks[p.id] || null;
-    }));
+      if (mine[p.id] != null) p.scores[nic] = mine[p.id];
+      p._rank = p.ranksPublished ? (ranks[p.id] || null) : null;
+    });
     return ps;
   };
 
@@ -3432,36 +3428,8 @@ function drawMarksPane(students,papers){
         });
       }
       $("#svLbl").textContent='✓ saved';
-
-      // ---- refresh the papers snapshot the ranking widgets read from ----
-      // preserve .att — the mark-save path has no business touching attendance
-      const oldAtt = {};
-      papers.forEach(p => { oldAtt[p.id] = p.att || {}; });
-
-      const [papSnap2, mkSnap2] = await Promise.all([
-        getDocs(collection(db,'papers')),
-        getDocs(collection(db,'marks'))
-      ]);
-      const freshAll = papSnap2.docs.map(d=>({id:d.id, ...d.data()}));
-      const freshMarks = mkSnap2.docs.map(d=>({...d.data(), _docId:d.id}));
-      freshAll.forEach(p=>{
-        p.scores = {...(p.scores||{})};
-        p.meta   = {};
-        p.att    = oldAtt[p.id] || {};                 // ← preserved
-        freshMarks.forEach(m=>{
-          const match = m.pid===p.id || (m.pid==null && m._docId && m._docId.startsWith(p.id+'_'));
-          if (match) { p.scores[m.nic]=m.mark; p.meta[m.nic]={n:m.name,c:m.center||''}; }
-        });
-      });
-      // mutate the same array the tabs hold — so Rankings / All Marks / Analytics see it
-      const freshBatch = freshAll.filter(p=>(p.batch||BATCHES[0])===state.batch)
-                                 .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-      papers.length = 0;
-      papers.push(...freshBatch);
-
-      // update the paper object `sel` still points at (its scores were rebuilt above)
-      const refreshedSel = freshBatch.find(p=>p.id===sel.id);
-      if (refreshedSel) sel.scores = refreshedSel.scores;
+      sel.meta = sel.meta || {};
+      if (v == null) delete sel.meta[nic]; else sel.meta[nic] = { n: st.fullName, c: st.center || '' };
 
       // redraw ONLY the marquee in place (keeps focus in the current input)
         const marq = document.querySelector('.marq');
