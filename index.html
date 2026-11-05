@@ -1791,7 +1791,8 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
       roster: studentsAll,
       att: att,
       examiner: { uid: user.uid, fullName: profile.fullName, center: profile.center },
-      onlyMine: true
+      onlyMine: true,
+      showDays: true
     });
   };
   /* ============================== PAYMENT APPROVING — new code ==============================
@@ -2093,20 +2094,7 @@ async function paymentToggleCard() {
     catch (err) { e.target.checked = !v; m.innerHTML = `<div class="err">${esc(friendly(err))}</div>`; }
   };
 }
-  /* ============================================================
-   ATTENDANCE PDF — printable sheet for a paper
-   - 25 students per A4 page
-   - Columns: # · Student Name · Barcode · Marks (blank)
-   - options.att     = flat array of attendance records (from examiner side)
-   - options.attMap  = { nic: record } (from developer side — uses paper.att)
-   - options.onlyMine = true → filter to records marked by options.examiner
-   ============================================================ */
-/* ============================================================
-   ATTENDANCE PDF — printable sheet for a paper
-   - Columns: # · Student Name · Barcode · Marks (blank)
-   - Rows per page: as many as fit (autoTable paginates automatically)
-   ============================================================ */
-function downloadAttendancePDF({ paper, roster, att, attMap, examiner, onlyMine }) {
+ function downloadAttendancePDF({ paper, roster, att, attMap, examiner, onlyMine, showDays }) {
   if (!paper) { alert('No paper selected.'); return; }
 
   let map = attMap;
@@ -2122,12 +2110,7 @@ function downloadAttendancePDF({ paper, roster, att, attMap, examiner, onlyMine 
   let rows = (roster || []).filter(s => map[s.id]).map(s => {
     const raw = map[s.id];
     const rec = raw.rec || raw;
-    return {
-      name: rec.name || s.fullName || '',
-      barcode: rec.barcode || s.barcode || '',
-      nic: s.id,
-      att: rec
-    };
+    return { name: rec.name || s.fullName || '', barcode: rec.barcode || s.barcode || '', nic: s.id, att: rec };
   });
 
   if (onlyMine) {
@@ -2148,20 +2131,71 @@ function downloadAttendancePDF({ paper, roster, att, attMap, examiner, onlyMine 
   const { jsPDF } = window.jspdf;
   if (!jsPDF) { alert('PDF library not loaded. Please reload the page.'); return; }
 
+  /* --- helpers --------------------------------------------------------- */
+  const daysOf = r => {
+    const ds = r.days || (r.day ? [r.day] : []);
+    if (ds.length) return ds.slice().sort();
+    if (r.at) {
+      const d = new Date(r.at);
+      return [d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')];
+    }
+    return [];
+  };
+  const fmtDay = d => {
+    const parts = String(d).split('-');
+    return parts.length === 3 ? parts[2] + '/' + parts[1] : d;
+  };
+
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const PAGE_W = doc.internal.pageSize.width;
   const PAGE_H = doc.internal.pageSize.height;
 
-  // One row per student — autoTable decides how many fit per page
-  const body = rows.map((r, i) => [String(i + 1), r.name, r.barcode, '']);
+  /* --- day summary (only when showDays) -------------------------------- */
+  let daySummary = '';
+  let dayDates = [];
+  if (showDays) {
+    const dayCount = {};
+    rows.forEach(r => daysOf(r.att).forEach(d => { dayCount[d] = (dayCount[d] || 0) + 1; }));
+    dayDates = Object.keys(dayCount).sort();
+    const shown = dayDates.slice(0, 8).map(d => `${fmtDay(d)}: ${dayCount[d]}`).join('   ');
+    daySummary = dayDates.length > 8 ? shown + `   (+${dayDates.length - 8} more)` : shown;
+  }
 
-  // Header + footer for every page — called by autoTable on each page
-  const drawPageFrame = () => {
+  /* --- table shape ----------------------------------------------------- */
+  const head = showDays
+    ? [['#', 'Student Name', 'Barcode', 'Days Attended', 'Marks']]
+    : [['#', 'Student Name', 'Barcode', 'Marks']];
+
+  const body = rows.map((r, i) => {
+    if (showDays) {
+      const d = daysOf(r.att);
+      return [String(i + 1), r.name, r.barcode, d.length ? d.map(fmtDay).join(', ') : '—', ''];
+    }
+    return [String(i + 1), r.name, r.barcode, ''];
+  });
+
+  const colStyles = showDays ? {
+    0: { cellWidth: 10, halign: 'center' },
+    1: { cellWidth: 55, overflow: 'ellipsize' },
+    2: { cellWidth: 28, halign: 'center' },
+    3: { cellWidth: 62, halign: 'center', fontSize: 8 },
+    4: { cellWidth: 27, halign: 'center' }
+  } : {
+    0: { cellWidth: 12, halign: 'center' },
+    1: { cellWidth: 85, overflow: 'ellipsize' },
+    2: { cellWidth: 45, halign: 'center' },
+    3: { cellWidth: 40, halign: 'center' }
+  };
+
+  const headerStartY = showDays ? 62 : 52;
+
+  /* --- page frame (header + footer, drawn on every page) --------------- */
+  const drawFrame = () => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
     doc.text('S.K. Wellala Biology Paper Class', PAGE_W / 2, 15, { align: 'center' });
     doc.setFontSize(12);
-    doc.text('Attendance Sheet', PAGE_W / 2, 22, { align: 'center' });
+    doc.text('Attendance Sheet' + (showDays ? ' — All Days' : ''), PAGE_W / 2, 22, { align: 'center' });
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
@@ -2173,8 +2207,18 @@ function downloadAttendancePDF({ paper, roster, att, attMap, examiner, onlyMine 
       doc.text(`Examiner: ${examiner.fullName || '—'}`, PAGE_W - 14, 32, { align: 'right' });
       doc.text(`Center:   ${examiner.center || '—'}`, PAGE_W - 14, 37.5, { align: 'right' });
     }
-    doc.text(`Total: ${rows.length} student${rows.length === 1 ? '' : 's'}`, PAGE_W - 14, 48.5, { align: 'right' });
+    const extra = showDays && dayDates.length ? ' · ' + dayDates.length + ' day' + (dayDates.length === 1 ? '' : 's') : '';
+    doc.text(`Total: ${rows.length} student${rows.length === 1 ? '' : 's'}${extra}`, PAGE_W - 14, 48.5, { align: 'right' });
 
+    // Day summary on page 1 only
+    if (showDays && daySummary && doc.internal.getCurrentPageInfo().pageNumber === 1) {
+      doc.setFontSize(8);
+      doc.setTextColor(80);
+      doc.text('Attendance per day:  ' + daySummary, 14, 55);
+      doc.setTextColor(0);
+    }
+
+    // Footer
     doc.setFontSize(8);
     doc.setTextColor(120);
     doc.text(`Generated ${new Date().toLocaleString()}`, 14, PAGE_H - 8);
@@ -2182,51 +2226,33 @@ function downloadAttendancePDF({ paper, roster, att, attMap, examiner, onlyMine 
   };
 
   doc.autoTable({
-    startY: 52,
-    margin: { left: 14, right: 14, top: 52, bottom: 15 },
-    head: [['#', 'Student Name', 'Barcode', 'Marks']],
-    body,
+    startY: headerStartY,
+    margin: { left: 14, right: 14, top: headerStartY, bottom: 15 },
+    head, body,
     theme: 'grid',
-    styles: {
-      font: 'helvetica',
-      fontSize: 10,
-      cellPadding: 3,
-      minCellHeight: 8,
-      valign: 'middle',
-      lineColor: [180, 180, 180],
-      lineWidth: 0.2
-    },
-    headStyles: {
-      fillColor: [21, 128, 61],
-      textColor: 255,
-      fontStyle: 'bold',
-      halign: 'center',
-      minCellHeight: 8
-    },
+    styles: { font: 'helvetica', fontSize: 10, cellPadding: 3, minCellHeight: 8, valign: 'middle', lineColor: [180, 180, 180], lineWidth: 0.2 },
+    headStyles: { fillColor: [21, 128, 61], textColor: 255, fontStyle: 'bold', halign: 'center', minCellHeight: 8 },
     alternateRowStyles: { fillColor: [245, 250, 246] },
-    columnStyles: {
-      0: { cellWidth: 12, halign: 'center' },
-      1: { cellWidth: 85, overflow: 'ellipsize' },
-      2: { cellWidth: 45, halign: 'center' },
-      3: { cellWidth: 40, halign: 'center' }
-    },
-    didDrawPage: drawPageFrame     // header + footer on every page
+    columnStyles: colStyles,
+    didDrawPage: drawFrame
   });
 
-  // Add "Page X / Y" after all pages exist (total is known now)
+  // Page numbers in the footer, after total is known
   const total = doc.internal.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     doc.setFontSize(9);
     doc.setTextColor(80);
-    doc.text(`Page ${i} / ${total}`, PAGE_W - 14, 43, { align: 'right' });
+    doc.text(`Page ${i} / ${total}`, PAGE_W - 14, PAGE_H - 8, { align: 'right' });
     doc.setTextColor(0);
   }
 
   const safe = (paper.title || 'paper').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 40);
   const exSafe = examiner ? (examiner.fullName || '').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 25) : '';
-  doc.save(`attendance_${safe}${exSafe ? '_' + exSafe : ''}.pdf`);
+  const dayTag = showDays ? '_alldays' : '';
+  doc.save(`attendance_${safe}${exSafe ? '_' + exSafe : ''}${dayTag}.pdf`);
 }
+
 /* ============================== TEACHER AUTH ============================== */
 function teacherAuth(){
   app.innerHTML = `<div class="card auth-card">
@@ -2552,14 +2578,17 @@ function tabStudents({roster,rosterAll,papers}){
         try{ await setDoc(doc(db,'attendance',p.id+'_'+s.id),rec,{merge:true}); p.att[s.id]=rec; busy(false); draw(); attendanceWidget($("#atMsg"), s, true); $("#atB").focus(); }
         catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
       };
-      $("#atAdd").onclick=add;
-            if($("#atPdf")) $("#atPdf").onclick = () => {
-        downloadAttendancePDF({
-          paper: p,
-          roster: rosterAll,
-          onlyMine: false
-        });
-      };
+  if($("#eaPdf")) $("#eaPdf").onclick = () => {
+    if (!selPaper) return alert('No paper selected.');
+    downloadAttendancePDF({
+      paper: selPaper,
+      roster: students,
+      att: att,
+      examiner: { uid: user.uid, fullName: profile.fullName, center: profile.center },
+      onlyMine: false,
+      showDays: true
+    });
+  };
             $("#atScan").onclick = async () => {
         const code = await openBarcodeScanner();
         if(!code) return;
