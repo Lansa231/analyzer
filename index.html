@@ -2107,11 +2107,29 @@ async function paymentToggleCard() {
     }
   }
 
-  let rows = (roster || []).filter(s => map[s.id]).map(s => {
-    const raw = map[s.id];
-    const rec = raw.rec || raw;
-    return { name: rec.name || s.fullName || '', barcode: rec.barcode || s.barcode || '', nic: s.id, att: rec };
-  });
+  // Roster can come in two shapes:
+  //   • developer (teacherDash): { id: skey/NIC, uid: FirebaseUID, ... }
+  //   • examiner (examinerDash):  { id: FirebaseUID, skey: skey, nic: NIC, barcode: ..., ... }
+  // Attendance records are always keyed by skey/NIC. Match on ANY of the student's
+  // possible keys so both shapes work.
+  const keysFor = s => [
+    String(s.id      || '').toUpperCase(),
+    String(s.skey    || '').toUpperCase(),
+    String(s.nic     || '').toUpperCase(),
+    String(s.barcode || '').toUpperCase()
+  ].filter(Boolean);
+
+  let rows = (roster || []).map(s => {
+    const rec = keysFor(s).map(k => map[k]).find(Boolean);
+    if (!rec) return null;
+    const raw = rec.rec || rec;
+    return {
+      name:    raw.name    || s.fullName || '',
+      barcode: raw.barcode || s.barcode  || '',
+      nic:     s.skey || s.nic || s.id,
+      att:     raw
+    };
+  }).filter(Boolean);
 
   if (onlyMine) {
     if (!examiner) { alert('Examiner info required.'); return; }
