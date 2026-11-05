@@ -2101,10 +2101,14 @@ async function paymentToggleCard() {
    - options.attMap  = { nic: record } (from developer side — uses paper.att)
    - options.onlyMine = true → filter to records marked by options.examiner
    ============================================================ */
+/* ============================================================
+   ATTENDANCE PDF — printable sheet for a paper
+   - Columns: # · Student Name · Barcode · Marks (blank)
+   - Rows per page: as many as fit (autoTable paginates automatically)
+   ============================================================ */
 function downloadAttendancePDF({ paper, roster, att, attMap, examiner, onlyMine }) {
   if (!paper) { alert('No paper selected.'); return; }
 
-  // Build the { nic: record } lookup from whichever source the caller provided
   let map = attMap;
   if (!map) {
     map = {};
@@ -2115,10 +2119,9 @@ function downloadAttendancePDF({ paper, roster, att, attMap, examiner, onlyMine 
     }
   }
 
-  // Rows = students in the roster who have an attendance record for this paper
   let rows = (roster || []).filter(s => map[s.id]).map(s => {
     const raw = map[s.id];
-    const rec = raw.rec || raw;   // handle either { days, rec } or raw
+    const rec = raw.rec || raw;
     return {
       name: rec.name || s.fullName || '',
       barcode: rec.barcode || s.barcode || '',
@@ -2148,14 +2151,12 @@ function downloadAttendancePDF({ paper, roster, att, attMap, examiner, onlyMine 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const PAGE_W = doc.internal.pageSize.width;
   const PAGE_H = doc.internal.pageSize.height;
-  const PER_PAGE = 25;
-  const totalPages = Math.ceil(rows.length / PER_PAGE);
 
-  for (let p = 0; p < totalPages; p++) {
-    if (p > 0) doc.addPage();
-    const slice = rows.slice(p * PER_PAGE, (p + 1) * PER_PAGE);
+  // One row per student — autoTable decides how many fit per page
+  const body = rows.map((r, i) => [String(i + 1), r.name, r.barcode, '']);
 
-    // Header
+  // Header + footer for every page — called by autoTable on each page
+  const drawPageFrame = () => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
     doc.text('S.K. Wellala Biology Paper Class', PAGE_W / 2, 15, { align: 'center' });
@@ -2170,50 +2171,59 @@ function downloadAttendancePDF({ paper, roster, att, attMap, examiner, onlyMine 
 
     if (examiner) {
       doc.text(`Examiner: ${examiner.fullName || '—'}`, PAGE_W - 14, 32, { align: 'right' });
-      doc.text(`Center:   ${examiner.center || '—'}`,   PAGE_W - 14, 37.5, { align: 'right' });
+      doc.text(`Center:   ${examiner.center || '—'}`, PAGE_W - 14, 37.5, { align: 'right' });
     }
-    doc.text(`Page ${p + 1} / ${totalPages}`, PAGE_W - 14, 43, { align: 'right' });
     doc.text(`Total: ${rows.length} student${rows.length === 1 ? '' : 's'}`, PAGE_W - 14, 48.5, { align: 'right' });
 
-    // Table — 25 rows, blank Marks column
-    doc.autoTable({
-      startY: 52,
-      margin: { left: 14, right: 14 },
-      head: [['#', 'Student Name', 'Barcode', 'Marks']],
-      body: slice.map((r, i) => [String(p * PER_PAGE + i + 1), r.name, r.barcode, '']),
-      theme: 'grid',
-      styles: {
-        font: 'helvetica',
-        fontSize: 10,
-        cellPadding: 3,
-        minCellHeight: 8,
-        valign: 'middle',
-        lineColor: [180, 180, 180],
-        lineWidth: 0.2
-      },
-      headStyles: {
-        fillColor: [21, 128, 61],
-        textColor: 255,
-        fontStyle: 'bold',
-        halign: 'center',
-        minCellHeight: 8
-      },
-      alternateRowStyles: { fillColor: [245, 250, 246] },
-      columnStyles: {
-        0: { cellWidth: 12, halign: 'center' },
-        1: { cellWidth: 85, overflow: 'ellipsize' },
-        2: { cellWidth: 45, halign: 'center' },
-        3: { cellWidth: 40, halign: 'center' }
-      }
-    });
-
-    // Footer
     doc.setFontSize(8);
     doc.setTextColor(120);
     doc.text(`Generated ${new Date().toLocaleString()}`, 14, PAGE_H - 8);
+    doc.setTextColor(0);
+  };
+
+  doc.autoTable({
+    startY: 52,
+    margin: { left: 14, right: 14, top: 52, bottom: 15 },
+    head: [['#', 'Student Name', 'Barcode', 'Marks']],
+    body,
+    theme: 'grid',
+    styles: {
+      font: 'helvetica',
+      fontSize: 10,
+      cellPadding: 3,
+      minCellHeight: 8,
+      valign: 'middle',
+      lineColor: [180, 180, 180],
+      lineWidth: 0.2
+    },
+    headStyles: {
+      fillColor: [21, 128, 61],
+      textColor: 255,
+      fontStyle: 'bold',
+      halign: 'center',
+      minCellHeight: 8
+    },
+    alternateRowStyles: { fillColor: [245, 250, 246] },
+    columnStyles: {
+      0: { cellWidth: 12, halign: 'center' },
+      1: { cellWidth: 85, overflow: 'ellipsize' },
+      2: { cellWidth: 45, halign: 'center' },
+      3: { cellWidth: 40, halign: 'center' }
+    },
+    didDrawPage: drawPageFrame     // header + footer on every page
+  });
+
+  // Add "Page X / Y" after all pages exist (total is known now)
+  const total = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setFontSize(9);
+    doc.setTextColor(80);
+    doc.text(`Page ${i} / ${total}`, PAGE_W - 14, 43, { align: 'right' });
+    doc.setTextColor(0);
   }
 
-  const safe   = (paper.title || 'paper').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+  const safe = (paper.title || 'paper').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 40);
   const exSafe = examiner ? (examiner.fullName || '').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 25) : '';
   doc.save(`attendance_${safe}${exSafe ? '_' + exSafe : ''}.pdf`);
 }
