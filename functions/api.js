@@ -174,7 +174,7 @@ const clean = d => { const o = {}; for (const [k, v] of Object.entries(d || {}))
 /* ---------- request handler ---------- */
 async function handle(b, uid, env) {
   const c = ctxOf(env, uid), { op, col } = b; let id = b.id;
-  if (op !== 'myranks' && op !== 'deleteuser' && !COLS.includes(col)) deny('Unknown collection');
+  if (op !== 'myranks' && op !== 'mymarks' && op !== 'deleteuser' && !COLS.includes(col)) deny('Unknown collection');
 
   if (op === 'get') {
     const d = await c.get(col, String(id));
@@ -209,7 +209,55 @@ async function handle(b, uid, env) {
       const rank = 1 + pool.filter(x => x.mark > mine.mark).length;
       ranks[r.id] = (online || rank <= 100) ? rank : null;
     }
-    return { ranks };
+      return { ranks };
+  }
+
+  if (op === 'mymarks') {
+    /* every mark this student has on a published paper in their batch,
+       in ONE request — replaces the old per-paper getDoc loop */
+    if (!c.signedIn) deny();
+    const s = await c.get('students', c.uid);
+    if (!s) deny();
+
+    const batch = s.batch || '2027 A/L';
+
+    // Aliases: a mark may have been stored under skey, NIC, barcode, or 'BC'+barcode
+    // depending on when the record was created. Accept any of them.
+    const aliases = new Set();
+    const addA = v => { if (v) aliases.add(String(v).toUpperCase()); };
+    addA(s.skey);
+    addA(s.nic);
+    addA(s.barcode);
+    addA('BC' + (s.barcode || ''));
+
+    // Only marks on published papers, same batch as the student
+    const papers = (await env.DB.prepare("SELECT id,data FROM docs WHERE col='papers'").all()).results || [];
+    const liveIds = new Set();
+    for (const r of papers) {
+      const p = JSON.parse(r.data);
+      if (p.published === true && (p.batch || '2027 A/L') === batch) liveIds.add(r.id);
+    }
+
+    // Scan marks, resolve pid, and collect this student's scores
+    const marks = {};
+    const rows = (await env.DB.prepare("SELECT id,data FROM docs WHERE col='marks'").all()).results || [];
+    for (const r of rows) {
+      const m = JSON.parse(r.data);
+      if (!aliases.has(String(m.nic || '').toUpperCase())) continue;
+
+      // Resolve which paper this mark belongs to:
+      //  • newer marks carry `pid`
+      //  • older marks don't — their doc id is '<paperId>_<skey>', so split on '_'
+      let pid = m.pid;
+      if (!pid) {
+        const idx = r.id.indexOf('_');
+        if (idx > 0) pid = r.id.slice(0, idx);
+      }
+      if (!pid || !liveIds.has(pid)) continue;
+
+      marks[pid] = m.mark;
+    }
+    return { marks };
   }
 
   if (op === 'list') {
