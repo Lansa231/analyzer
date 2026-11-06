@@ -74,7 +74,7 @@ input.invalid{border-color:var(--bad);}
 table{width:100%; border-collapse:collapse; font-size:.88rem;}
 th,td{padding:10px 12px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap;}
 th{font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); background:var(--bg);}
-tr:hover td{background:var(--bg);}
+tr:hover td{background:var(--bg);} /* Developer-marked attendance — highlighted so examiners can spot them at a glance */ tr.dev-marked > td { background: rgba(251, 191, 36, 0.10); } tr.dev-marked:hover > td { background: rgba(251, 191, 36, 0.18); } [data-theme="dark"] tr.dev-marked > td { background: rgba(251, 191, 36, 0.08); } [data-theme="dark"] tr.dev-marked:hover > td { background: rgba(251, 191, 36, 0.14); } tr.dev-marked > td:first-child { border-left: 3px solid #f59e0b; padding-left: 9px; }
 .tbl-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:12px;}
 .pill{display:inline-block; padding:3px 11px; border-radius:999px; font-size:.73rem; font-weight:700;}
 .pill.good{background:var(--good-bg); color:var(--good);}
@@ -1536,10 +1536,11 @@ async function examinerDash(){
           <div class="av">${esc((profile.fullName||'?').charAt(0).toUpperCase())}</div>
           <div><b>${esc(profile.fullName||'')}</b><small>Examiner · ${esc(profile.center||'')}</small></div>
         </div>
-              <div class="tabs">
+           <div class="tabs">
           <button data-etab="profile" class="${(state.etab||'profile')==='profile'?'active':''}">👤 Profile</button>
           <button data-etab="students" class="${state.etab==='students'?'active':''}">👨‍🎓 Students</button>
-          <button data-etab="attendance" class="${state.etab==='attendance'?'active':''}">📅 Attendance</button>
+          <button data-etab="attendance" class="${state.etab==='attendance'?'active':''}">📅 My Attendance</button>
+          <button data-etab="totalatt" class="${state.etab==='totalatt'?'active':''}">📋 Total Attendance</button>
         </div>
       </aside>
       <div class="dash-main" id="etabBody"></div>
@@ -1551,9 +1552,9 @@ async function examinerDash(){
   document.querySelectorAll('[data-etab]').forEach(b=>b.onclick=()=>{
     state.etab=b.dataset.etab; examinerDash();
   });
-
    if(state.etab === 'students') examinerStudents({papers, students, studentsAll, att, batch});
   else if(state.etab === 'attendance') examinerAttendance({papers, students, studentsAll, att, batch});
+  else if(state.etab === 'totalatt') examinerTotalAttendance({papers, students, studentsAll, att, batch});
   else examinerProfile();
 }
 
@@ -1624,7 +1625,8 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
         ${presentToday.map((nic,i)=>{
           const rec = attMap[nic].rec;
           const s = students.find(x=>String(x.skey||x.nic||'').toUpperCase()===nic) || {};
-          return `<tr><td>${i+1}</td><td>${esc(rec.name||nic)}</td><td class="mono">${esc(rec.barcode||'—')}</td><td>${esc(s.school||'—')}</td>
+                const devMark = rec.byRole === 'developer';
+          return `<tr class="${devMark?'dev-marked':''}"><td>${i+1}</td><td><b>${esc(rec.name||nic)}</b>${devMark?' <span class="pill warn" style="font-size:.66rem">DEV</span>':''}</td><td class="mono">${esc(rec.barcode||'—')}</td><td>${esc(s.school||'—')}</td>
             <td style="text-align:right"><button class="btn btn-danger btn-sm" data-rm-day="${esc(nic)}">Remove</button></td></tr>`;
         }).join('')}</table></div>` : ''}
     </div>
@@ -1679,7 +1681,8 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
     const rec = {
       pid: selPaper.id, nic, barcode: s.barcode||'', name: s.fullName||'',
       center: s.center||profile.center||'', batch: selPaper.batch||state.batch,
-      day: selDay, days, by: profile.fullName||'', byUid: user.uid || '', at: Date.now()
+      day: selDay, days, by: profile.fullName||'', byUid: user.uid || '',
+      byRole: 'examiner', at: Date.now()
     };
     busy(true);
     try{ await setDoc(doc(db,'attendance', selPaper.id+'_'+nic), rec, {merge:true}); busy(false); state.lastScan = s; examinerDash(); }
@@ -1767,12 +1770,15 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
           </div>
           <div class="tbl-wrap"><table>
             <tr><th>#</th><th>Name</th><th>School</th><th>Barcode</th></tr>
-            ${list.map((a,i)=>`<tr>
+                    ${list.map((a,i)=>{
+              const devMark = a.byRole === 'developer';
+              return `<tr class="${devMark?'dev-marked':''}">
               <td>${i+1}</td>
-              <td><b>${esc(a.name||a.nic)}</b></td>
+              <td><b>${esc(a.name||a.nic)}</b>${devMark?' <span class="pill warn" style="font-size:.66rem">DEV</span>':''}</td>
               <td>${esc(schoolOf(a.nic))}</td>
               <td class="mono">${esc(a.barcode||'—')}</td>
-            </tr>`).join('')}
+            </tr>`;
+            }).join('')}
           </table></div>
         </div>`;
       }).join('')
@@ -1783,7 +1789,6 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
     state.attLogPaper = e.target.value;
     examinerAttendance({papers, students, studentsAll, att, batch});
   };
-}  
   if($("#eaLogPdf")) $("#eaLogPdf").onclick = () => {
     if (!selPaper) return alert('No paper selected.');
     downloadAttendancePDF({
@@ -1795,6 +1800,110 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
       showDays: true
     });
   };
+}
+  /* ============================== EXAMINER: TOTAL ATTENDANCE ============================== */
+function examinerTotalAttendance({ papers, students, studentsAll, att, batch }) {
+  const host = $("#etabBody"); if (!host) return;
+
+  const selPaper = papers.find(x => x.id === state.totalAttPaper) || papers[0] || null;
+  if (selPaper) state.totalAttPaper = selPaper.id;
+
+  // All attendance records for the selected paper, regardless of who marked them
+  const allRecs = selPaper ? att.filter(a => a.pid === selPaper.id) : [];
+
+  const daysOf = r => {
+    const ds = r.days || (r.day ? [r.day] : []);
+    if (ds.length) return ds;
+    if (r.at) {
+      const d = new Date(r.at);
+      return [d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')];
+    }
+    return [];
+  };
+
+  const byDate = {};
+  allRecs.forEach(r => daysOf(r).forEach(d => { (byDate[d] ??= []).push(r); }));
+  const dateList = Object.keys(byDate).sort().reverse();
+
+  const uniqueStudents = new Set(allRecs.map(r => r.nic)).size;
+  const markers = new Set(allRecs.map(r => r.by || '—')).size;
+  const entries = allRecs.reduce((n, r) => n + Math.max(1, daysOf(r).length), 0);
+
+  const schoolOf = nic => {
+    const s = (studentsAll || []).find(x => String(x.skey || x.nic || '').toUpperCase() === String(nic || '').toUpperCase());
+    return s ? (s.school || '—') : '—';
+  };
+
+  const markerCell = r => {
+    const role = r.byRole;
+    const name = r.by || '—';
+    if (role === 'developer') return `${esc(name)} <span class="pill warn" style="font-size:.66rem">DEV</span>`;
+    if (role === 'examiner')  return `${esc(name)} <span class="pill brand" style="font-size:.66rem">EXM</span>`;
+    if (role === 'teacher')   return `${esc(name)} <span class="pill" style="font-size:.66rem">TCH</span>`;
+    return esc(name);
+  };
+
+  host.innerHTML = `<div class="card">
+    <h2>📋 Total Attendance — All Markers</h2>
+    <p class="sub" style="margin:0 0 8px">Every student marked present for a paper in your center, by any examiner, teacher, or developer.</p>
+    <div class="row">
+      <div><label style="margin-top:0">Paper</label>
+        <select id="taP">${papers.length ? papers.map(x => `<option value="${x.id}"${selPaper && x.id === selPaper.id ? ' selected' : ''}>${esc(x.title)} (${esc(x.date || 'no date')})</option>`).join('') : '<option>No papers yet</option>'}</select>
+      </div>
+    </div>
+    <div style="margin:8px 0"><button type="button" id="taPdf" class="btn btn-ghost btn-sm" style="width:auto">📄 Download attendance PDF (all days)</button></div>
+    ${!papers.length ? '<p class="sub" style="margin:12px 0 0">No papers for this batch yet.</p>'
+      : !allRecs.length ? '<p class="sub" style="margin:12px 0 0">No attendance recorded for this paper yet.</p>'
+      : `
+        <div class="grid g4" style="margin:12px 0 16px">
+          <div class="stat"><div class="num">${uniqueStudents}</div><div class="lbl">Unique students</div></div>
+          <div class="stat"><div class="num">${dateList.length}</div><div class="lbl">Dates covered</div></div>
+          <div class="stat"><div class="num">${markers}</div><div class="lbl">Markers</div></div>
+          <div class="stat"><div class="num">${entries}</div><div class="lbl">Attendance entries</div></div>
+        </div>
+        <p class="sub" style="margin:0 0 12px">
+          <span style="display:inline-block;width:12px;height:12px;background:rgba(251,191,36,.35);border-radius:3px;vertical-align:middle;margin-right:6px"></span>
+          Yellow row = marked by a developer
+        </p>
+        ${dateList.map(d => {
+          const list = byDate[d].slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+          return `<div style="margin-top:18px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+              <span class="pill brand" style="font-weight:800">📅 ${esc(d)}</span>
+              <span class="sub" style="margin:0">· ${list.length} student${list.length === 1 ? '' : 's'}</span>
+            </div>
+            <div class="tbl-wrap"><table>
+              <tr><th>#</th><th>Name</th><th>School</th><th>Barcode</th><th>Marked by</th></tr>
+              ${list.map((a, i) => {
+                const devMark = a.byRole === 'developer';
+                return `<tr class="${devMark ? 'dev-marked' : ''}">
+                  <td>${i + 1}</td>
+                  <td><b>${esc(a.name || a.nic)}</b></td>
+                  <td>${esc(schoolOf(a.nic))}</td>
+                  <td class="mono">${esc(a.barcode || '—')}</td>
+                  <td>${markerCell(a)}</td>
+                </tr>`;
+              }).join('')}
+            </table></div>
+          </div>`;
+        }).join('')}
+      `}
+  </div>`;
+
+  if ($("#taP")) $("#taP").onchange = e => { state.totalAttPaper = e.target.value; examinerDash(); };
+
+  if ($("#taPdf")) $("#taPdf").onclick = () => {
+    if (!selPaper) return alert('No paper selected.');
+    if (!allRecs.length) return alert('No attendance recorded for this paper.');
+    downloadAttendancePDF({
+      paper: selPaper,
+      roster: studentsAll,
+      att: att,
+      onlyMine: false,
+      showDays: true
+    });
+  };
+}
   /* ============================== PAYMENT APPROVING — new code ==============================
    Paste this whole file into the <script type="module"> in index.html,
    directly ABOVE the line:  /* ============================== TEACHER AUTH ============================== *​/
@@ -2582,7 +2691,7 @@ function tabStudents({roster,rosterAll,papers}){
         <div style="margin-top:8px"><button type="button" id="atPdf" class="btn btn-ghost btn-sm" style="width:auto">📄 Download attendance PDF</button></div>
         <div id="atMsg"></div>
         <p class="sub" style="margin:10px 0 6px"><b>${list.length}</b> student${list.length===1?'':'s'} attended this paper. They now appear in the Marks tab for this paper.</p>
-        ${list.length?`<div class="tbl-wrap"><table><tr><th>#</th><th>Name</th><th>Barcode</th><th>Center</th><th></th></tr>${list.map((a,i)=>`<tr><td>${list.length-i}</td><td><b>${esc(a.name||a.nic)}</b></td><td class="mono">${esc(a.barcode||'—')}</td><td>${esc(a.center||'—')}</td><td style="text-align:right"><button class="btn btn-danger btn-sm" data-at-rm="${esc(a.nic)}">Remove</button></td></tr>`).join('')}</table></div>`:''}</div>`;
+        ${list.length?`<div class="tbl-wrap"><table><tr><th>#</th><th>Name</th><th>Barcode</th><th>Center</th><th></th></tr>${list.map((a,i)=>{           const devMark = a.byRole === 'developer';           return `<tr class="${devMark?'dev-marked':''}"><td>${list.length-i}</td><td><b>${esc(a.name||a.nic)}</b>${devMark?' <span class="pill warn" style="font-size:.66rem">DEV</span>':''}</td><td class="mono">${esc(a.barcode||'—')}</td><td>${esc(a.center||'—')}</td><td style="text-align:right"><button class="btn btn-danger btn-sm" data-at-rm="${esc(a.nic)}">Remove</button></td></tr>`;         }).join('')}</table></div>`:''}</div>`;
       $("#atP").onchange=e=>{ state.attPaper=e.target.value; draw(); };
       const add=async()=>{
         const v=$("#atB").value.trim().toUpperCase(), m=$("#atMsg"); m.innerHTML='';
@@ -2591,7 +2700,7 @@ function tabStudents({roster,rosterAll,papers}){
         if(!s){ m.innerHTML=`<div class="err">No student found with "${esc(v)}"${adm?'':' in your center'}.</div>`; return $("#atB").select(); }
         if(s.batch!==state.batch){ m.innerHTML=`<div class="err">${esc(s.fullName)} is in ${esc(s.batch)}, not ${esc(state.batch)}.</div>`; return; }
         if(p.att[s.id]){ m.innerHTML=`<div class="err">${esc(s.fullName)} is already marked present.</div>`; $("#atB").value=''; return; }
-        const rec={pid:p.id,nic:s.id,barcode:s.barcode||'',name:s.fullName,center:s.center||'',batch:p.batch||state.batch,by:profile.fullName||'',at:Date.now()};
+        const rec={pid:p.id,nic:s.id,barcode:s.barcode||'',name:s.fullName,center:s.center||'',batch:p.batch||state.batch,by:profile.fullName||'',byRole: profile.isAdmin ? 'developer' : 'teacher', at:Date.now()};
         busy(true);
         try{ await setDoc(doc(db,'attendance',p.id+'_'+s.id),rec,{merge:true}); p.att[s.id]=rec; busy(false); draw(); attendanceWidget($("#atMsg"), s, true); $("#atB").focus(); }
         catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
