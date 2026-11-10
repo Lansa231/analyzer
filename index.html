@@ -1689,14 +1689,12 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
     catch(e){ busy(false); m.innerHTML = `<div class="err">${esc(friendly(e))}</div>`; }
   };
   $("#eaAdd").onclick = addAtt;
-    if($("#eaPdf")) $("#eaPdf").onclick = () => {
-    if (!selPaper) return alert('No paper selected.');
+  if($("#atPdf")) $("#atPdf").onclick = () => {
     downloadAttendancePDF({
-      paper: selPaper,
-      roster: students,
-      att: att,
-      examiner: { uid: user.uid, fullName: profile.fullName, center: profile.center },
-      onlyMine: false
+      paper: p,
+      roster: rosterAll,
+      onlyMine: false,
+      showDays: true
     });
   };
     $("#eaScan").onclick = async () => {
