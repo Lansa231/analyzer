@@ -2706,13 +2706,12 @@ function tabStudents({roster,rosterAll,papers}){
         try{ await setDoc(doc(db,'attendance',p.id+'_'+s.id),rec,{merge:true}); p.att[s.id]=rec; busy(false); draw(); attendanceWidget($("#atMsg"), s, true); $("#atB").focus(); }
         catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
       };
-  if($("#eaPdf")) $("#eaPdf").onclick = () => {
-    if (!selPaper) return alert('No paper selected.');
+  $("#atAdd").onclick=add;
+  if($("#atPdf")) $("#atPdf").onclick = () => {
+    if (!p) return alert('No paper selected.');
     downloadAttendancePDF({
-      paper: selPaper,
-      roster: students,
-      att: att,
-      examiner: { uid: user.uid, fullName: profile.fullName, center: profile.center },
+      paper: p,
+      roster: rosterAll,
       onlyMine: false,
       showDays: true
     });
