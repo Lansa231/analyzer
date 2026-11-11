@@ -2506,10 +2506,11 @@ async function teacherDash(){
   const admins={}; if(admSnap) admSnap.docs.forEach(d=>admins[d.id]=d.data());
   const requests=reqSnap?reqSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.status==='pending'?0:1)-(b.status==='pending'?0:1)):[];
   const pendReq=requests.filter(r=>r.status==='pending').length;
-  const mkAll=mkSnap.docs.map(d=>({ ...d.data(), _docId:d.id }));
+    const mkAll=mkSnap.docs.map(d=>({ ...d.data(), _docId:d.id }));
   papersAll.forEach(p=>{
     p.scores={...(p.scores||{})};
     p.meta={};
+    p.centerByNic={};                                    // ← NEW
     mkAll.forEach(m=>{
       // Match by explicit pid when present, otherwise fall back to the doc-id prefix
       // so old marks saved without a `pid` field still count (needed for ranks).
@@ -2517,6 +2518,7 @@ async function teacherDash(){
       if (match) {
         p.scores[m.nic]=m.mark;
         p.meta[m.nic]={n:m.name,c:m.center||''};
+        if(m.center) p.centerByNic[m.nic]=m.center;      // ← NEW
       }
     });
   });
@@ -2782,14 +2784,19 @@ function tabRanks({papers, rosterAll}){
 
   let rows=[], paper=null;
   if(view==='overall'){
-    rows = studentsFromMarks(papers).filter(s=>s.avg!=null).map(s=>({
-      nic:s.nic,
-      name:s.fullName,
-      center:s.center||'—',
-      school:schoolOf(s.nic),
-      v:s.avg,
-      pc:s.avg
-    }));
+    rows = studentsFromMarks(papers)
+      .filter(s => s.avg != null)
+      .map(s => {
+        const r = (rosterAll || []).find(x => x.nic === s.nic) || {};
+        return {
+          nic:    s.nic,
+          name:   s.fullName,
+          center: r.center || s.center || '—',
+          school: schoolOf(s.nic),
+          v:      s.avg,
+          pc:     s.avg
+        };
+      });
   } else {
     paper = papers.find(p=>p.id===view);
     rows = Object.entries(paper.scores||{}).map(([nic,m])=>{
@@ -2990,7 +2997,7 @@ async function studentEditCard(host,s,admin,onDone){
     busy(true);
     try{
       await updateDoc(doc(db,'students',uid),d);
-      if(admin && (d.center||'')!==(s.center||'')) await moveMarksCenter(skeyOf(s),d.center||'');
+ 
       if(!admin) profile={...profile,...d};
       busy(false); onDone();
     }catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
@@ -3296,7 +3303,7 @@ function tabRequests({requests}){
   <td style="white-space:nowrap">${r.status==='pending'?`<button class="btn btn-primary btn-sm" data-ap="${r.id}" style="width:auto">Approve</button> <button class="btn btn-danger btn-sm" data-rj="${r.id}">Reject</button>`:''}</td></tr>`).join('')}</table></div>`:'<p class="sub">No requests yet.</p>'}</div>`;
   document.querySelectorAll('[data-ap]').forEach(b=>b.onclick=async()=>{
     const r=requests.find(x=>x.id===b.dataset.ap); busy(true);
-    try{ await updateDoc(doc(db,'students',r.uid),{center:r.toCenter||'',batch:r.toBatch}); await moveMarksCenter(r.nic,r.toCenter||''); await updateDoc(doc(db,'changeRequests',r.id),{status:'approved'}); }
+    try{ await updateDoc(doc(db,'students',r.uid),{center:r.toCenter||'',batch:r.toBatch}); await updateDoc(doc(db,'changeRequests',r.id),{status:'approved'}); }
     catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
   document.querySelectorAll('[data-rj]').forEach(b=>b.onclick=async()=>{ busy(true); try{ await updateDoc(doc(db,'changeRequests',b.dataset.rj),{status:'rejected'}); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
 }
@@ -3559,56 +3566,136 @@ function tabMarks({students,papers}){
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{ state.selPaper=b.dataset.open; drawMarksPane(students,papers); });
   drawMarksPane(students,papers);
 }
-function drawMarksPane(students,papers){
-  const pane=$("#marksPane"); if(!pane) return;
-  const selPapers=papers.filter(p=>p.id===state.selPaper);
-  const sel=selPapers[0];
-  if(!sel){ pane.innerHTML=''; return; }
-  const list=students.filter(s=>sel.att?.[s.id]||sel.scores?.[s.id]!=null);
+function drawMarksPane(students, papers){
+  const pane = $("#marksPane"); if(!pane) return;
+  const sel  = papers.find(p => p.id === state.selPaper);
+  if(!sel){ pane.innerHTML = ''; return; }
+
+  // Build the dropdown options: every center registered in the app + every
+  // student's signup center + any override already stored on this paper.
+  const centerSet = new Set();
+  (state.lists?.centers || []).forEach(c => c && centerSet.add(c));
+  students.forEach(s => s.center && centerSet.add(s.center));
+  Object.values(sel.centerByNic || {}).forEach(c => c && centerSet.add(c));
+  const centers = [...centerSet].sort();
+
+  const list = students.filter(s => sel.att?.[s.id] || sel.scores?.[s.id] != null);
+
   pane.innerHTML = `
   <div class="card">
-    <h2>✏️ Marks — ${esc(sel.subject)}: ${esc(sel.title)} <span class="sub" style="display:inline">(max ${sel.max})</span> <span id="svLbl" class="saved" style="margin-left:8px"></span></h2>
-    ${list.length?`<div class="tbl-wrap"><table><tr><th>Student</th><th>NIC</th><th>Marks / ${sel.max}</th><th>%</th><th>Grade</th></tr>
-      ${list.map(s=>{
-        const sc=sel.scores?.[s.id]; const p=sc!=null?pct(sc,sel.max):null;
-        return `<tr><td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b></td><td class="mono">${esc(s.realNic||'-')}${s.barcode?'<br><span class="sub" style="margin:0">'+esc(s.barcode)+'</span>':''}</td>
+    <h2>✏️ Marks — ${esc(sel.subject)}: ${esc(sel.title)}
+      <span class="sub" style="display:inline">(max ${sel.max})</span>
+      <span id="svLbl" class="saved" style="margin-left:8px"></span></h2>
+    <p class="sub" style="margin:0 0 8px">
+      The <b>Center</b> column is where this student sat <b>this paper</b>.
+      Change it if they attended a different center — past papers keep their own center.
+    </p>
+    ${list.length ? `<div class="tbl-wrap"><table>
+      <tr><th>Student</th><th>NIC</th><th>Center (this paper)</th>
+          <th>Marks / ${sel.max}</th><th>%</th><th>Grade</th></tr>
+      ${list.map(s => {
+        const sc = sel.scores?.[s.id];
+        const p  = sc != null ? pct(sc, sel.max) : null;
+        const thisCenter = sel.centerByNic?.[s.id] || s.center || '';
+        return `<tr>
+          <td><b><a class="nl" href="#/student/${encodeURIComponent(s.nic)}">${esc(s.fullName)}</a></b></td>
+          <td class="mono">${esc(s.realNic||'-')}${s.barcode?'<br><span class="sub" style="margin:0">'+esc(s.barcode)+'</span>':''}</td>
+          <td style="min-width:150px">
+            <select data-center="${s.id}" style="padding:6px 8px;font-size:.82rem">
+              ${centers.map(c => `<option value="${esc(c)}"${c===thisCenter?' selected':''}>${esc(c||'—')}</option>`).join('')}
+            </select>
+          </td>
           <td style="max-width:120px"><input type="number" step="0.01" min="0" max="${sel.max}" value="${sc??''}" data-mk="${s.id}"></td>
           <td>${p!=null?`<span class="pill ${gCls(p)}">${p}%</span>`:'—'}</td>
-          <td>${p!=null?`<span class="pill ${gCls(p)}">${grade(p)}</span>`:'—'}</td></tr>`;
-      }).join('')}</table></div>`:'<p class="sub">No students are marked present for this paper yet. Add them in the Students tab → Paper attendance.</p>'}
+          <td>${p!=null?`<span class="pill ${gCls(p)}">${grade(p)}</span>`:'—'}</td>
+        </tr>`;
+      }).join('')}
+    </table></div>` : '<p class="sub">No students are marked present for this paper yet. Add them in the Students tab → Paper attendance.</p>'}
   </div>`;
-  document.querySelectorAll('[data-mk]').forEach(inp=>inp.onchange=async()=>{
-    const nic=inp.dataset.mk, st=students.find(x=>x.id===nic);
-    const v=inp.value===''?null:Math.max(0,Math.min(sel.max,Math.round((parseFloat(inp.value)||0)*100)/100));
-    $("#svLbl").textContent='○ saving…';
+
+  /* ── mark input handler ─────────────────────────────────────────────── */
+  document.querySelectorAll('[data-mk]').forEach(inp => inp.onchange = async () => {
+    const nic = inp.dataset.mk, st = students.find(x => x.id === nic);
+    const v = inp.value === '' ? null
+            : Math.max(0, Math.min(sel.max, Math.round((parseFloat(inp.value)||0)*100)/100));
+
+    // current dropdown value = the center the teacher has chosen for this paper
+    const selCenterEl = pane.querySelector(`[data-center="${nic}"]`);
+    const center = selCenterEl ? selCenterEl.value : (st.center || '');
+
+    $("#svLbl").textContent = '○ saving…';
     try{
-      if(v==null){
+      if(v == null){
         delete sel.scores[nic];
-        await deleteDoc(doc(db,'marks',sel.id+'_'+nic));
+        delete (sel.centerByNic ||= {})[nic];
+        await deleteDoc(doc(db,'marks', sel.id+'_'+nic));
       } else {
-        sel.scores[nic]=v;
-        await setDoc(doc(db,'marks',sel.id+'_'+nic),{
-          pid:sel.id, nic, mark:v,
-          name:st.fullName, center:st.center||'',
-          batch:sel.batch||state.batch, by:profile.fullName||''
+        sel.scores[nic] = v;
+        (sel.centerByNic ||= {})[nic] = center;
+        await setDoc(doc(db,'marks', sel.id+'_'+nic), {
+          pid: sel.id, nic, mark: v,
+          name: st.fullName,
+          center,                              // ← per‑paper center
+          batch: sel.batch || state.batch,
+          by: profile.fullName || ''
         });
       }
-      $("#svLbl").textContent='✓ saved';
-      sel.meta = sel.meta || {};
-      if (v == null) delete sel.meta[nic]; else sel.meta[nic] = { n: st.fullName, c: st.center || '' };
+      $("#svLbl").textContent = '✓ saved';
 
-      // redraw ONLY the marquee in place (keeps focus in the current input)
-        const marq = document.querySelector('.marq');
-      if (marq) {
-        const freshRoster = students.filter(r=>r.batch===state.batch);
+      sel.meta = sel.meta || {};
+      if(v == null) delete sel.meta[nic];
+      else          sel.meta[nic] = { n: st.fullName, c: center };
+
+      const marq = document.querySelector('.marq');
+      if(marq){
+        const freshRoster = students.filter(r => r.batch === state.batch);
         marq.outerHTML = rankMarquee(freshRoster, papers);
       }
-
-      // If this is the developer-selected student-marquee paper, refresh the stored top 10
       if(profile.isAdmin && state.marqueePaperId === sel.id){
-        try { await computeAndSaveMarquee(sel.id); } catch(_){}
+        try{ await computeAndSaveMarquee(sel.id); }catch(_){}
       }
-    }catch(e){ $("#svLbl").textContent='⚠ '+friendly(e); }
+    }catch(e){ $("#svLbl").textContent = '⚠ ' + friendly(e); }
+  });
+
+  /* ── center chooser handler ─────────────────────────────────────────── */
+  document.querySelectorAll('[data-center]').forEach(selEl => selEl.onchange = async () => {
+    const nic = selEl.dataset.center;
+    const st  = students.find(x => x.id === nic);
+    const newCenter = selEl.value;
+    const mark = sel.scores?.[nic];
+
+    // No mark yet — remember the choice in memory. When the teacher enters
+    // the mark, the handler above will read this dropdown and save it.
+    if(mark == null){
+      (sel.centerByNic ||= {})[nic] = newCenter;
+      return;
+    }
+
+    $("#svLbl").textContent = '○ saving center…';
+    try{
+      (sel.centerByNic ||= {})[nic] = newCenter;
+      await setDoc(doc(db,'marks', sel.id+'_'+nic), {
+        pid: sel.id, nic, mark,
+        name: st.fullName,
+        center: newCenter,                       // ← per‑paper override
+        batch: sel.batch || state.batch,
+        by: profile.fullName || ''
+      }, { merge: true });
+
+      sel.meta = sel.meta || {};
+      sel.meta[nic] = { n: st.fullName, c: newCenter };
+
+      $("#svLbl").textContent = '✓ center updated';
+
+      const marq = document.querySelector('.marq');
+      if(marq){
+        const freshRoster = students.filter(r => r.batch === state.batch);
+        marq.outerHTML = rankMarquee(freshRoster, papers);
+      }
+      if(profile.isAdmin && state.marqueePaperId === sel.id){
+        try{ await computeAndSaveMarquee(sel.id); }catch(_){}
+      }
+    }catch(e){ $("#svLbl").textContent = '⚠ ' + friendly(e); }
   });
 }
 function tabAnalytics({papers}){
