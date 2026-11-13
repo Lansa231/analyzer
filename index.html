@@ -685,6 +685,7 @@ function bootFirebase(cfg){
           if(e.exists()){
             role='examiner';
             profile=e.data();
+            if(!profile.nickname && u.displayName) profile.nickname = u.displayName;
           } else {
             const s=await getDoc(doc(db,'students',u.uid));
             if(s.exists()){ role='student'; profile=s.data(); }
@@ -1552,15 +1553,20 @@ async function examinerDash(){
       const v = $("#nickIn").value.trim();
       if(v.length < 2)  return $("#nickErr").textContent = 'Please enter at least 2 characters.';
       if(v.length > 20) return $("#nickErr").textContent = 'Keep it under 20 characters.';
-      busy(true);
+          busy(true);
+      let saved = false;
       try{
         await updateDoc(doc(db,'examiners',user.uid), { nickname: v });
+        saved = true;
+      }catch(e){
+        // Firestore-shim / worker blocked the write — fall back to Auth displayName
+        try{ await updateProfile(auth.currentUser, { displayName: v }); saved = true; }
+        catch(e2){ busy(false); $("#nickMsg").innerHTML = `<div class="err">${esc(friendly(e2))}</div>`; return; }
+      }
+      if (saved) {
         profile.nickname = v;
         busy(false);
         examinerDash();
-      }catch(e){
-        busy(false);
-        $("#nickMsg").innerHTML = `<div class="err">${esc(friendly(e))}</div>`;
       }
     };
     return;
