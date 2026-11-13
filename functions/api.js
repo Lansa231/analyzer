@@ -100,7 +100,8 @@ async function canWrite(c, col, id, ex, patch, final) {
       if (adm) return true;
       if (!s || c.uid !== id) return false;
       if (isNew) return final.verified === false;
-      return changed.every(k => ['fullName', 'gender', 'className'].includes(k));
+      // Examiner can update their own safe fields — never `verified`, `nic`, `center`, or `email`.
+      return changed.every(k => ['nickname', 'fullName', 'gender', 'className', 'phone', 'mobile', 'school', 'whatsapp'].includes(k));
     case 'approvers':
       if (adm) return true;
       if (!s || c.uid !== id) return false;
