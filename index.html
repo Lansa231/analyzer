@@ -1155,7 +1155,7 @@ async function stuDash(){
       <div>
         <div style="font-size:.85rem;opacity:.9;font-weight:600">Welcome back 👋</div>
         <h2 style="color:#fff;margin:4px 0 2px;font-size:1.5rem;letter-spacing:-.02em">Hello, ${esc(firstName)}</h2>
-        <div style="font-size:.85rem;opacity:.9">${esc(profile.batch||BATCHES[0])}${profile.center?' · '+esc(profile.center):''}${profile.school?' · '+esc(profile.school):''}</div>
+        <div style="font-size:.85rem;opacity:.9">${esc(profile.batch||BATCHES[0])}${profile.center?' · '+esc(profile.center):''}${profile.school?' · '+esc(profile.school):''}</div>         <div style="margin-top:9px;display:flex;gap:8px;flex-wrap:wrap;font-size:.74rem">           <span style="background:rgba(255,255,255,.18);padding:3px 10px;border-radius:999px">🎫 Barcode <b class="mono">${esc(profile.barcode||'—')}</b></span>           <span style="background:rgba(255,255,255,.18);padding:3px 10px;border-radius:999px">🆔 NIC <b class="mono">${esc(profile.nic||'—')}</b></span>         </div>
       </div>
     </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 14px"><button class="btn btn-ghost btn-sm" id="editMe">✏️ Edit my details</button><button class="btn btn-ghost btn-sm" id="reqCh">🔁 Change center / batch</button></div>
