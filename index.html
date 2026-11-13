@@ -685,7 +685,7 @@ function bootFirebase(cfg){
           if(e.exists()){
             role='examiner';
             profile=e.data();
-            if(!profile.nickname && u.displayName) profile.nickname = u.displayName;
+            if(!profile.nickname && u.displayName && u.displayName !== profile.fullName) profile.nickname = u.displayName;
           } else {
             const s=await getDoc(doc(db,'students',u.uid));
             if(s.exists()){ role='student'; profile=s.data(); }
