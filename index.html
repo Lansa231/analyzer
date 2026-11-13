@@ -466,6 +466,31 @@ const NIC_RE = /^(\d{9}[VvXx]|\d{12})$/;
 const BC_RE = /^[A-Za-z0-9]{8}$/;
 const skeyOf = p => String((p && (p.skey || p.nic)) || '').toUpperCase();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  /* Attendance meta — compact "12/03 09:45 · by Mr. P" text */
+function fmtAttTime(ts){
+  if(!ts) return '';
+  const d = new Date(ts);
+  if(isNaN(d.getTime())) return '';
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mo = String(d.getMonth()+1).padStart(2,'0');
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mi = String(d.getMinutes()).padStart(2,'0');
+  return `${dd}/${mo} ${hh}:${mi}`;
+}
+function attTimeForDay(a, day){
+  if(!a) return null;
+  if(day && a.times && a.times[day]) return a.times[day];
+  return a.at || null;
+}
+function fmtAttMeta(a, day){
+  if(!a) return '';
+  const bits = [];
+  const t = fmtAttTime(attTimeForDay(a, day));
+  if(t) bits.push(t);
+  const marker = a.byNickname || a.by;
+  if(marker) bits.push('by ' + marker);
+  return bits.join(' · ');
+}
   /* ===== YouTube video helpers ===== */
 const ytId = u => {
   const s = String(u||'').trim();
@@ -1512,6 +1537,34 @@ async function examinerDash(){
     };
     return;
   }
+    // ── Ask for a nickname once (short label shown next to attendance) ─────
+  if(!profile.nickname || !String(profile.nickname).trim()){
+    app.innerHTML = `<div class="card auth-card">
+      <h2>👋 Welcome to the Examiner Portal</h2>
+      <p class="sub">Please choose a short nickname — it appears next to every attendance you mark, so students and staff can see who marked them.</p>
+      <label>Nickname</label>
+      <input id="nickIn" maxlength="20" placeholder="e.g. Mr. Perera, Miss K, Kavi">
+      <div class="field-err" id="nickErr"></div>
+      <button class="btn btn-primary" id="nickSave">Save &amp; Continue</button>
+      <div id="nickMsg"></div>
+    </div>`;
+    $("#nickSave").onclick = async () => {
+      const v = $("#nickIn").value.trim();
+      if(v.length < 2)  return $("#nickErr").textContent = 'Please enter at least 2 characters.';
+      if(v.length > 20) return $("#nickErr").textContent = 'Keep it under 20 characters.';
+      busy(true);
+      try{
+        await updateDoc(doc(db,'examiners',user.uid), { nickname: v });
+        profile.nickname = v;
+        busy(false);
+        examinerDash();
+      }catch(e){
+        busy(false);
+        $("#nickMsg").innerHTML = `<div class="err">${esc(friendly(e))}</div>`;
+      }
+    };
+    return;
+  }
   const batch = state.batch || BATCHES[0];
   const [papSnap, stuSnap, attSnap] = await Promise.all([
     getDocs(collection(db,'papers')).catch(()=>null),
@@ -1563,21 +1616,23 @@ function examinerProfile(){
   const p = profile;
   const row = (k,v) => `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div class="sub" style="margin:0">${k}</div><b>${esc(v||'—')}</b></div>`;
   host.innerHTML = `<div class="card"><h2>👤 My Profile</h2>
-    ${row('Full Name',p.fullName)}${row('Gender',p.gender)}${row('NIC',p.nic)}${row('Attended Class',p.className)}${row('Exam Center',p.center)}${row('Email',p.email)}
+    ${row('Full Name',p.fullName)}${row('Nickname',p.nickname)}${row('Gender',p.gender)}${row('NIC',p.nic)}${row('Attended Class',p.className)}${row('Exam Center',p.center)}${row('Email',p.email)}
     <p class="sub" style="margin-top:12px">🔒 NIC, center and email can only be changed by a developer.</p>
     <button class="btn btn-primary" id="epEdit" style="width:auto;margin-top:12px">Edit name / gender / class</button>
   </div>`;
   $("#epEdit").onclick = () => {
     host.innerHTML = `<div class="card"><h2>Edit My Details</h2>
-      <label>Full Name</label><input id="ep_n" value="${esc(p.fullName||'')}">
+           <label>Full Name</label><input id="ep_n" value="${esc(p.fullName||'')}">
+      <label>Nickname</label><input id="ep_nick" maxlength="20" value="${esc(p.nickname||'')}" placeholder="Shown next to attendance records">
       <label>Gender</label><select id="ep_g"><option value="">Select</option>${['Male','Female','Other'].map(g=>`<option${g===p.gender?' selected':''}>${g}</option>`).join('')}</select>
       <label>Attended Class</label><input id="ep_c" value="${esc(p.className||'')}">
       <div class="row" style="margin-top:12px"><button class="btn btn-primary" id="ep_s" style="width:auto">Save</button><button class="btn btn-ghost" id="ep_x" style="width:auto">Cancel</button></div>
       <div id="ep_m"></div></div>`;
     $("#ep_x").onclick = examinerProfile;
     $("#ep_s").onclick = async () => {
-      const d = { fullName:$("#ep_n").value.trim(), gender:$("#ep_g").value, className:$("#ep_c").value.trim() };
+      const d = { fullName:$("#ep_n").value.trim(), nickname:$("#ep_nick").value.trim(), gender:$("#ep_g").value, className:$("#ep_c").value.trim() };
       if(d.fullName.length<3) return $("#ep_m").innerHTML='<div class="err">Please enter your full name.</div>';
+      if(d.nickname.length<2) return $("#ep_m").innerHTML='<div class="err">Nickname must be at least 2 characters.</div>';
       if(!d.gender) return $("#ep_m").innerHTML='<div class="err">Please select a gender.</div>';
       busy(true);
       try{ await updateDoc(doc(db,'examiners',user.uid), d); Object.assign(profile, d); busy(false); examinerProfile(); }
@@ -1625,8 +1680,9 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
         ${presentToday.map((nic,i)=>{
           const rec = attMap[nic].rec;
           const s = students.find(x=>String(x.skey||x.nic||'').toUpperCase()===nic) || {};
-                const devMark = rec.byRole === 'developer';
-          return `<tr class="${devMark?'dev-marked':''}"><td>${i+1}</td><td><b>${esc(rec.name||nic)}</b>${devMark?' <span class="pill warn" style="font-size:.66rem">DEV</span>':''}</td><td class="mono">${esc(rec.barcode||'—')}</td><td>${esc(s.school||'—')}</td>
+          const devMark = rec.byRole === 'developer';
+          const meta = fmtAttMeta(rec, selDay);
+          return `<tr class="${devMark?'dev-marked':''}"><td>${i+1}</td><td><b>${esc(rec.name||nic)}</b>${devMark?' <span class="pill warn" style="font-size:.66rem">DEV</span>':''}${meta?`<div class="sub" style="margin:2px 0 0;font-size:.68rem;line-height:1.35">${esc(meta)}</div>`:''}</td><td class="mono">${esc(rec.barcode||'—')}</td><td>${esc(s.school||'—')}</td>
             <td style="text-align:right"><button class="btn btn-danger btn-sm" data-rm-day="${esc(nic)}">Remove</button></td></tr>`;
         }).join('')}</table></div>` : ''}
     </div>
@@ -1678,10 +1734,11 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
     const days = (attMap[nic]?.days || []).slice();
     if(days.includes(selDay)){ m.innerHTML = `<div class="err">${esc(s.fullName)} is already marked present on ${esc(selDay)}.</div>`; $("#eaB").value=''; attendanceWidget($("#eaWidget"), s, false); return; }
     days.push(selDay);
+    const times = { ...(attMap[nic]?.rec?.times || {}), [selDay]: Date.now() };
     const rec = {
       pid: selPaper.id, nic, barcode: s.barcode||'', name: s.fullName||'',
       center: s.center||profile.center||'', batch: selPaper.batch||state.batch,
-      day: selDay, days, by: profile.fullName||'', byUid: user.uid || '',
+      day: selDay, days, times, by: profile.fullName||'', byNickname: profile.nickname || '', byUid: user.uid || '',
       byRole: 'examiner', at: Date.now()
     };
     busy(true);
@@ -1712,12 +1769,14 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
     if(!confirm('Remove this student from ' + selDay + '?')) return;
     const nic = b.dataset.rmDay;
     const days = (attMap[nic]?.days || []).filter(d => d !== selDay);
+    const times = { ...(attMap[nic]?.rec?.times || {}) };
+    delete times[selDay];
     busy(true);
     try{
       if(!days.length){
         await deleteDoc(doc(db,'attendance', selPaper.id+'_'+nic));
       } else {
-        await setDoc(doc(db,'attendance', selPaper.id+'_'+nic), { days, day: days[days.length-1] }, {merge:true});
+        await setDoc(doc(db,'attendance', selPaper.id+'_'+nic), { days, day: days[days.length-1], times }, {merge:true});
       }
       busy(false); examinerDash();
     }catch(e){ busy(false); alert(friendly(e)); }
@@ -1771,11 +1830,12 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
           </div>
           <div class="tbl-wrap"><table>
             <tr><th>#</th><th>Name</th><th>School</th><th>Barcode</th></tr>
-                    ${list.map((a,i)=>{
+                      ${list.map((a,i)=>{
               const devMark = a.byRole === 'developer';
+              const meta = fmtAttTime(attTimeForDay(a, d));
               return `<tr class="${devMark?'dev-marked':''}">
               <td>${i+1}</td>
-              <td><b>${esc(a.name||a.nic)}</b>${devMark?' <span class="pill warn" style="font-size:.66rem">DEV</span>':''}</td>
+              <td><b>${esc(a.name||a.nic)}</b>${devMark?' <span class="pill warn" style="font-size:.66rem">DEV</span>':''}${meta?`<div class="sub" style="margin:2px 0 0;font-size:.68rem;line-height:1.35">${esc(meta)}</div>`:''}</td>
               <td>${esc(schoolOf(a.nic))}</td>
               <td class="mono">${esc(a.barcode||'—')}</td>
             </tr>`;
@@ -1835,13 +1895,15 @@ function examinerTotalAttendance({ papers, students, studentsAll, att, batch }) 
     return s ? (s.school || '—') : '—';
   };
 
-  const markerCell = r => {
+  const markerCell = (r, day) => {
     const role = r.byRole;
-    const name = r.by || '—';
-    if (role === 'developer') return `${esc(name)} <span class="pill warn" style="font-size:.66rem">DEV</span>`;
-    if (role === 'examiner')  return `${esc(name)} <span class="pill brand" style="font-size:.66rem">EXM</span>`;
-    if (role === 'teacher')   return `${esc(name)} <span class="pill" style="font-size:.66rem">TCH</span>`;
-    return esc(name);
+    const name = r.byNickname || r.by || '—';
+    const t = fmtAttTime(attTimeForDay(r, day));
+    const timeEl = t ? `<span class="sub" style="display:block;margin:1px 0 0;font-size:.66rem;line-height:1.3">${esc(t)}</span>` : '';
+    if (role === 'developer') return `${esc(name)} <span class="pill warn" style="font-size:.66rem">DEV</span>${timeEl}`;
+    if (role === 'examiner')  return `${esc(name)} <span class="pill brand" style="font-size:.66rem">EXM</span>${timeEl}`;
+    if (role === 'teacher')   return `${esc(name)} <span class="pill" style="font-size:.66rem">TCH</span>${timeEl}`;
+    return esc(name) + timeEl;
   };
 
   host.innerHTML = `<div class="card">
@@ -1882,7 +1944,7 @@ function examinerTotalAttendance({ papers, students, studentsAll, att, batch }) 
                   <td><b>${esc(a.name || a.nic)}</b></td>
                   <td>${esc(schoolOf(a.nic))}</td>
                   <td class="mono">${esc(a.barcode || '—')}</td>
-                  <td>${markerCell(a)}</td>
+                  <td>${markerCell(a, d)}</td>
                 </tr>`;
               }).join('')}
             </table></div>
@@ -2694,7 +2756,7 @@ function tabStudents({roster,rosterAll,papers}){
         <div style="margin-top:8px"><button type="button" id="atPdf" class="btn btn-ghost btn-sm" style="width:auto">📄 Download attendance PDF</button></div>
         <div id="atMsg"></div>
         <p class="sub" style="margin:10px 0 6px"><b>${list.length}</b> student${list.length===1?'':'s'} attended this paper. They now appear in the Marks tab for this paper.</p>
-        ${list.length?`<div class="tbl-wrap"><table><tr><th>#</th><th>Name</th><th>Barcode</th><th>Center</th><th></th></tr>${list.map((a,i)=>{           const devMark = a.byRole === 'developer';           return `<tr class="${devMark?'dev-marked':''}"><td>${list.length-i}</td><td><b>${esc(a.name||a.nic)}</b>${devMark?' <span class="pill warn" style="font-size:.66rem">DEV</span>':''}</td><td class="mono">${esc(a.barcode||'—')}</td><td>${esc(a.center||'—')}</td><td style="text-align:right"><button class="btn btn-danger btn-sm" data-at-rm="${esc(a.nic)}">Remove</button></td></tr>`;         }).join('')}</table></div>`:''}</div>`;
+        ${list.length?`<div class="tbl-wrap"><table><tr><th>#</th><th>Name</th><th>Barcode</th><th>Center</th><th></th></tr>${list.map((a,i)=>{           const devMark = a.byRole === 'developer';           const meta = fmtAttMeta(a);           return `<tr class="${devMark?'dev-marked':''}"><td>${list.length-i}</td><td><b>${esc(a.name||a.nic)}</b>${devMark?' <span class="pill warn" style="font-size:.66rem">DEV</span>':''}${meta?`<div class="sub" style="margin:2px 0 0;font-size:.68rem;line-height:1.35">${esc(meta)}</div>`:''}</td><td class="mono">${esc(a.barcode||'—')}</td><td>${esc(a.center||'—')}</td><td style="text-align:right"><button class="btn btn-danger btn-sm" data-at-rm="${esc(a.nic)}">Remove</button></td></tr>`;         }).join('')}</table></div>`:''}</div>`;
       $("#atP").onchange=e=>{ state.attPaper=e.target.value; draw(); };
       const add=async()=>{
         const v=$("#atB").value.trim().toUpperCase(), m=$("#atMsg"); m.innerHTML='';
@@ -2703,7 +2765,7 @@ function tabStudents({roster,rosterAll,papers}){
         if(!s){ m.innerHTML=`<div class="err">No student found with "${esc(v)}"${adm?'':' in your center'}.</div>`; return $("#atB").select(); }
         if(s.batch!==state.batch){ m.innerHTML=`<div class="err">${esc(s.fullName)} is in ${esc(s.batch)}, not ${esc(state.batch)}.</div>`; return; }
         if(p.att[s.id]){ m.innerHTML=`<div class="err">${esc(s.fullName)} is already marked present.</div>`; $("#atB").value=''; return; }
-        const rec={pid:p.id,nic:s.id,barcode:s.barcode||'',name:s.fullName,center:s.center||'',batch:p.batch||state.batch,by:profile.fullName||'',byRole: profile.isAdmin ? 'developer' : 'teacher', at:Date.now()};
+      const rec={pid:p.id,nic:s.id,barcode:s.barcode||'',name:s.fullName,center:s.center||'',batch:p.batch||state.batch,by:profile.fullName||'',byNickname: profile.nickname || '',byRole: profile.isAdmin ? 'developer' : 'teacher', at:Date.now()};
         busy(true);
         try{ await setDoc(doc(db,'attendance',p.id+'_'+s.id),rec,{merge:true}); p.att[s.id]=rec; busy(false); draw(); attendanceWidget($("#atMsg"), s, true); $("#atB").focus(); }
         catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
@@ -3151,7 +3213,7 @@ async function examinerView(){
               </div>
               <div class="tbl-wrap"><table>
                 <tr><th>#</th><th>Name</th><th>School</th><th>Barcode</th></tr>
-                ${list.map((a,i)=>`<tr><td>${i+1}</td><td><b>${esc(a.name||a.nic)}</b></td><td>${esc(school[String(a.nic||'').toUpperCase()]||'—')}</td><td class="mono">${esc(a.barcode||'—')}</td></tr>`).join('')}
+                ${list.map((a,i)=>{ const meta = fmtAttMeta(a, d); return `<tr><td>${i+1}</td><td><b>${esc(a.name||a.nic)}</b>${meta?`<div class="sub" style="margin:2px 0 0;font-size:.68rem;line-height:1.35">${esc(meta)}</div>`:''}</td><td>${esc(school[String(a.nic||'').toUpperCase()]||'—')}</td><td class="mono">${esc(a.barcode||'—')}</td></tr>`; }).join('')}
               </table></div></div>`;
           }).join('') : '<p class="sub" style="margin-top:10px">This examiner has not marked anyone on this paper.</p>'}
         </details>`;
@@ -3275,11 +3337,12 @@ function openExaminerAttendanceModal(ex, papersAll, rosterAll){
             </div>
             <div class="tbl-wrap"><table>
               <tr><th>#</th><th>Name</th><th>School</th><th>Barcode</th></tr>
-              ${list.map((a,i)=>{
+                           ${list.map((a,i)=>{
                 const s = (rosterAll||[]).find(x=>x.id===a.nic) || {};
+                const meta = fmtAttMeta(a, d);
                 return `<tr>
                   <td>${i+1}</td>
-                  <td><b>${esc(a.name||a.nic)}</b></td>
+                  <td><b>${esc(a.name||a.nic)}</b>${meta?`<div class="sub" style="margin:2px 0 0;font-size:.68rem;line-height:1.35">${esc(meta)}</div>`:''}</td>
                   <td>${esc(s.school||'—')}</td>
                   <td class="mono">${esc(a.barcode||'—')}</td>
                 </tr>`;
