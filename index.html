@@ -2300,18 +2300,21 @@ async function paymentToggleCard() {
     String(s.barcode || '').toUpperCase()
   ].filter(Boolean);
 
-  let rows = (roster || []).map(s => {
-    const rec = keysFor(s).map(k => map[k]).find(Boolean);
-    if (!rec) return null;
+  // Build rows from ATTENDANCE records (authoritative) — not from the roster.
+  // This keeps students in the sheet even if they've moved centers or batches
+  // since they were marked present, so the PDF matches what the on-screen
+  // table shows.
+  let rows = Object.entries(map).map(([nic, rec]) => {
     const raw = rec.rec || rec;
+    const s = (roster || []).find(st => keysFor(st).includes(nic)) || {};
     return {
-      name:    raw.name    || s.fullName || '',
+      name:    raw.name    || s.fullName || nic,
       barcode: raw.barcode || s.barcode  || '',
-      school:  s.school    || '—',           // ← NEW
-      nic:     s.skey || s.nic || s.id,
+      school:  s.school    || '—',
+      nic:     raw.nic || s.skey || s.nic || s.id || nic,
       att:     raw
     };
-  }).filter(Boolean);
+  });
 
   if (onlyMine) {
     if (!examiner) { alert('Examiner info required.'); return; }
