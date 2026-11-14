@@ -1409,13 +1409,16 @@ async function openBarcodeScanner(){
         };
         tick();
         return;
-      }catch(e){
+    }catch(e){
         // Permission denied or detector failed → fall through to html5-qrcode fallback
         cleanup();
         if(e && (e.name === 'NotAllowedError' || e.name === 'NotFoundError')){
           alert('Camera access was blocked. Please allow camera access and try again.');
           resolve(null); return;
         }
+        // FIX: wipe the old video + guide box so html5-qrcode has an empty host
+        const host = modal.querySelector('#scanVideoHost');
+        if(host) host.innerHTML = '';
         // re-create the modal for the fallback path
         document.body.appendChild(modal);
         stopped = false;
