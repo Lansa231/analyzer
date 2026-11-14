@@ -6,11 +6,7 @@
 <title>S.K. Wellala Biology Paper Class</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Sinhala:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
 <style>
 :root{
   --bg:#f1f8f3; --card:#ffffff; --ink:#12281c; --muted:#5a7364; --line:#dfece4;
@@ -510,6 +506,45 @@ const saveVideos = async (batch, items) => {
 const busy = on => $("#loading").classList.toggle('show', !!on);
 let charts = {};
 function killCharts(){ Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}}); charts={}; }
+  /* ===== Lazy library loader ===== */
+const _loaded = {};
+function loadScript(src){
+  return _loaded[src] ??= new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res;
+    s.onerror = () => { delete _loaded[src]; rej(new Error('Failed to load ' + src)); };
+    document.head.appendChild(s);
+  });
+}
+const LIBS = {
+  chart: async () => {
+    if (window.Chart) return;
+    await loadScript('https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js');
+    chartDefaults();
+  },
+  xlsx: () => loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'),
+  pdf: async () => {
+    await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js');
+  },
+  qr: () => loadScript('https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js')
+};
+
+function lazyChart(key, canvas, makeConfig){
+  if (!canvas) return;
+  if (charts[key]) { try { charts[key].destroy(); } catch(e){} delete charts[key]; }
+  const draw = async () => {
+    await LIBS.chart();
+    if (!canvas.isConnected) return;
+    charts[key] = new Chart(canvas, makeConfig());
+  };
+  if (!('IntersectionObserver' in window)) { draw(); return; }
+  const io = new IntersectionObserver(es => {
+    if (es.some(e => e.isIntersecting)) { io.disconnect(); draw(); }
+  }, { rootMargin: '200px' });
+  io.observe(canvas);
+  charts['_io' + key] = { destroy: () => io.disconnect() };
+}
 function friendly(e){
   const m={'auth/email-already-in-use':'This email is already registered. Try logging in instead.',
     'auth/invalid-credential':'Incorrect email or password.','auth/wrong-password':'Incorrect email or password.',
@@ -523,6 +558,7 @@ function friendly(e){
 }
 function setTheme(t){ document.documentElement.dataset.theme=t; localStorage.setItem('ca_theme',t); chartDefaults(); }
 function chartDefaults(){
+  if (!window.Chart) return;
   const dark = document.documentElement.dataset.theme==='dark';
   Chart.defaults.color = dark ? '#8fa6b3' : '#5b7280';
   Chart.defaults.borderColor = dark ? 'rgba(143,166,179,.15)' : 'rgba(91,114,128,.12)';
@@ -1318,7 +1354,7 @@ async function stuDash(){
         </div>
       </div>`;
 
-    charts.s1 = new Chart($("#c1"), {
+    lazyChart('s1', $("#c1"), () => ({
       type:'line',
       data:{
         labels: rowsP.map(r=>r.p.title),
@@ -1334,11 +1370,14 @@ async function stuDash(){
         scales:{ y:{ min:0, max:100, title:{display:true,text:'Percentage'} } },
         plugins:{ legend:{display:true}, tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y}%`}} }
       }
-    });
-  };
-
+    }));
+ };  
   window.drawStu = () => load().then(renderBody).catch(e=>{ $("#stuBody").innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; });
-  unsubStu = onSnapshot(q, () => { load().then(renderBody).catch(()=>{}); }, ()=>{});
+  let firstSnap = true;
+  unsubStu = onSnapshot(q, () => {
+    if (firstSnap) { firstSnap = false; return; }
+    load().then(renderBody).catch(()=>{});
+  }, ()=>{});
   const first = await load().catch(()=>[]);
   renderBody(first);
 }
@@ -1426,6 +1465,7 @@ async function openBarcodeScanner(){
     }
 
     // --- Fallback: html5-qrcode --------------------------------------------
+  if (typeof Html5Qrcode === 'undefined') { try { await LIBS.qr(); } catch(_){} }
     if(typeof Html5Qrcode === 'undefined'){
       cleanup();
       alert('Camera scanning is not available in this browser. Please type the barcode.');
@@ -2278,9 +2318,9 @@ async function paymentToggleCard() {
     catch (err) { e.target.checked = !v; m.innerHTML = `<div class="err">${esc(friendly(err))}</div>`; }
   };
 }
- function downloadAttendancePDF({ paper, roster, att, attMap, examiner, onlyMine, showDays, printStyle }) {
+ async function downloadAttendancePDF({ paper, roster, att, attMap, examiner, onlyMine, showDays, printStyle }) {
   if (!paper) { alert('No paper selected.'); return; }
-
+  try { await LIBS.pdf(); } catch(e) { alert('Could not load the PDF library. Check your connection.'); return; }
   let map = attMap;
   if (!map) {
     map = {};
@@ -2818,8 +2858,7 @@ papersAll.forEach(p=>{
     <div class="card"><h2>📄 Paper-by-paper</h2><div class="tbl-wrap"><table><tr><th>Date</th><th>Paper</th><th>Marks</th><th>%</th><th>Grade</th><th>Rank</th><th>Status</th></tr>
     ${rows.map(r=>`<tr><td class="mono">${esc(r.p.date||'—')}</td><td>${esc(r.p.title)}</td><td class="mono"><b>${r.m}</b> / ${r.p.max}</td><td><span class="pill ${gCls(r.pc)}">${r.pc}%</span></td><td><span class="pill ${gCls(r.pc)}">${grade(r.pc)}</span></td><td>${r.rank} / ${r.n}</td><td>${r.p.published?'Published':'Hidden'}</td></tr>`).join('')}</table></div></div>`
     :'<div class="card"><p class="sub">No marks entered for this student yet.</p></div>'}`;
-    if(rows.length) charts.sv=new Chart($("#svC"),{type:'line',data:{labels:rows.map(r=>r.p.title),datasets:[{label:'Score %',data:rows.map(r=>r.pc),borderColor:'#15803d',backgroundColor:'rgba(21,128,61,.12)',fill:true,tension:.35,pointRadius:5,pointBackgroundColor:'#22a06b'}]},options:{scales:{y:{min:0,max:100}}}});
-    if($("#svEdit")) $("#svEdit").onclick=()=>studentEditCard($("#svEditBox"),s,true,()=>studentView());
+       if(rows.length) lazyChart('sv', $("#svC"), () => ({type:'line',data:{labels:rows.map(r=>r.p.title),datasets:[{label:'Score %',data:rows.map(r=>r.pc),borderColor:'#15803d',backgroundColor:'rgba(21,128,61,.12)',fill:true,tension:.35,pointRadius:5,pointBackgroundColor:'#22a06b'}]},options:{scales:{y:{min:0,max:100}}}}));
     $("#svDel").onclick=async()=>{
       if(!confirm('Remove this student? Their marks will be deleted.')) return;
       busy(true);
@@ -4157,14 +4196,15 @@ function tabAnalytics({papers}){
   <div class="card"><h2>📋 Class rankings (overall average)</h2>
     ${ranked.length?`<div class="tbl-wrap"><table><tr><th>Rank</th><th>Name</th><th>NIC</th><th>Center</th><th>Papers</th><th>Average</th><th>Grade</th></tr>
     ${ranked.map(x=>`<tr><td><b>#${x.rank}</b></td><td>${nameLink(x.nic,x.fullName,x.center)}</td><td class="mono">${esc(x.nic)}</td><td>${esc(x.center||'—')}</td><td>${x.n}</td><td><span class="pill ${gCls(x.v)}">${x.v}%</span></td><td><span class="pill ${gCls(x.v)}">${grade(x.v)}</span></td></tr>`).join('')}</table></div>`:'<p class="sub">No marks entered yet.</p>'}</div>`;
-  if($("#cPap")) charts.c1=new Chart($("#cPap"),{type:'bar',data:{labels:pS.map(x=>x.p.title),datasets:[{label:'Average %',data:pS.map(x=>x.avg??0),backgroundColor:'#22a06b',borderRadius:8}]},options:{plugins:{legend:{display:false}},scales:{y:{min:0,max:100}}}});
-  if($("#xls")) $("#xls").onclick=()=>{
-    const wb=XLSX.utils.book_new();
+  if($("#cPap")) lazyChart('c1', $("#cPap"), () => ({type:'bar',data:{labels:pS.map(x=>x.p.title),datasets:[{label:'Average %',data:pS.map(x=>x.avg??0),backgroundColor:'#22a06b',borderRadius:8}]},options:{plugins:{legend:{display:false}},scales:{y:{min:0,max:100}}}})); if($("#xls")) $("#xls").onclick=async()=>{
+  await LIBS.xlsx();
+  const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Rank','Name','NIC','Center','Papers','Average %','Grade'],...ranked.map(x=>[x.rank,x.fullName,x.nic,x.center,x.n,x.v,grade(x.v)])]),'Rankings');
     XLSX.writeFile(wb,'class-analytics.xlsx');
   };
-  if($("#pdf")) $("#pdf").onclick=()=>{
-    const { jsPDF }=window.jspdf; const d=new jsPDF();
+if($("#pdf")) $("#pdf").onclick=async()=>{
+  await LIBS.pdf();
+  const { jsPDF }=window.jspdf; const d=new jsPDF();
     d.setFontSize(15); d.text('S.K. Wellala Biology Paper Class — '+state.batch+' Rankings',14,16);
     d.autoTable({startY:28,head:[['Rank','Name','NIC','Center','Papers','Average','Grade']],body:ranked.map(x=>[String(x.rank),x.fullName,x.nic,x.center||'—',String(x.n),x.v+'%',grade(x.v)])});
     d.save('class-rankings.pdf');
