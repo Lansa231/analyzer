@@ -2754,6 +2754,7 @@ async function teacherDash(){
   ${rankMarquee(roster,papers)}
   <div class="tabs">
     <button data-tab="students" class="${state.tab==='students'?'active':''}">👨‍🎓 Students</button>
+    ${adm?`<button data-tab="attendance" class="${state.tab==='attendance'?'active':''}">✅ Attendance</button>`:''}
     <button data-tab="marks" class="${state.tab==='marks'?'active':''}">📝 Marks</button>
     <button data-tab="analytics" class="${state.tab==='analytics'?'active':''}">📊 Analytics</button>
     <button data-tab="ranks" class="${state.tab==='ranks'?'active':''}">🏅 Rankings</button>
@@ -2771,9 +2772,9 @@ async function teacherDash(){
   };
   document.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>{ state.batch=b.dataset.batch; state.selPaper=null; state.rankPaper=null; teacherDash(); });
   if($("#ctrSel")) $("#ctrSel").onchange=e=>{ state.center=e.target.value; teacherDash(); };
-  if(!adm && ['teachers','admin','requests','files','approvers','payments'].includes(state.tab)) state.tab='students';
-  const tabs={students:tabStudents,marks:tabMarks,analytics:tabAnalytics,ranks:tabRanks,allmarks:tabAllMarks,requests:tabRequests,files:tabFiles,teachers:tabTeachers,examiners:tabExaminers,approvers:tabApprovers,payments:tabPaymentsAdmin,admin:tabAdmin,videos:tabVideos};
-  const ctx={students:roster,roster,rosterAll,pending,papers,papersAll,teachers,examiners,adm,admins,requests};
+  if(!adm && ['teachers','admin','requests','files','approvers','payments','attendance'].includes(state.tab)) state.tab='students';
+  const tabs={students:tabStudents,attendance:tabAttendance,marks:tabMarks,analytics:tabAnalytics,ranks:tabRanks,allmarks:tabAllMarks,requests:tabRequests,files:tabFiles,teachers:tabTeachers,examiners:tabExaminers,approvers:tabApprovers,payments:tabPaymentsAdmin,admin:tabAdmin,videos:tabVideos};
+  const ctx={students:roster,roster,rosterAll,pending,papers,papersAll,teachers,examiners,adm,admins,requests,attAll};
   const xt=window.CA.tabs.find(t=>'x_'+t.id===state.tab);
   if(xt){ try{ xt.render({...ctx,el:$("#tabBody")}); }catch(e){ $("#tabBody").innerHTML=`<div class="card"><div class="err">${esc(e.message)}</div></div>`; } }
   else (tabs[state.tab]||tabStudents)(ctx);
@@ -2953,6 +2954,216 @@ function tabStudents({roster,rosterAll,papers}){
       busy(false); teacherDash();
     }catch(e){ busy(false); m.innerHTML=`<div class="err">${esc(friendly(e))}</div>`; }
   };
+}
+  /* ============================================================
+   Attendance tab (developer only)
+   • Per-center count of students marked for the selected paper
+   • Same marking UI as the Students tab (scan / type / mark / remove / PDF)
+   ============================================================ */
+function tabAttendance({roster, rosterAll, papers, attAll}){
+  const adm = !!profile.isAdmin;
+  const host = $("#tabBody");
+  if(!host) return;
+
+  if(!adm){
+    host.innerHTML = '<div class="card"><p class="sub">This tab is only available to developers.</p></div>';
+    return;
+  }
+
+  // Paper selector — reuse state.attPaper so switching between this tab and the
+  // Students tab keeps the same paper selected.
+  const sel = papers.find(x => x.id === state.attPaper) || papers[0];
+  if(!sel){
+    host.innerHTML = '<div class="card"><h2>✅ Attendance — All Centers</h2><p class="sub">No papers yet for this batch.</p></div>';
+    return;
+  }
+  state.attPaper = sel.id;
+  sel.att = sel.att || {};
+
+  // Per-center breakdown
+  const centerCounts = {};
+  Object.values(sel.att).forEach(a => {
+    const c = a.center || 'No center';
+    centerCounts[c] = (centerCounts[c] || 0) + 1;
+  });
+  const centerNames = Object.keys(centerCounts).sort((a,b) => centerCounts[b] - centerCounts[a] || a.localeCompare(b));
+  const total = Object.values(centerCounts).reduce((s,n) => s+n, 0);
+
+  // Roster size per center (batch only) — for a "marked vs roster" hint
+  const batchRoster = (rosterAll || []).filter(r => r.batch === state.batch);
+  const rosterCounts = {};
+  batchRoster.forEach(r => {
+    const c = r.center || 'No center';
+    rosterCounts[c] = (rosterCounts[c] || 0) + 1;
+  });
+
+  // Flat list of marked students
+  const list = Object.values(sel.att).sort((a,b) => (b.at || 0) - (a.at || 0));
+
+  host.innerHTML = `
+  <div class="card">
+    <h2>✅ Attendance — All Centers</h2>
+    <p class="sub" style="margin:0 0 8px">Overview of who has been marked present across every center for this paper.</p>
+    <div class="row">
+      <div><label style="margin-top:0">Paper</label>
+        <select id="dvAtP">${papers.map(x => `<option value="${x.id}"${x.id === sel.id ? ' selected' : ''}>${esc(x.title)} (${esc(x.date||'no date')})</option>`).join('')}</select>
+      </div>
+    </div>
+
+    <div class="grid g4" style="margin-top:14px">
+      <div class="stat"><div class="num">${total}</div><div class="lbl">Total marked</div></div>
+      <div class="stat"><div class="num">${centerNames.length}</div><div class="lbl">Centers with attendance</div></div>
+      <div class="stat"><div class="num">${Object.keys(rosterCounts).length}</div><div class="lbl">Centers in batch</div></div>
+      <div class="stat"><div class="num">${batchRoster.length}</div><div class="lbl">Students in batch</div></div>
+    </div>
+
+    <h3 style="margin-top:20px;font-size:1rem">📍 Breakdown by center</h3>
+    ${centerNames.length ? `
+      <div class="tbl-wrap" style="margin-top:8px"><table>
+        <tr><th>#</th><th>Center</th><th>Marked</th><th>In roster</th><th>Marked %</th></tr>
+        ${centerNames.map((c,i) => {
+          const marked = centerCounts[c];
+          const inRoster = rosterCounts[c] || 0;
+          const pctMarked = inRoster > 0 ? Math.round(marked / inRoster * 1000) / 10 : null;
+          return `<tr>
+            <td>${i+1}</td>
+            <td><b>${esc(c)}</b></td>
+            <td><span class="pill brand">${marked}</span></td>
+            <td>${inRoster || '—'}</td>
+            <td>${pctMarked != null ? pctMarked + '%' : '—'}</td>
+          </tr>`;
+        }).join('')}
+        <tr style="font-weight:700;background:var(--bg)">
+          <td></td><td>Total</td>
+          <td>${total}</td>
+          <td>${batchRoster.length}</td>
+          <td>${batchRoster.length ? Math.round(total / batchRoster.length * 1000) / 10 : 0}%</td>
+        </tr>
+      </table></div>
+    ` : '<p class="sub">No attendance has been marked for this paper yet.</p>'}
+  </div>
+
+  <div class="card">
+    <h2>✅ Mark attendance</h2>
+    <p class="sub" style="margin:0 0 8px">Scan or type a barcode / NIC — the student is added to whichever center their account belongs to.</p>
+    <div class="row">
+      <div style="flex:1;min-width:220px"><label style="margin-top:0">Barcode (or NIC)</label>
+        <div style="display:flex;gap:6px;align-items:stretch">
+          <input id="dvAtB" placeholder="Scan or type, then press Enter" autocomplete="off" maxlength="12" style="flex:1;min-width:0">
+          <button type="button" id="dvAtScan" class="btn btn-ghost" style="width:auto;margin:0;padding:0 14px;font-size:1.15rem" title="Scan barcode with camera" aria-label="Scan barcode with camera">📷</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="dvAtAdd" style="width:auto;margin:0">+ Mark present</button>
+    </div>
+    <div style="margin-top:8px"><button type="button" id="dvAtPdf" class="btn btn-ghost btn-sm" style="width:auto">📄 Download attendance PDF</button></div>
+    <div id="dvAtMsg"></div>
+    <p class="sub" style="margin:10px 0 6px"><b>${list.length}</b> student${list.length===1?'':'s'} attended this paper.</p>
+    ${list.length ? `<div class="tbl-wrap"><table>
+      <tr><th>#</th><th>Name</th><th>Barcode</th><th>Center</th><th>Marked by</th><th></th></tr>
+      ${list.map((a,i) => {
+        const devMark = a.byRole === 'developer';
+        const marker  = a.byNickname || a.by || '—';
+        return `<tr class="${devMark ? 'dev-marked' : ''}">
+          <td>${list.length - i}</td>
+          <td><b>${esc(a.name || a.nic)}</b>${devMark ? ' <span class="pill warn" style="font-size:.66rem">DEV</span>' : ''}</td>
+          <td class="mono">${esc(a.barcode || '—')}</td>
+          <td>${esc(a.center || '—')}</td>
+          <td>${esc(marker)}</td>
+          <td style="text-align:right"><button class="btn btn-danger btn-sm" data-dv-at-rm="${esc(a.nic)}">Remove</button></td>
+        </tr>`;
+      }).join('')}
+    </table></div>` : ''}
+  </div>`;
+
+  // Paper switch — re-render this tab in place
+  $("#dvAtP").onchange = e => {
+    state.attPaper = e.target.value;
+    tabAttendance({ roster, rosterAll, papers, attAll });
+  };
+
+  // Add a student
+  const add = async () => {
+    const v = $("#dvAtB").value.trim().toUpperCase();
+    const m = $("#dvAtMsg"); m.innerHTML = '';
+    if(!v) return;
+
+    const s = (rosterAll || []).find(r =>
+      String(r.barcode || '').toUpperCase() === v ||
+      String(r.realNic || '').toUpperCase() === v
+    );
+    if(!s){ m.innerHTML = `<div class="err">No student found with "${esc(v)}".</div>`; return $("#dvAtB").select(); }
+    if(s.batch !== state.batch){ m.innerHTML = `<div class="err">${esc(s.fullName)} is in ${esc(s.batch)}, not ${esc(state.batch)}.</div>`; return; }
+    if(sel.att[s.id]){ m.innerHTML = `<div class="err">${esc(s.fullName)} is already marked present.</div>`; $("#dvAtB").value = ''; return; }
+
+    const rec = {
+      pid: sel.id,
+      nic: s.id,
+      barcode: s.barcode || '',
+      name: s.fullName,
+      center: s.center || '',
+      batch: sel.batch || state.batch,
+      by: profile.fullName || '',
+      byNickname: profile.nickname || '',
+      byRole: profile.isAdmin ? 'developer' : 'teacher',
+      at: Date.now()
+    };
+    busy(true);
+    try{
+      await setDoc(doc(db,'attendance', sel.id + '_' + s.id), rec, { merge: true });
+      sel.att[s.id] = rec;
+      busy(false);
+      tabAttendance({ roster, rosterAll, papers, attAll });
+      // Focus the input again for the next scan
+      setTimeout(() => { const el = $("#dvAtB"); if(el) el.focus(); }, 60);
+    }catch(e){
+      busy(false);
+      m.innerHTML = `<div class="err">${esc(friendly(e))}</div>`;
+    }
+  };
+
+  $("#dvAtAdd").onclick = add;
+  $("#dvAtScan").onclick = async () => {
+    const code = await openBarcodeScanner();
+    if(!code) return;
+    $("#dvAtB").value = code;
+    await add();
+  };
+  $("#dvAtB").addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); add(); }
+  });
+
+  // PDF download
+  if($("#dvAtPdf")) $("#dvAtPdf").onclick = () => {
+    if(!sel) return alert('No paper selected.');
+    downloadAttendancePDF({
+      paper: sel,
+      roster: rosterAll,
+      att: attAll,
+      examiner: {
+        uid: user.uid,
+        fullName: profile.fullName,
+        center: 'All Centers'
+      },
+      onlyMine: false,
+      showDays: true,
+      printStyle: 'sheet'
+    });
+  };
+
+  // Remove a student
+  document.querySelectorAll('[data-dv-at-rm]').forEach(b => b.onclick = async () => {
+    if(!confirm('Remove this student from the attendance list?')) return;
+    busy(true);
+    try{
+      await deleteDoc(doc(db,'attendance', sel.id + '_' + b.dataset.dvAtRm));
+      delete sel.att[b.dataset.dvAtRm];
+      busy(false);
+      tabAttendance({ roster, rosterAll, papers, attAll });
+    }catch(e){
+      busy(false);
+      alert(friendly(e));
+    }
+  });
 }
 function paperRanks(students,paper){
   const rows=students.filter(s=>!isOnline(s.center)).map(s=>({s,m:paper.scores?.[s.id]})).filter(x=>x.m!=null).sort((a,b)=>b.m-a.m);
