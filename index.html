@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S.K. Wellala Biology Paper Class</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Sinhala:wght@400;500;700&display=swap" rel="stylesheet">
 
 <style>
@@ -423,10 +424,37 @@ main#app.landing-wide{overflow-x:clip}
 <meta name="apple-mobile-web-app-title" content="S.K. Wellala" />
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="motion.css">
+  <style id="mobilePerf">
+  body{ min-height:100vh; min-height:100dvh; }              /* stops jump when the mobile address bar hides */
+  a,button,.btn,.tabs button,.switch{
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;                               /* removes the 300ms tap delay / double-tap zoom */
+  }
+  .tbl-wrap{ -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; }
+  .marq-track{ will-change:transform; }
+  #loading{ backdrop-filter:none; -webkit-backdrop-filter:none; }
+
+  @media (max-width:760px){
+    /* iOS zooms the page when you focus an input under 16px. This is the "janky" jump when typing. */
+    input,select,textarea{ font-size:16px; }
+
+    /* blur effects are very expensive on phones */
+    .lp-hero-badge,
+    .lp .teacher-photo .badge-float,
+    .lp .portal-mock{ backdrop-filter:none; -webkit-backdrop-filter:none; }
+
+    .bgfx{ display:none; }                                   /* floating emojis off on phones */
+  }
+
+  /* touch screens keep :hover stuck after a tap, which makes cards jump */
+  @media (hover:none){
+    .lp .class-card:hover,.lp .feat:hover,.lp .c-item:hover,.lp .tg-card:hover{ transform:none; }
+  }
+</style>
 </head>
 <body>
 
-<header style="position:sticky;top:0;z-index:100;background:var(--card);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;justify-content:space-between;align-items:center;transition:background .3s">
+<header style="position:sticky;top:0;z-index:100;background:var(--card);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;justify-content:space-between;align-items:center;transition:background .3s">
   <a class="logo" href="#/" style="text-decoration:none;font-weight:800;font-size:1.05rem;color:var(--ink);display:flex;align-items:center;gap:8px">
     <span style="background:linear-gradient(120deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent">S.K. Wellala Paper Class</span>
   </a>
@@ -749,8 +777,10 @@ function bootFirebase(cfg){
   });
 }
 setTheme(localStorage.getItem('ca_theme')||'light');
-(function(){ const f=document.createElement('div'); f.className='bgfx'; const E=['🧬','🌿','🔬','🧫','🍃','🦠','🧠','🫀','🌱'];
-  for(let i=0;i<16;i++){ const e=document.createElement('span'); e.textContent=E[i%E.length];
+(function(){
+  if (matchMedia('(max-width:760px)').matches || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const f=document.createElement('div'); f.className='bgfx'; const E=['🧬','🌿','🔬','🧫','🍃','🦠','🧠','🫀','🌱'];
+  for(let i=0;i<8;i++){ const e=document.createElement('span'); e.textContent=E[i%E.length];
     e.style.cssText=`left:${Math.random()*96}%;font-size:${18+Math.random()*24}px;animation-duration:${22+Math.random()*26}s;animation-delay:-${Math.random()*40}s`; f.appendChild(e); }
   document.body.prepend(f); })();
 const HARDCODED_CFG = {
@@ -2808,7 +2838,7 @@ async function teacherDash(){
   </div>
   <div id="tabBody"></div>`;
 
-  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; teacherDash(); });
+  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{   state.tab=b.dataset.tab;   if(!window._tdCtx){ teacherDash(); return; }   document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active', x===b));   killCharts();   const xt2=window.CA.tabs.find(t=>'x_'+t.id===state.tab);   if(xt2){     try{ xt2.render({...window._tdCtx,el:$("#tabBody")}); }     catch(e){ $("#tabBody").innerHTML=`<div class="card"><div class="err">${esc(e.message)}</div></div>`; }   } else {     (tabs[state.tab]||tabStudents)(window._tdCtx);   }   try{ document.dispatchEvent(new CustomEvent('ca:teacher-view',{detail:{tab:state.tab,batch:state.batch,adm}})); }catch(e){} });
   $("#editProf").onclick=()=>{ state.editProfile=true; teacherDash(); };
   if($("#regOpen")) $("#regOpen").onchange=async e=>{
     await setDoc(doc(db,'settings','registration'),{teacherSignupOpen:e.target.checked},{merge:true});
@@ -2818,6 +2848,7 @@ async function teacherDash(){
   if(!adm && ['teachers','admin','requests','files','approvers','payments','attendance'].includes(state.tab)) state.tab='students';
   const tabs={students:tabStudents,attendance:tabAttendance,marks:tabMarks,analytics:tabAnalytics,ranks:tabRanks,allmarks:tabAllMarks,requests:tabRequests,files:tabFiles,teachers:tabTeachers,examiners:tabExaminers,approvers:tabApprovers,payments:tabPaymentsAdmin,admin:tabAdmin,videos:tabVideos};
   const ctx={students:roster,roster,rosterAll,pending,papers,papersAll,teachers,examiners,adm,admins,requests,attAll};
+  window._tdCtx = ctx;   
   const xt=window.CA.tabs.find(t=>'x_'+t.id===state.tab);
   if(xt){ try{ xt.render({...ctx,el:$("#tabBody")}); }catch(e){ $("#tabBody").innerHTML=`<div class="card"><div class="err">${esc(e.message)}</div></div>`; } }
   else (tabs[state.tab]||tabStudents)(ctx);
