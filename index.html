@@ -3044,9 +3044,16 @@ function tabAttendance({roster, rosterAll, papers, attAll}){
   </div>
 
   <div class="card">
-    <h2>✅ Mark attendance</h2>
+    <h2>✅ Mark attendance <span class="sub" style="display:inline">— ${esc(sel.title)}</span></h2>
     <p class="sub" style="margin:0 0 8px">Scan or type a barcode / NIC — the student is added to whichever center their account belongs to.</p>
     <div class="row">
+      <div><label style="margin-top:0">Paper</label>
+        <select id="dvAtP2">
+          ${papers.map(x => `<option value="${x.id}"${x.id === sel.id ? ' selected' : ''}>${esc(x.title)} (${esc(x.date||'no date')})</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
       <div style="flex:1;min-width:220px"><label style="margin-top:0">Barcode (or NIC)</label>
         <div style="display:flex;gap:6px;align-items:stretch">
           <input id="dvAtB" placeholder="Scan or type, then press Enter" autocomplete="off" maxlength="12" style="flex:1;min-width:0">
@@ -3080,7 +3087,10 @@ function tabAttendance({roster, rosterAll, papers, attAll}){
     state.attPaper = e.target.value;
     tabAttendance({ roster, rosterAll, papers, attAll });
   };
-
+  $("#dvAtP2").onchange = e => {
+    state.attPaper = e.target.value;
+    tabAttendance({ roster, rosterAll, papers, attAll });
+  };
   // Add a student
   const add = async () => {
     const v = $("#dvAtB").value.trim().toUpperCase();
