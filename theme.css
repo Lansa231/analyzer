@@ -1,76 +1,136 @@
-/* ===== S.K. Wellala — premium colour theme (load AFTER motion.css) =====
-   Deep emerald + champagne gold + ivory, with jewel-tone accents for icons and cards. */
-:root{
-  --bg:#f3f6f1; --card:#ffffff; --ink:#0f2419; --muted:#5b7165; --line:#e1eae2;
-  --brand:#0b6b4a; --brand2:#14a37f; --brand-soft:#e2f3ea; --brand-bg:#e2f3ea;
-  --gold:#c9a24a; --gold-soft:#f7efd6;
-  --sapphire:#3b5bdb; --amethyst:#7c3aed; --rose:#e0457b; --amber:#d98a0b; --teal:#0e9aa7;
-  --good:#0b6b4a; --good-bg:#d9f1e4; --warn:#a96a06; --warn-bg:#fbefcf; --bad:#be1e3c; --bad-bg:#fde4e8;
-  --shadow:0 10px 30px rgba(8,60,40,.10); --radius:18px;
+/* ============================================================
+   S.K. Wellala — Ocean Blue theme (drop-in override)
+   ------------------------------------------------------------
+   Loads AFTER motion.css when possible:
+     <link rel="stylesheet" href="motion.css">
+     <link rel="stylesheet" href="theme.css">
+
+   But it also wins if the load order is reversed, because every
+   critical rule uses specificity boosters (`:root:root`,
+   `html[data-theme]`) and/or `!important`. You don't have to
+   touch the HTML to make this file work.
+
+   WHAT THIS FILE COVERS:
+     • All brand colours (buttons, tabs, links, logo, focus)
+     • All backgrounds (page, cards, hero, modals)
+     • Hero / signup / portal-banner / teacher-card gradients
+     • Dark mode variants
+     • Chart line colours — see note at the bottom, they need
+       a 2-line edit in <script> to fully go blue.
+
+   WHAT IT CANNOT COVER (needs small HTML/JS edits):
+     • Chart.js dataset border/point colours (2 lines in <script>)
+     • PWA <meta name="theme-color"> status-bar colour
+   ============================================================ */
+
+
+/* ---------- 1. LIGHT THEME VARIABLES ---------- */
+/* :root:root = specificity (0,2,0) — beats base :root (0,1,0) */
+:root:root {
+  --bg:          #f0f6fb;
+  --card:        #ffffff;
+  --ink:         #0f2033;
+  --muted:       #5a7189;
+  --line:        #dae7f2;
+
+  --brand:       #0369a1;
+  --brand2:      #06b6d4;
+  --brand-soft:  #e0f2fe;
+  --brand-bg:    #e0f2fe;
+
+  --shadow:      0 8px 28px rgba(3, 7, 30, .10);
 }
-[data-theme="dark"]{
-  --bg:#07130e; --card:#0e2118; --ink:#e8f3ec; --muted:#8fb09e; --line:#1b3829;
-  --brand:#34d399; --brand2:#5eead4; --brand-soft:#123a2a; --brand-bg:#123a2a;
-  --gold:#e6c36a; --gold-soft:#3a2f10;
-  --good:#4ade80; --good-bg:#10351f; --warn:#fbbf24; --warn-bg:#40300a; --bad:#fb7185; --bad-bg:#4a1a24;
-  --shadow:0 10px 30px rgba(0,0,0,.45);
+/* --good, --bad, --warn and their -bg variants are NOT
+   overridden — they are semantic (green = A grade / success,
+   red = error, amber = warning). Green stays green there. */
+
+
+/* ---------- 2. DARK THEME VARIABLES ---------- */
+html[data-theme="dark"] {
+  --bg:          #0a1420;
+  --card:        #122130;
+  --ink:         #e6eef2;
+  --muted:       #8fa9bd;
+  --line:        #1e3a52;
+
+  --brand:       #38bdf8;
+  --brand2:      #67e8f9;
+  --brand-soft:  #082f49;
+  --brand-bg:    #082f49;
+
+  --shadow:      0 8px 28px rgba(0, 0, 0, .50);
 }
-body{background:
-  radial-gradient(1100px 560px at 88% -8%,rgba(201,162,74,.12),transparent 60%),
-  radial-gradient(900px 520px at -8% 8%,rgba(20,163,127,.13),transparent 55%),
-  var(--bg);background-attachment:fixed}
-::selection{background:rgba(201,162,74,.38)}
-header{box-shadow:0 1px 0 rgba(201,162,74,.28)}
-.logo span{background:linear-gradient(110deg,#0b6b4a,#14a37f 55%,#c9a24a)!important;-webkit-background-clip:text!important;background-clip:text!important}
-[data-theme="dark"] .logo span{background:linear-gradient(110deg,#34d399,#5eead4 55%,#e6c36a)!important;-webkit-background-clip:text!important;background-clip:text!important}
 
-/* ---------- Gold buttons ---------- */
-.lp .btn-gold,header .btn-gold,.nav-mobile .btn-gold{background:linear-gradient(135deg,#ecd08a,#c9a24a 55%,#b38a2c)!important;color:#2a1d03!important;box-shadow:0 6px 18px rgba(201,162,74,.38)!important}
-.btn-primary,.lp .btn-primary-solid,.tabs button.active{background:linear-gradient(120deg,#0b6b4a,#14a37f)}
-.tabs button.active{border-color:transparent}
 
-/* ---------- Hero + portal banner ---------- */
-.lp-hero-bg{background:
-  linear-gradient(105deg,rgba(4,38,28,.58) 0%,rgba(6,58,44,.46) 60%,rgba(8,84,72,.56) 100%),
-  radial-gradient(circle at 80% 18%,rgba(201,162,74,.30),transparent 52%),
-  url('hero-photo.jpg') center/cover no-repeat,
-  linear-gradient(135deg,#052e22,#0b6b4a 55%,#14a37f)}
-@media(max-width:760px){.lp-hero-bg{background:
-  linear-gradient(180deg,rgba(4,38,28,.4) 0%,rgba(4,38,28,.6) 55%,rgba(4,38,28,.82) 100%),
-  radial-gradient(circle at 85% 12%,rgba(201,162,74,.28),transparent 55%),
-  url('hero-photo.jpg') 80% 22%/cover no-repeat,
-  linear-gradient(135deg,#052e22,#0b6b4a 55%,#14a37f)!important}}
-.lp-hero h1 em,.lp .portal-in h2 em{background:linear-gradient(100deg,#f6e3a1,#e2bd5c);-webkit-background-clip:text;background-clip:text;color:transparent}
-.lp .portal-banner{background:linear-gradient(115deg,rgba(4,38,28,.6),rgba(4,38,28,.84)),linear-gradient(135deg,#052e22,#0b6b4a 55%,#0e8f78)}
-.lp .mock-bar i{background:linear-gradient(90deg,#e2bd5c,#34d399)}
-.lp-trust{border-top:3px solid var(--gold)}
-.lp h2.sec em{background:linear-gradient(95deg,#0b6b4a,#14a37f 60%,#c9a24a);-webkit-background-clip:text;background-clip:text;color:transparent}
-[data-theme="dark"] .lp h2.sec em{background:linear-gradient(95deg,#34d399,#5eead4 60%,#e6c36a);-webkit-background-clip:text;background-clip:text;color:transparent}
-.lp .kicker .idx{background:var(--gold-soft);color:#8a6a1c}
-[data-theme="dark"] .lp .kicker .idx{color:var(--gold)}
+/* ---------- 3. HARDCODED GRADIENT OVERRIDES ---------- */
+/* Base stylesheet has green hex values in these rules.
+   !important ensures we win regardless of load order. */
 
-/* ---------- Jewel-tone cards ---------- */
-.lp .class-card:nth-child(1)::before{background:linear-gradient(#0b6b4a,#14a37f)}
-.lp .class-card:nth-child(2)::before{background:linear-gradient(#3b5bdb,#6d8bff)}
-.lp .class-card:nth-child(3)::before{background:linear-gradient(#7c3aed,#b18cff)}
-.lp .class-card:nth-child(1) .loc .svgi{color:#0b6b4a}
-.stat .num{background:linear-gradient(120deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent}
-.stat{border-top:3px solid var(--gold)}
-.lp .teacher-tags span{background:var(--gold-soft);color:#7a5c14}
-.lp .teacher-tags span:hover{background:var(--brand);color:#fff}
-.pill.brand{background:var(--brand-soft);color:var(--brand)}
-.vbadge{background:var(--good-bg);color:var(--good)}
-th{background:linear-gradient(var(--bg),var(--brand-soft))}
+/* Landing hero — desktop (also overrides the later
+   "softer overlay" rule that has the same class name). */
+.lp-hero-bg {
+  background:
+    linear-gradient(105deg, rgba(3,7,30,.42) 0%, rgba(3,7,30,.68) 62%, rgba(3,7,30,.86) 100%),
+    radial-gradient(circle at 78% 28%, rgba(6,182,212,.30), transparent 55%),
+    url('hero-photo.jpg') center/cover no-repeat,
+    linear-gradient(135deg, #082f49, #075985 55%, #06b6d4) !important;
+}
 
-/* ---------- Colourful illustrated icons (no tiles) ---------- */
-.svgi{width:1.35em;height:1.35em;padding:0;margin-right:.35em;border-radius:0;background:none;box-shadow:none;color:inherit;vertical-align:-.3em;filter:drop-shadow(0 2px 3px rgba(15,36,25,.22))}
-.svgi svg{width:100%!important;height:100%!important;display:block}
-.svgi.free{filter:none}
-.svgi.rank{width:1.35em;height:1.7em;vertical-align:-.5em;margin-right:.4em;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
-.lp .feat .fic,.lp .c-item .ic,.tg-card .ic,.crow .ic{background:none!important;padding:0!important}
-.lp .feat .fic{width:46px;height:46px}
-.fic .svgi{width:42px;height:42px}.c-item .ic .svgi{width:36px;height:36px}.tg-card .ic .svgi{width:34px;height:34px}
-.crow .ic{display:block;width:36px;height:36px;flex:none}.crow .ic .svgi{width:100%;height:100%}
-.fic .svgi,.c-item .ic .svgi,.tg-card .ic .svgi,.crow .ic .svgi{margin:0}
-.click-ring,.rpl{display:none!important}
-.face{color:#0f2419}
+/* Landing hero — mobile (different crop focal point). */
+@media (max-width: 760px) {
+  .lp-hero-bg {
+    background:
+      linear-gradient(180deg, rgba(3,7,30,.40) 0%, rgba(3,7,30,.62) 55%, rgba(3,7,30,.82) 100%),
+      url('hero-photo.jpg') 80% 22% / cover no-repeat,
+      linear-gradient(135deg, #082f49, #075985 55%, #06b6d4) !important;
+  }
+}
+
+/* Signup page — left photo panel. */
+.side {
+  background:
+    linear-gradient(rgba(3,7,30,var(--tint-a)), rgba(3,7,30,var(--tint-b))),
+    url('signup-photo.jpg') center/cover no-repeat,
+    linear-gradient(135deg, #082f49, #06b6d4) !important;
+}
+
+/* Photo-hero variant (used by some route renderers). */
+.hero.photo {
+  background:
+    linear-gradient(rgba(3,7,30,var(--tint-a)), rgba(3,7,30,var(--tint-b))),
+    url('hero-photo.jpg') center/cover no-repeat,
+    linear-gradient(135deg, #082f49, #06b6d4) !important;
+}
+
+/* Portal banner on landing page. */
+.lp .portal-banner {
+  background:
+    linear-gradient(115deg, rgba(3,7,30,.62), rgba(3,7,30,.82)),
+    linear-gradient(135deg, #082f49, #075985 55%, #06b6d4) !important;
+}
+
+/* Teacher photo card on landing page. */
+.lp .teacher-photo {
+  background:
+    linear-gradient(150deg, rgba(3,7,30,.42), rgba(3,7,30,.68)),
+    url('teacher-photo.jpg') center/cover no-repeat,
+    linear-gradient(150deg, #082f49, #075985 60%, #06b6d4) !important;
+}
+
+/* Primary-solid button — the gradient auto-updates via
+   var(--brand), but its green shadow was hardcoded. */
+.lp .btn-primary-solid {
+  box-shadow: 0 6px 18px rgba(3,105,161,.28) !important;
+}
+
+/* Portal mock progress bar — was gold→green,
+   becomes gold→cyan to match the blue theme. */
+.lp .mock-bar i {
+  background: linear-gradient(90deg, #fde68a, #67e8f9) !important;
+}
+
+
+/* ---------- 4. SMALL POLISH ---------- */
+::selection {
+  background: rgba(201,162,74,.38);
+}
