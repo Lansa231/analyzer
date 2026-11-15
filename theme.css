@@ -46,7 +46,7 @@
 
 
 /* ---------- 2. DARK THEME VARIABLES ---------- */
-html[data-theme="dark"] {
+:root[data-theme="dark"] {
   --bg:          #0a1420;
   --card:        #122130;
   --ink:         #e6eef2;
@@ -60,7 +60,6 @@ html[data-theme="dark"] {
 
   --shadow:      0 8px 28px rgba(0, 0, 0, .50);
 }
-
 
 /* ---------- 3. HARDCODED GRADIENT OVERRIDES ---------- */
 /* Base stylesheet has green hex values in these rules.
