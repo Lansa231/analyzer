@@ -2826,10 +2826,7 @@ async function teacherDash(){
   <div style="display:flex;gap:8px;align-items:center;margin:8px 0"><label style="margin:0">Center:</label>
     ${adm?`<select id="ctrSel" style="width:auto"><option>All</option>${state.lists.centers.map(c=>`<option${state.center===c?' selected':''}>${esc(c)}</option>`).join('')}</select>`:`<b>${esc(profile.center||'— (no center set)')}</b> <span class="sub" style="margin:0">· you only see students in your center</span>`}</div>
   ${rankMarquee(roster,papers)}
-  <div class="tabs">
-    <button data-tab="students" class="${state.tab==='students'?'active':''}">👨‍<i data-lucide="graduation-cap"></i> Students</button>
-    ${adm?`<button data-tab="attendance" class="${state.tab==='attendance'?'active':''}">✅ Attendance</button>`:''}
-    <button data-tab="marks" class  <div class="dash-layout">
+  <div class="dash-layout">
     <aside class="sidebar">
       <div class="side-group">
         <div class="side-label">Teaching</div>
@@ -2854,16 +2851,8 @@ async function teacherDash(){
         <button class="side-item ${state.tab==='files'?'active':''}" data-tab="files"><i data-lucide="book-open"></i> Marking PDFs</button>
       </div>`:''}
     </aside>
-    <div id="tabBody"></div>
-  </div>`;"><i data-lucide="pencil-line"></i>Marks</button>
-    <button data-tab="analytics" class="${state.tab==='analytics'?'active':''}"><i data-lucide="bar-chart-3"></i> Analytics</button>
-    <button data-tab="ranks" class="${state.tab==='ranks'?'active':''}"><i data-lucide="award"></i> Rankings</button>
-       <button data-tab="allmarks" class="${state.tab==='allmarks'?'active':''}"><i data-lucide="globe"></i> All Marks</button>
-    <button data-tab="videos" class="${state.tab==='videos'?'active':''}"><i data-lucide="video"></i> Videos</button>
-    ${window.CA.tabs.map(t=>`<button data-tab="x_${t.id}" class="${state.tab==='x_'+t.id?'active':''}">${t.label}</button>`).join('')}
-    ${adm?`<button data-tab="teachers" class="${state.tab==='teachers'?'active':''}">🧑‍<i data-lucide="users"></i> Teachers</button><button data-tab="examiners" class="${state.tab==='examiners'?'active':''}"><i data-lucide="clipboard-list"></i> Examiners</button><button data-tab="approvers" class="${state.tab==='approvers'?'active':''}"><i data-lucide="credit-card"></i> Payment Approvers</button><button data-tab="payments" class="${state.tab==='payments'?'active':''}"><i data-lucide="banknote"></i> Payments</button><button data-tab="admin" class="${state.tab==='admin'?'active':''}"><i data-lucide="settings"></i> Centers &amp; Payments</button><button data-tab="requests" class="${state.tab==='requests'?'active':''}"><i data-lucide="inbox"></i> Requests${pendReq?` (${pendReq})`:''}</button><button data-tab="files" class="${state.tab==='files'?'active':''}"><i data-lucide="book-open"></i> Marking PDFs</button>`:''}
-  </div>
-  <div id="tabBody"></div>`;
+    <div class="dash-main" id="tabBody"></div>
+  </div>`;
 
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{   state.tab=b.dataset.tab;   if(!window._tdCtx){ teacherDash(); return; }   document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active', x===b));   killCharts();   const xt2=window.CA.tabs.find(t=>'x_'+t.id===state.tab);   if(xt2){     try{ xt2.render({...window._tdCtx,el:$("#tabBody")}); }     catch(e){ $("#tabBody").innerHTML=`<div class="card"><div class="err">${esc(e.message)}</div></div>`; }   } else {     (tabs[state.tab]||tabStudents)(window._tdCtx);   }   try{ document.dispatchEvent(new CustomEvent('ca:teacher-view',{detail:{tab:state.tab,batch:state.batch,adm}})); }catch(e){} });
   $("#editProf").onclick=()=>{ state.editProfile=true; teacherDash(); };
