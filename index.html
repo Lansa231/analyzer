@@ -413,7 +413,7 @@ main#app.landing-wide{overflow-x:clip}
   .lp-hero-cta .btn{ padding:10px 16px !important; font-size:.84rem !important; }
 }
 </style>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'><i data-lucide="dna"></i></text></svg>">
 <!-- PWA / Home-screen app -->
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
@@ -465,7 +465,7 @@ main#app.landing-wide{overflow-x:clip}
   <div class="hdr-actions" id="hdrActions"></div>
 </header>
 <main id="app"></main>
-<footer class="site-foot" id="siteFoot"><a class="foot-contact" href="#/contact">📞 Contact us</a><br>Site developer: <b>Tharusha Lansakara</b> · S.K. Wellala Biology Paper Class</footer>
+<footer class="site-foot" id="siteFoot"><a class="foot-contact" href="#/contact"><i data-lucide="phone"></i> Contact us</a><br>Site developer: <b>Tharusha Lansakara</b> · S.K. Wellala Biology Paper Class</footer>
 <div id="loading"><div class="spinner"></div></div>
 
 <script src="features.js"></script>
@@ -765,7 +765,7 @@ function bootFirebase(cfg){
     }
     try{ route(); } finally { busy(false); }
     if(lookupErr){
-      app.innerHTML = `<div class="card auth-card"><h2>⚠️ Account not found</h2><div class="err">${esc(lookupErr.message)}</div><p class="sub" style="margin-top:12px"><a href="#/contact">📞 Contact us</a> · <a href="#/login">Try logging in</a> · <a href="#/signup">Sign up</a></p></div>`;
+      app.innerHTML = `<div class="card auth-card"><h2>⚠️ Account not found</h2><div class="err">${esc(lookupErr.message)}</div><p class="sub" style="margin-top:12px"><a href="#/contact"><i data-lucide="phone"></i> Contact us</a> · <a href="#/login">Try logging in</a> · <a href="#/signup">Sign up</a></p></div>`;
     }
   };
   try{ route(); }catch(e){ console.error(e); }
@@ -780,7 +780,7 @@ function bootFirebase(cfg){
 setTheme(localStorage.getItem('ca_theme')||'light');
 (function(){
   if (matchMedia('(max-width:760px)').matches || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const f=document.createElement('div'); f.className='bgfx'; const E=['🧬','🌿','🔬','🧫','🍃','🦠','🧠','🫀','🌱'];
+  const f=document.createElement('div'); f.className='bgfx'; const E=['<i data-lucide="dna"></i>','<i data-lucide="leaf"></i>','<i data-lucide="flask-conical"></i>','🧫','🍃','🦠','🧠','🫀','🌱'];
   for(let i=0;i<8;i++){ const e=document.createElement('span'); e.textContent=E[i%E.length];
     e.style.cssText=`left:${Math.random()*96}%;font-size:${18+Math.random()*24}px;animation-duration:${22+Math.random()*26}s;animation-delay:-${Math.random()*40}s`; f.appendChild(e); }
   document.body.prepend(f); })();
@@ -810,18 +810,18 @@ const CONTACT={
 };
 function contact(){
   const rows=[
-    ['📞','Phone',CONTACT.phone,v=>'tel:'+v.replace(/[^+\d]/g,'')],
-    ['💬','WhatsApp',CONTACT.whatsapp,v=>'https://wa.me/'+v.replace(/\D/g,'').replace(/^0/,'94')],
-    ['✉️','Email',CONTACT.email,v=>'mailto:'+v],
-    ['✈️','Official Telegram channel',CONTACT.telegram,v=>v,v=>v.replace(/^https?:\/\//,'')],
-    ['📍','Address',CONTACT.address,null],
+    ['<i data-lucide="phone"></i>','Phone',CONTACT.phone,v=>'tel:'+v.replace(/[^+\d]/g,'')],
+    ['<i data-lucide="message-circle"></i>','WhatsApp',CONTACT.whatsapp,v=>'https://wa.me/'+v.replace(/\D/g,'').replace(/^0/,'94')],
+    ['<i data-lucide="mail"></i>','Email',CONTACT.email,v=>'mailto:'+v],
+    ['<i data-lucide="send"></i>','Official Telegram channel',CONTACT.telegram,v=>v,v=>v.replace(/^https?:\/\//,'')],
+    ['<i data-lucide="map-pin"></i>','Address',CONTACT.address,null],
     ['🕒','Class hours',CONTACT.hours,null],
-    ['📘','Facebook',CONTACT.facebook,v=>v],
-    ['▶️','YouTube',CONTACT.youtube,v=>v]
+    ['<i data-lucide="book"></i>','Facebook',CONTACT.facebook,v=>v],
+    ['<i data-lucide="play"></i>','YouTube',CONTACT.youtube,v=>v]
   ].filter(r=>r[2]);
   app.innerHTML=`<div class="card" style="max-width:560px;margin:28px auto">
     <p><a href="#" id="cBack" style="font-size:.85rem">← Back</a></p>
-    <h2 style="margin-top:6px">📞 Contact us</h2>
+    <h2 style="margin-top:6px"><i data-lucide="phone"></i> Contact us</h2>
     <p class="sub">${esc(CONTACT.intro)}</p>
     ${rows.length?rows.map(([ic,l,v,f,dsp])=>`<div class="crow"><span class="ic">${ic}</span><div><div class="sub" style="margin:0">${l}</div>${f?`<a href="${esc(f(v))}" target="_blank" rel="noopener">${esc(dsp?dsp(v):v)}</a>`:`<b>${esc(v)}</b>`}</div></div>`).join(''):'<p class="sub" style="margin-top:14px">Contact details will be added soon.</p>'}
   </div>`;
@@ -842,7 +842,7 @@ function landing(){
     <section class="lp-hero">
       <div class="lp-hero-bg"></div>
       <div class="lp-hero-in">
-        <div class="lp-hero-badge">🌿 A/L Biology · Theory &amp; Revision</div>
+        <div class="lp-hero-badge"><i data-lucide="leaf"></i> A/L Biology · Theory &amp; Revision</div>
         <h1>Master Biology.<br><em>Track every paper</em>, watch yourself improve.</h1>
         <p class="lead">The same Biology class that built doctors — now with a marks portal. Your teacher publishes results paper-by-paper, so you can see exactly how you're growing, from your phone or computer.</p>
    <div class="lp-hero-cta">
@@ -859,10 +859,10 @@ function landing(){
     </section>
 
     <div class="lp-trust">
-      <div><i>📈</i><span>Progress charts <b>per paper</b></span></div>
-      <div><i>📄</i><span>Paper-by-paper <b>marks history</b></span></div>
-      <div><i>🔒</i><span>Private — <b>only you</b> see your marks</span></div>
-      <div><i>📱</i><span>Works on <b>any device</b></span></div>
+      <div><i><i data-lucide="trending-up"></i></i><span>Progress charts <b>per paper</b></span></div>
+      <div><i><i data-lucide="file-text"></i></i><span>Paper-by-paper <b>marks history</b></span></div>
+      <div><i><i data-lucide="lock"></i></i><span>Private — <b>only you</b> see your marks</span></div>
+      <div><i><i data-lucide="smartphone"></i></i><span>Works on <b>any device</b></span></div>
     </div>
 
     <section id="classes">
@@ -872,31 +872,31 @@ function landing(){
       <div class="grid-class">
         <div class="class-card">
           <h3>Sipwin</h3>
-          <div class="loc">📍 Kurunegala</div>
+          <div class="loc"><i data-lucide="map-pin"></i> Kurunegala</div>
           <div class="class-row"><span class="t">2028 Theory</span><span class="d">Sunday · 8.00am</span></div>
           <div class="class-row"><span class="t">2027 Revision</span><span class="d">Thursday · 8.00am</span></div>
           <div class="class-row"><span class="t">2027 Theory</span><span class="d">Sunday · 1.00pm</span></div>
         </div>
         <div class="class-card">
           <h3>NoZero</h3>
-          <div class="loc">📍 Kandy</div>
+          <div class="loc"><i data-lucide="map-pin"></i> Kandy</div>
           <div class="class-row"><span class="t">2028 Theory</span><span class="d">Saturday · 8.00am</span></div>
           <div class="class-row"><span class="t">2027 Revision</span><span class="d">Wednesday · 8.00am</span></div>
           <div class="class-row"><span class="t">2027 Theory</span><span class="d">Saturday · 1.00pm</span></div>
         </div>
         <div class="class-card">
           <h3>All-Island</h3>
-          <div class="loc">📍 Online &amp; island-wide</div>
+          <div class="loc"><i data-lucide="map-pin"></i> Online &amp; island-wide</div>
           <div class="class-row"><span class="t">2028 Theory</span><span class="d">Saturday · 8.00am</span></div>
           <div class="class-row"><span class="t">2027 Revision</span><span class="d">Wednesday · 8.00am</span></div>
           <div class="class-row"><span class="t">2027 Theory</span><span class="d">Saturday · 1.00pm</span></div>
         </div>
       </div>
       <div class="tg-strip">
-        <a class="tg-card" href="https://t.me/Bio2027skw" target="_blank" rel="noopener"><div class="ic">✈️</div><div class="info"><b>2027 Theory</b><span>Official Telegram channel</span><span class="join">t.me/bio2027skw →</span></div></a>
-        <a class="tg-card" href="https://t.me/SKW2028T" target="_blank" rel="noopener"><div class="ic">✈️</div><div class="info"><b>2028 Theory</b><span>Official Telegram channel</span><span class="join">t.me/Bio2028skw →</span></div></a>
-        <a class="tg-card" href="https://t.me/SKW2027MR" target="_blank" rel="noopener"><div class="ic">✈️</div><div class="info"><b>2027 Revision</b><span>Official Telegram channel</span><span class="join">t.me/SK2027MR →</span></div></a>
-        <a class="tg-card" href="https://t.me/Wellbiopaper" target="_blank" rel="noopener"><div class="ic">✈️</div><div class="info"><b>Main Paper Class</b><span>Official Telegram channel</span><span class="join">t.me/Wellbiopaper →</span></div></a>
+        <a class="tg-card" href="https://t.me/Bio2027skw" target="_blank" rel="noopener"><div class="ic"><i data-lucide="send"></i></div><div class="info"><b>2027 Theory</b><span>Official Telegram channel</span><span class="join">t.me/bio2027skw →</span></div></a>
+        <a class="tg-card" href="https://t.me/SKW2028T" target="_blank" rel="noopener"><div class="ic"><i data-lucide="send"></i></div><div class="info"><b>2028 Theory</b><span>Official Telegram channel</span><span class="join">t.me/Bio2028skw →</span></div></a>
+        <a class="tg-card" href="https://t.me/SKW2027MR" target="_blank" rel="noopener"><div class="ic"><i data-lucide="send"></i></div><div class="info"><b>2027 Revision</b><span>Official Telegram channel</span><span class="join">t.me/SK2027MR →</span></div></a>
+        <a class="tg-card" href="https://t.me/Wellbiopaper" target="_blank" rel="noopener"><div class="ic"><i data-lucide="send"></i></div><div class="info"><b>Main Paper Class</b><span>Official Telegram channel</span><span class="join">t.me/Wellbiopaper →</span></div></a>
       </div>
     </section>
 
@@ -918,7 +918,7 @@ function landing(){
       <div class="teacher-grid">
         <div class="teacher-photo">
           <div class="badge-float">
-            <b>🏆 Kandy District Top Achiever</b>
+            <b><i data-lucide="trophy"></i> Kandy District Top Achiever</b>
             <span>Biology · Chemistry · Physics — all three A's, now building doctors</span>
           </div>
         </div>
@@ -928,10 +928,10 @@ function landing(){
           <p class="si">මහනුවර දිස්ත්‍රික්කයේ ප්‍රමුඛ දිස්ත්‍රික් කුසලතාවයක් ලබා ගනිමින් ජීව විද්‍යාව, රසායන විද්‍යාව හා භෞතික විද්‍යාව යන විෂයන් තුනම විශිෂ්ට ලෙස සමත්ව විශ්වවිද්‍යාල වරම් ලද කිංස්වුඩ් විද්‍යාලයේ කීර්තිමත් ආදි ශිෂ්‍යයෙකි.</p>
           <p>He combines natural public-speaking ability, an unmatched teaching style, and deep subject knowledge gained through higher education. His mission is simple: to create the next generation of doctors — starting with the mother subject, Biology.</p>
           <div class="teacher-tags">
-            <span>🎯 Kandy District Top</span>
-            <span>🧬 Biology Specialist</span>
+            <span><i data-lucide="target"></i> Kandy District Top</span>
+            <span><i data-lucide="dna"></i> Biology Specialist</span>
             <span><i data-lucide="graduation-cap"></i> University Graduate</span>
-            <span>👨‍⚕️ Doctor-Maker</span>
+            <span>👨‍<i data-lucide="stethoscope"></i> Doctor-Maker</span>
           </div>
         </div>
       </div>
@@ -943,11 +943,11 @@ function landing(){
       <p class="sec-sub">Everything you need to face the A/L Biology paper with confidence — from handwritten theory notes to picture guides, practicals, and olympiad prep.</p>
       <div class="grid-feat">
         <div class="feat"><div class="fic">📝</div><h3>Handwritten Theory Notes</h3><p>You're a theory student — writing by hand and drawing diagrams is essential. For selected units we supply printed theory notes to supplement your own work.</p></div>
-        <div class="feat"><div class="fic">🖼️</div><h3>Picture Guides</h3><p>Every unit comes with a printed <em>Picture Guide</em> containing exam-style diagrams — single-colour, exactly how they appear on the paper.</p></div>
-        <div class="feat"><div class="fic">🔄</div><h3>3-Level Revision</h3><p>An unmatched revision system: <strong>01 Foundation</strong> · <strong>02 Advanced</strong> · <strong>03 Revision</strong>. Each level locks the theory deeper.</p></div>
-        <div class="feat"><div class="fic">🔬</div><h3>Theory + Practical</h3><p>All 10 units covered with full theory, plus every A/L Biology practical demonstrated on projection screens.</p></div>
-        <div class="feat"><div class="fic">🥇</div><h3>Olympiad Training</h3><p>We guide students into the Olympiad exam — held before the A/Ls in August — which gives a serious advantage for the main paper.</p></div>
-        <div class="feat"><div class="fic">🎤</div><h3>Engaging Lecture Style</h3><p>Complex concepts broken down with examples and shortcuts. The class keeps you living inside the subject, not memorising it.</p></div>
+        <div class="feat"><div class="fic"><i data-lucide="image"></i></div><h3>Picture Guides</h3><p>Every unit comes with a printed <em>Picture Guide</em> containing exam-style diagrams — single-colour, exactly how they appear on the paper.</p></div>
+        <div class="feat"><div class="fic"><i data-lucide="refresh-cw"></i></div><h3>3-Level Revision</h3><p>An unmatched revision system: <strong>01 Foundation</strong> · <strong>02 Advanced</strong> · <strong>03 Revision</strong>. Each level locks the theory deeper.</p></div>
+        <div class="feat"><div class="fic"><i data-lucide="flask-conical"></i></div><h3>Theory + Practical</h3><p>All 10 units covered with full theory, plus every A/L Biology practical demonstrated on projection screens.</p></div>
+        <div class="feat"><div class="fic"><i data-lucide="medal"></i></div><h3>Olympiad Training</h3><p>We guide students into the Olympiad exam — held before the A/Ls in August — which gives a serious advantage for the main paper.</p></div>
+        <div class="feat"><div class="fic"><i data-lucide="mic"></i></div><h3>Engaging Lecture Style</h3><p>Complex concepts broken down with examples and shortcuts. The class keeps you living inside the subject, not memorising it.</p></div>
       </div>
     </section>
 
@@ -958,10 +958,10 @@ function landing(){
             <h2>Your marks, <em>beautifully tracked</em>.</h2>
             <p>Log in anytime to see a progress chart and a full marks history — published paper-by-paper by your teacher. No spreadsheets. No guesswork.</p>
             <div class="portal-list">
-              <div><i>▸</i><span>📈 Progress charts across every paper</span></div>
-              <div><i>▸</i><span>📄 Full paper-by-paper marks table with grade</span></div>
-              <div><i>▸</i><span>🔒 Private — only you can see your marks</span></div>
-              <div><i>▸</i><span>📚 Marking schemes &amp; PDFs per batch</span></div>
+              <div><i><i data-lucide="chevron-right"></i></i><span><i data-lucide="trending-up"></i> Progress charts across every paper</span></div>
+              <div><i><i data-lucide="chevron-right"></i></i><span><i data-lucide="file-text"></i> Full paper-by-paper marks table with grade</span></div>
+              <div><i><i data-lucide="chevron-right"></i></i><span><i data-lucide="lock"></i> Private — only you can see your marks</span></div>
+              <div><i><i data-lucide="chevron-right"></i></i><span>📚 Marking schemes &amp; PDFs per batch</span></div>
             </div>
             <div class="portal-cta">
              <a class="btn btn-gold" href="#/login"><i data-lucide="graduation-cap"></i> Student Login</a>
@@ -969,13 +969,13 @@ function landing(){
             </div>
           </div>
           <div class="portal-mock" aria-hidden="true">
-            <div class="mh"><span>📈 Progress — Biology</span><b>78.4%</b></div>
+            <div class="mh"><span><i data-lucide="trending-up"></i> Progress — Biology</span><b>78.4%</b></div>
             <div class="mock-bar"><i></i></div>
             <div class="mock-paper"><b>Paper 1 — MCQ</b><span>82 / 100 · <span class="mock-tag">A</span></span></div>
             <div class="mock-paper"><b>Paper 2 — Structured</b><span>74 / 100 · <span class="mock-tag">B</span></span></div>
             <div class="mock-paper"><b>Paper 3 — Essay</b><span>79 / 100 · <span class="mock-tag">A</span></span></div>
             <div class="mock-paper"><b>Model Paper</b><span>86 / 100 · <span class="mock-tag">A</span></span></div>
-            <div style="margin-top:12px;font-size:.74rem;color:rgba(255,255,255,.55)">Your teacher publishes each paper · you watch the line climb 📈</div>
+            <div style="margin-top:12px;font-size:.74rem;color:rgba(255,255,255,.55)">Your teacher publishes each paper · you watch the line climb <i data-lucide="trending-up"></i></div>
           </div>
         </div>
       </div>
@@ -986,19 +986,19 @@ function landing(){
       <h2 class="sec">Get in <em>touch</em></h2>
       <p class="sec-sub">Questions about the class, your marks, or signing up? Reach out any way you prefer.</p>
       <div class="contact-grid">
-        <div class="c-item"><div class="ic">📞</div><div><b>Phone</b><a href="tel:+94702322744">+94 70 232 2744</a></div></div>
-        <div class="c-item"><div class="ic">💬</div><div><b>WhatsApp</b><a href="https://wa.me/94702322744" target="_blank" rel="noopener">+94 70 232 2744</a></div></div>
-        <div class="c-item"><div class="ic">✈️</div><div><b>Telegram</b><a href="https://t.me/Wellbiopaper" target="_blank" rel="noopener">Official Channel</a></div></div>
-        <div class="c-item"><div class="ic">📘</div><div><b>Facebook</b><a href="https://www.facebook.com/share/1BkdSMofkL/" target="_blank" rel="noopener">S.K. Wellala Biology</a></div></div>
-        <div class="c-item"><div class="ic">✉️</div><div><b>Email</b><a href="mailto:info@skwellala.com">info@skwellala.com</a></div></div>
-        <div class="c-item"><div class="ic">📍</div><div><b>Main Location</b><span>No 51/1, Kandy Road, Kurunegala</span></div></div>
+        <div class="c-item"><div class="ic"><i data-lucide="phone"></i></div><div><b>Phone</b><a href="tel:+94702322744">+94 70 232 2744</a></div></div>
+        <div class="c-item"><div class="ic"><i data-lucide="message-circle"></i></div><div><b>WhatsApp</b><a href="https://wa.me/94702322744" target="_blank" rel="noopener">+94 70 232 2744</a></div></div>
+        <div class="c-item"><div class="ic"><i data-lucide="send"></i></div><div><b>Telegram</b><a href="https://t.me/Wellbiopaper" target="_blank" rel="noopener">Official Channel</a></div></div>
+        <div class="c-item"><div class="ic"><i data-lucide="book"></i></div><div><b>Facebook</b><a href="https://www.facebook.com/share/1BkdSMofkL/" target="_blank" rel="noopener">S.K. Wellala Biology</a></div></div>
+        <div class="c-item"><div class="ic"><i data-lucide="mail"></i></div><div><b>Email</b><a href="mailto:info@skwellala.com">info@skwellala.com</a></div></div>
+        <div class="c-item"><div class="ic"><i data-lucide="map-pin"></i></div><div><b>Main Location</b><span>No 51/1, Kandy Road, Kurunegala</span></div></div>
       </div>
     </section>
 
     <footer class="lp-foot">
       <div class="foot-grid">
         <div>
-          <div class="foot-brand"><span class="mark">🧬</span><b>S.K. Wellala Biology</b></div>
+          <div class="foot-brand"><span class="mark"><i data-lucide="dna"></i></span><b>S.K. Wellala Biology</b></div>
           <p style="color:var(--muted);font-size:.86rem;line-height:1.7;max-width:300px">A/L Biology theory, revision and paper classes — creating the next generation of doctors, one paper at a time.</p>
         </div>
         <div class="foot-col">
@@ -1079,13 +1079,13 @@ async function signup(){
   app.innerHTML = `<div class="card auth-card">
     <h2>⏳ Sign-up not ready yet</h2>
     <p class="sub">The class centers and payment methods haven't been set up yet. Please contact us and we'll let you know when registration opens.</p>
-    <a class="foot-contact" href="#/contact">📞 Contact us</a>
+    <a class="foot-contact" href="#/contact"><i data-lucide="phone"></i> Contact us</a>
     <p class="hint" style="text-align:center"><a href="#/">← Back to home</a></p>
   </div>`;
   return;
 }
   const O=a=>a.map(x=>`<option>${esc(x)}</option>`).join('');
-  app.innerHTML = `<div class="split"><div class="side"><div class="side-txt"><div style="font-size:2rem">🧬</div><h2>S.K. Wellala<br>Biology Paper Class</h2><p>Join your class, follow every paper and watch your progress grow.</p></div></div>
+  app.innerHTML = `<div class="split"><div class="side"><div class="side-txt"><div style="font-size:2rem"><i data-lucide="dna"></i></div><h2>S.K. Wellala<br>Biology Paper Class</h2><p>Join your class, follow every paper and watch your progress grow.</p></div></div>
   <div class="card auth-card">
     <h2><i data-lucide="graduation-cap"></i> Student Sign Up</h2>
     <label>Full Name</label><input id="nm" placeholder="e.g. Kasun Perera">
@@ -1152,9 +1152,9 @@ if(bad) return;
     $("#btn").disabled = true;
     try{
       const nicDoc=await getDoc(doc(db,'nics',nic));
-      if(nicDoc.exists()){ busy(false); $("#btn").disabled=false; $("#msg").innerHTML=`<div class="err">An account with this NIC already exists. Please contact us to delete the previous account, then sign up again.<br><a class="foot-contact" href="#/contact" style="margin-top:10px">📞 Contact us</a> &nbsp;<a href="#/login">Log in instead</a></div>`; return; }
+      if(nicDoc.exists()){ busy(false); $("#btn").disabled=false; $("#msg").innerHTML=`<div class="err">An account with this NIC already exists. Please contact us to delete the previous account, then sign up again.<br><a class="foot-contact" href="#/contact" style="margin-top:10px"><i data-lucide="phone"></i> Contact us</a> &nbsp;<a href="#/login">Log in instead</a></div>`; return; }
       const bcDoc=await getDoc(doc(db,'barcodes',bc));
-      if(bcDoc.exists()){ busy(false); $("#btn").disabled=false; $("#msg").innerHTML=`<div class="err">An account with this barcode already exists. Please contact us to delete the previous one, then sign up again.<br><a class="foot-contact" href="#/contact" style="margin-top:10px">📞 Contact us</a> &nbsp;<a href="#/login">Log in instead</a></div>`; return; }
+      if(bcDoc.exists()){ busy(false); $("#btn").disabled=false; $("#msg").innerHTML=`<div class="err">An account with this barcode already exists. Please contact us to delete the previous one, then sign up again.<br><a class="foot-contact" href="#/contact" style="margin-top:10px"><i data-lucide="phone"></i> Contact us</a> &nbsp;<a href="#/login">Log in instead</a></div>`; return; }
 
       let pk=nic;
       { const p1=await getDoc(doc(db,'pending',nic));
@@ -1295,7 +1295,7 @@ async function stuDash(){
       } else if(myRank <= 100){
         rankWidget = `
           <div class="card" style="background:linear-gradient(135deg,#fef08a,#fde047);border:none;color:#422006;display:flex;align-items:center;gap:16px;padding:18px;margin-bottom:20px">
-            <div style="font-size:2.5rem;line-height:1">🏆</div>
+            <div style="font-size:2.5rem;line-height:1"><i data-lucide="trophy"></i></div>
             <div>
               <div style="font-weight:800;font-size:1.1rem;color:#422006">You're in the Top 100!</div>
               <div style="font-weight:600;font-size:.92rem;margin-top:2px">Rank #${myRank} — ${esc(lastRanked.p.title)}</div>
@@ -1307,7 +1307,7 @@ async function stuDash(){
     const bestCard = `${rankWidget}
       <div class="ma-grid" style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:22px;align-items:stretch">
         <div class="card" style="margin:0;display:flex;flex-direction:column">
-          <h2 style="margin:0 0 14px">📈 Progress — ${esc(state.stuSubject)}</h2>
+          <h2 style="margin:0 0 14px"><i data-lucide="trending-up"></i> Progress — ${esc(state.stuSubject)}</h2>
           <div style="background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:16px">
             <div class="gb-row" style="border:none;padding:0">
               <div class="gb-head" style="display:flex;justify-content:space-between;margin-bottom:8px">
@@ -1327,7 +1327,7 @@ async function stuDash(){
         </div>
         <div class="card" style="margin:0;display:flex;flex-direction:column;justify-content:center;text-align:center">
           <div class="ma-best">
-            <div class="ma-trophy" style="font-size:3.5rem;animation:maBounce 1.8s ease-in-out infinite;line-height:1;filter:drop-shadow(0 10px 18px rgba(255,190,0,.45))">🏆</div>
+            <div class="ma-trophy" style="font-size:3.5rem;animation:maBounce 1.8s ease-in-out infinite;line-height:1;filter:drop-shadow(0 10px 18px rgba(255,190,0,.45))"><i data-lucide="trophy"></i></div>
             <div class="ma-best-title" style="font-weight:800;font-size:.9rem;margin-top:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Best mark</div>
             <div class="ma-best-mark" style="font-size:1.7rem;font-weight:800;color:var(--brand);line-height:1.1">${best}%</div>
             <div class="sub" style="margin-top:4px;font-size:.78rem">${esc(bestRow.p.title)}</div>
@@ -1376,7 +1376,7 @@ async function stuDash(){
 
     $("#stuBody").innerHTML = bestCard + `
       <div class="card" style="margin-top:20px">
-        <h2>📄 Paper-by-Paper Marks</h2>
+        <h2><i data-lucide="file-text"></i> Paper-by-Paper Marks</h2>
         <div class="tbl-wrap">
           <table>
             <tr><th>Date</th><th>Paper</th><th>Marks</th><th>Progress</th><th>Rank</th><th>%</th><th>Grade</th></tr>
@@ -1697,7 +1697,7 @@ function examinerProfile(){
   const row = (k,v) => `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div class="sub" style="margin:0">${k}</div><b>${esc(v||'—')}</b></div>`;
   host.innerHTML = `<div class="card"><h2>👤 My Profile</h2>
     ${row('Full Name',p.fullName)}${row('Nickname',p.nickname)}${row('Gender',p.gender)}${row('NIC',p.nic)}${row('Attended Class',p.className)}${row('Exam Center',p.center)}${row('Email',p.email)}
-    <p class="sub" style="margin-top:12px">🔒 NIC, center and email can only be changed by a developer.</p>
+    <p class="sub" style="margin-top:12px"><i data-lucide="lock"></i> NIC, center and email can only be changed by a developer.</p>
     <button class="btn btn-primary" id="epEdit" style="width:auto;margin-top:12px">Edit name / gender / class</button>
   </div>`;
   $("#epEdit").onclick = () => {
@@ -1753,7 +1753,7 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
         </div>
             <button class="btn btn-primary" id="eaAdd" style="width:auto;margin:0">+ Mark present</button>
       </div>
-      <div style="margin:8px 0"><button type="button" id="eaPdf" class="btn btn-ghost btn-sm" style="width:auto">📄 Download attendance PDF (all paper)</button></div>
+      <div style="margin:8px 0"><button type="button" id="eaPdf" class="btn btn-ghost btn-sm" style="width:auto"><i data-lucide="file-text"></i> Download attendance PDF (all paper)</button></div>
       <div id="eaMsg"></div><div id="eaWidget"></div>
       <p class="sub" style="margin:10px 0 6px"><b>${presentToday.length}</b> student${presentToday.length===1?'':'s'} attended on ${esc(selDay)}.</p>
       ${presentToday.length ? `<div class="tbl-wrap"><table><tr><th>#</th><th>Name</th><th>Barcode</th><th>School</th><th></th></tr>
@@ -1899,7 +1899,7 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
         </select>
       </div>
     </div>
-    <div style="margin:8px 0"><button type="button" id="eaLogPdf" class="btn btn-ghost btn-sm" style="width:auto">📄 Download my records as PDF</button></div>
+    <div style="margin:8px 0"><button type="button" id="eaLogPdf" class="btn btn-ghost btn-sm" style="width:auto"><i data-lucide="file-text"></i> Download my records as PDF</button></div>
     ${!papers.length ? '<p class="sub" style="margin:12px 0 0">No papers for this batch yet.</p>' :
       !dates.length ? '<p class="sub" style="margin:12px 0 0">You have not marked any students present on this paper yet.</p>' :
       dates.map(d => {
@@ -1996,7 +1996,7 @@ function examinerTotalAttendance({ papers, students, studentsAll, att, batch }) 
         <select id="taP">${papers.length ? papers.map(x => `<option value="${x.id}"${selPaper && x.id === selPaper.id ? ' selected' : ''}>${esc(x.title)} (${esc(x.date || 'no date')})</option>`).join('') : '<option>No papers yet</option>'}</select>
       </div>
     </div>
-    <div style="margin:8px 0"><button type="button" id="taPdf" class="btn btn-ghost btn-sm" style="width:auto">📄 Download attendance PDF (all days)</button></div>
+    <div style="margin:8px 0"><button type="button" id="taPdf" class="btn btn-ghost btn-sm" style="width:auto"><i data-lucide="file-text"></i> Download attendance PDF (all days)</button></div>
     ${!papers.length ? '<p class="sub" style="margin:12px 0 0">No papers for this batch yet.</p>'
       : !allRecs.length ? '<p class="sub" style="margin:12px 0 0">No attendance recorded for this paper yet.</p>'
       : `
@@ -2191,7 +2191,7 @@ function approverProfile() {
   const row = (k, v) => `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div class="sub" style="margin:0">${k}</div><b>${esc(v || '—')}</b></div>`;
   host.innerHTML = `<div class="card"><h2>👤 My Profile</h2>
     ${row('Full Name', p.fullName)}${row('Gender', p.gender)}${row('NIC', p.nic)}${row('Mobile', p.mobile)}${row('Email', p.email)}
-    <p class="sub" style="margin-top:12px">🔒 NIC and email can only be changed by a developer.</p>
+    <p class="sub" style="margin-top:12px"><i data-lucide="lock"></i> NIC and email can only be changed by a developer.</p>
     <button class="btn btn-primary" id="apEdit" style="width:auto;margin-top:12px">Edit name / gender / mobile</button></div>`;
   $("#apEdit").onclick = () => {
     host.innerHTML = `<div class="card"><h2>Edit My Details</h2>
@@ -2735,11 +2735,11 @@ function faceOf(id){ let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0)
 function rankMarquee(students,papers){
   const paper=papers.find(p=>p.id===state.rankPaper)||papers[0];
   const r=paper?paperRanks(students,paper):[];
-  if(!r.length) return `<div class="marq"><div class="marq-h">🏆 PAPER RANKINGS</div><p class="sub" style="padding:0 14px">Rankings will scroll here once you enter marks.</p></div>`;
-  const medal=n=>n===1?'🥇':n===2?'🥈':n===3?'🥉':'#'+n;
+  if(!r.length) return `<div class="marq"><div class="marq-h"><i data-lucide="trophy"></i> PAPER RANKINGS</div><p class="sub" style="padding:0 14px">Rankings will scroll here once you enter marks.</p></div>`;
+  const medal=n=>n===1?'<i data-lucide="medal"></i>':n===2?'🥈':n===3?'🥉':'#'+n;
   const items=r.map(x=>{ const f=faceOf(x.s.id);
     return `<div class="marq-item"><span class="face" style="background:${f.bg}">${f.e}</span><span><b>${medal(x.rank)} <a class="nl" href="#/student/${encodeURIComponent(x.s.nic)}">${esc(x.s.fullName)}</a></b><small>${x.m}/${paper.max} · ${x.pct}%</small></span></div>`; }).join('');
-  return `<div class="marq"><div class="marq-h">🏆 ${esc(paper.title).toUpperCase()} — RANKINGS</div><div class="marq-track" style="animation-duration:${Math.max(25,r.length*4)}s">${items}${items}</div></div>`;
+  return `<div class="marq"><div class="marq-h"><i data-lucide="trophy"></i> ${esc(paper.title).toUpperCase()} — RANKINGS</div><div class="marq-track" style="animation-duration:${Math.max(25,r.length*4)}s">${items}${items}</div></div>`;
 }
 function teacherProfile(){
   const p=profile||{};
@@ -2829,7 +2829,7 @@ async function teacherDash(){
   <div class="tabs">
     <button data-tab="students" class="${state.tab==='students'?'active':''}">👨‍<i data-lucide="graduation-cap"></i> Students</button>
     ${adm?`<button data-tab="attendance" class="${state.tab==='attendance'?'active':''}">✅ Attendance</button>`:''}
-    <button data-tab="marks" class="${state.tab==='marks'?'active':''}">📝 Marks</button>
+    <button data-tab="marks" class="${state.tab==='marks'?'active':''}"><i data-lucide="pencil-line"></i>Marks</button>
     <button data-tab="analytics" class="${state.tab==='analytics'?'active':''}">📊 Analytics</button>
     <button data-tab="ranks" class="${state.tab==='ranks'?'active':''}">🏅 Rankings</button>
        <button data-tab="allmarks" class="${state.tab==='allmarks'?'active':''}">🌐 All Marks</button>
@@ -2886,8 +2886,8 @@ papersAll.forEach(p=>{
       <div><b style="font-size:1.15rem"><i data-lucide="graduation-cap"></i> ${esc(s.fullName)}</b>${s.signedUp?'':' <span class="sub" style="display:inline">· has not signed up</span>'}</div>
       <div>${adm&&s.signedUp?`<button class="btn btn-ghost btn-sm" id="svEdit">✏️ Edit</button> `:''}<button class="btn btn-danger btn-sm" id="svDel">Remove student</button></div></div>
       <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:12px">${info('NIC',s.nic)}${info('Barcode',s.barcode)}${info('Gender',s.gender)}${info('Batch',batch)}${info('Center',s.center)}${info('Mobile',s.mobile)}${info('WhatsApp',s.whatsapp)}${info('School',s.school)}${info('Email',s.email)}${info('Paid via',s.payMethod)}</div></div>
-    ${rows.length?`<div class="card"><h2>📈 Progress</h2><canvas id="svC"></canvas></div>
-    <div class="card"><h2>📄 Paper-by-paper</h2><div class="tbl-wrap"><table><tr><th>Date</th><th>Paper</th><th>Marks</th><th>%</th><th>Grade</th><th>Rank</th><th>Status</th></tr>
+    ${rows.length?`<div class="card"><h2><i data-lucide="trending-up"></i> Progress</h2><canvas id="svC"></canvas></div>
+    <div class="card"><h2><i data-lucide="file-text"></i> Paper-by-paper</h2><div class="tbl-wrap"><table><tr><th>Date</th><th>Paper</th><th>Marks</th><th>%</th><th>Grade</th><th>Rank</th><th>Status</th></tr>
     ${rows.map(r=>`<tr><td class="mono">${esc(r.p.date||'—')}</td><td>${esc(r.p.title)}</td><td class="mono"><b>${r.m}</b> / ${r.p.max}</td><td><span class="pill ${gCls(r.pc)}">${r.pc}%</span></td><td><span class="pill ${gCls(r.pc)}">${grade(r.pc)}</span></td><td>${r.rank} / ${r.n}</td><td>${r.p.published?'Published':'Hidden'}</td></tr>`).join('')}</table></div></div>`
     :'<div class="card"><p class="sub">No marks entered for this student yet.</p></div>'}`;
        if(rows.length) lazyChart('sv', $("#svC"), () => ({type:'line',data:{labels:rows.map(r=>r.p.title),datasets:[{label:'Score %',data:rows.map(r=>r.pc),borderColor:'#0369a1',backgroundColor:'rgba(3,105,161,.12)',fill:true,tension:.35,pointRadius:5,pointBackgroundColor:'#06b6d4'}]},options:{scales:{y:{min:0,max:100}}}}));
@@ -2972,7 +2972,7 @@ function tabStudents({roster,rosterAll,papers}){
         </div>
   <button class="btn btn-primary" id="atAdd" style="width:auto;margin:0">+ Mark present</button>
         </div>
-        <div style="margin-top:8px"><button type="button" id="atPdf" class="btn btn-ghost btn-sm" style="width:auto">📄 Download attendance PDF</button></div>
+        <div style="margin-top:8px"><button type="button" id="atPdf" class="btn btn-ghost btn-sm" style="width:auto"><i data-lucide="file-text"></i> Download attendance PDF</button></div>
         <div id="atMsg"></div>
         <p class="sub" style="margin:10px 0 6px"><b>${list.length}</b> student${list.length===1?'':'s'} attended this paper. They now appear in the Marks tab for this paper.</p>
         ${list.length?`<div class="tbl-wrap"><table><tr><th>#</th><th>Name</th><th>Barcode</th><th>Center</th><th></th></tr>${list.map((a,i)=>{           const devMark = a.byRole === 'developer';           const meta = fmtAttMeta(a);           return `<tr class="${devMark?'dev-marked':''}"><td>${list.length-i}</td><td><b>${esc(a.name||a.nic)}</b>${devMark?' <span class="pill warn" style="font-size:.66rem">DEV</span>':''}${meta?`<div class="sub" style="margin:2px 0 0;font-size:.68rem;line-height:1.35">${esc(meta)}</div>`:''}</td><td class="mono">${esc(a.barcode||'—')}</td><td>${esc(a.center||'—')}</td><td style="text-align:right"><button class="btn btn-danger btn-sm" data-at-rm="${esc(a.nic)}">Remove</button></td></tr>`;         }).join('')}</table></div>`:''}</div>`;
@@ -3091,7 +3091,7 @@ function tabAttendance({roster, rosterAll, papers, attAll}){
       <div class="stat"><div class="num">${batchRoster.length}</div><div class="lbl">Students in batch</div></div>
     </div>
 
-    <h3 style="margin-top:20px;font-size:1rem">📍 Breakdown by center</h3>
+    <h3 style="margin-top:20px;font-size:1rem"><i data-lucide="map-pin"></i> Breakdown by center</h3>
     ${centerNames.length ? `
       <div class="tbl-wrap" style="margin-top:8px"><table>
         <tr><th>#</th><th>Center</th><th>Marked</th><th>In roster</th><th>Marked %</th></tr>
@@ -3136,7 +3136,7 @@ function tabAttendance({roster, rosterAll, papers, attAll}){
       </div>
       <button class="btn btn-primary" id="dvAtAdd" style="width:auto;margin:0">+ Mark present</button>
     </div>
-    <div style="margin-top:8px"><button type="button" id="dvAtPdf" class="btn btn-ghost btn-sm" style="width:auto">📄 Download attendance PDF</button></div>
+    <div style="margin-top:8px"><button type="button" id="dvAtPdf" class="btn btn-ghost btn-sm" style="width:auto"><i data-lucide="file-text"></i> Download attendance PDF</button></div>
     <div id="dvAtMsg"></div>
     <p class="sub" style="margin:10px 0 6px"><b>${list.length}</b> student${list.length===1?'':'s'} attended this paper.</p>
     ${list.length ? `<div class="tbl-wrap"><table>
@@ -3486,7 +3486,7 @@ async function studentEditCard(host,s,admin,onDone){
     <label>Payment method</label><select id="ef_p"><option value="">—</option>${O(L.payMethods,s.payMethod)}</select>
     ${admin?`<label>Center</label><select id="ef_c"><option value="">—</option>${O(L.centers,s.center)}</select>
       <label>Batch</label><select id="ef_b">${BATCHES.map(b=>`<option${b===(s.batch||BATCHES[0])?' selected':''}>${b}</option>`).join('')}</select>`
-    :`<p class="sub" style="margin-top:10px">🔒 Your NIC (<b>${esc(s.nic)}</b>) and email (<b>${esc(s.email)}</b>) can't be changed here.</p>`}
+    :`<p class="sub" style="margin-top:10px"><i data-lucide="lock"></i> Your NIC (<b>${esc(s.nic)}</b>) and email (<b>${esc(s.email)}</b>) can't be changed here.</p>`}
     <div class="row" style="margin-top:12px"><button class="btn btn-primary" id="ef_save" style="width:auto">Save</button><button class="btn btn-ghost" id="ef_cancel" style="width:auto">Cancel</button></div><div id="ef_msg"></div></div>`;
   $("#ef_cancel").onclick=()=>{ host.innerHTML=''; };
   $("#ef_save").onclick=async()=>{
@@ -3764,7 +3764,7 @@ function openExaminerAttendanceModal(ex, papersAll, rosterAll){
 
       return `<div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--line)">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-          <span class="pill brand" style="font-weight:800">📄 ${esc(pInfo.title||'Paper')}</span>
+          <span class="pill brand" style="font-weight:800"><i data-lucide="file-text"></i> ${esc(pInfo.title||'Paper')}</span>
           <span class="sub" style="margin:0">${esc(pInfo.date||'no date')} · ${totalStudents} student${totalStudents===1?'':'s'} across ${dates.length} date${dates.length===1?'':'s'}</span>
         </div>
         ${dates.length ? dates.map(d => {
@@ -3811,8 +3811,8 @@ function tabRequests({requests}){
 }
 const tgLink=u=>{ const s=String(u||'').trim(); return /^https?:\/\/(t\.me|telegram\.me|telegram\.dog)\/\S+$/i.test(s)?s:null; };
 const itemUrl=it=>it.url||(it.fileId?`https://drive.google.com/file/d/${it.fileId}/view`:'#');
-const thumbImg=id=>`<img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'pdfph',textContent:'📄'}))">`;
-const itemThumb=it=>it.fileId&&!it.url?thumbImg(it.fileId):'<div class="pdfph">✈️</div>';
+const thumbImg=id=>`<img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'pdfph',textContent:'<i data-lucide="file-text"></i>'}))">`;
+const itemThumb=it=>it.fileId&&!it.url?thumbImg(it.fileId):'<div class="pdfph"><i data-lucide="send"></i></div>';
 async function tabFiles(){
   $("#tabBody").innerHTML='<div class="card"><p class="sub">Loading…</p></div>';
   const docs=await Promise.all(BATCHES.map(b=>getDoc(doc(db,'fileLists',batchKey(b))).catch(()=>null)));
@@ -3912,7 +3912,7 @@ async function loadStuFiles(){
   try{
     const d=await getDoc(doc(db,'fileLists',batchKey(profile.batch||BATCHES[0]))), items=d.exists()?(d.data().items||[]):[];
     if(!items.length){ host.innerHTML=''; return; }
-    host.innerHTML=`<div class="card"><h2>📚 Marking schemes &amp; files</h2><div class="pdfgrid">${items.slice().reverse().map(it=>`<div class="pdfcard"><a href="${esc(itemUrl(it))}" target="_blank" rel="noopener">${itemThumb(it)}</a><div class="pt">${esc(it.title)}</div><div class="pb"><a class="btn btn-primary btn-sm" href="${esc(itemUrl(it))}" target="_blank" rel="noopener" style="width:auto">${it.url?'✈️ Open in Telegram':'⬇ Download'}</a></div></div>`).join('')}</div></div>`;
+    host.innerHTML=`<div class="card"><h2>📚 Marking schemes &amp; files</h2><div class="pdfgrid">${items.slice().reverse().map(it=>`<div class="pdfcard"><a href="${esc(itemUrl(it))}" target="_blank" rel="noopener">${itemThumb(it)}</a><div class="pt">${esc(it.title)}</div><div class="pb"><a class="btn btn-primary btn-sm" href="${esc(itemUrl(it))}" target="_blank" rel="noopener" style="width:auto">${it.url?'<i data-lucide="send"></i> Open in Telegram':'⬇ Download'}</a></div></div>`).join('')}</div></div>`;
   }catch(e){ host.innerHTML=''; }
 }
   async function loadStuVideos(){
@@ -4220,10 +4220,10 @@ function tabAnalytics({papers}){
       <div class="stat"><div class="num">${overall!=null?overall+'%':'—'}</div><div class="lbl">Overall average</div></div>
       <div class="stat"><div class="num">${ranked.length?ranked[0].v+'%':'—'}</div><div class="lbl">Top average</div></div></div>
     <p class="sub" style="margin:10px 0 0">Grades: ${GRADE_LEGEND}</p></div>
-  <div class="card"><h2>📄 Paper-by-paper average</h2>
+  <div class="card"><h2><i data-lucide="file-text"></i> Paper-by-paper average</h2>
     ${pS.length?`<canvas id="cPap" style="max-height:260px"></canvas><div class="tbl-wrap" style="margin-top:12px"><table><tr><th>Paper</th><th>Date</th><th>Students</th><th>Average</th><th>Highest</th><th>Lowest</th></tr>
     ${pS.map(x=>`<tr><td><b>${esc(x.p.title)}</b></td><td class="mono">${esc(x.p.date||'—')}</td><td>${x.n}</td><td>${x.avg!=null?`<span class="pill ${gCls(x.avg)}">${x.avg}%</span>`:'—'}</td><td>${x.hi??'—'}</td><td>${x.lo??'—'}</td></tr>`).join('')}</table></div>`:'<p class="sub">No papers yet.</p>'}</div>
-  <div class="card"><h2>🏆 Top performers</h2>
+  <div class="card"><h2><i data-lucide="trophy"></i> Top performers</h2>
       ${ranked.slice(0,5).map(x=>`<div class="list-item"><span><b>${x.rank}.</b> ${nameLink(x.nic,x.fullName,x.center)}</span><span class="pill ${gCls(x.v)}">${x.v}% · ${grade(x.v)}</span></div>`).join('')||'<p class="sub">No marks yet.</p>'}</div>
   <div class="card"><h2><i data-lucide="clipboard-list"></i> Class rankings (overall average)</h2>
     ${ranked.length?`<div class="tbl-wrap"><table><tr><th>Rank</th><th>Name</th><th>NIC</th><th>Center</th><th>Papers</th><th>Average</th><th>Grade</th></tr>
@@ -4286,7 +4286,7 @@ async function studentMarquee(){
     if(!d.exists()){ host.innerHTML=''; return; }
     const data = d.data();
     if(!data.paperId || !(data.top||[]).length){ host.innerHTML=''; return; }
-    const medal = n => n===1?'🥇':n===2?'🥈':n===3?'🥉':'#'+n;
+    const medal = n => n===1?'<i data-lucide="medal"></i>':n===2?'🥈':n===3?'🥉':'#'+n;
     const items = data.top.map((m,i)=>{
       const f = faceOf(m.nic);
       return `<div class="marq-item">
@@ -4298,7 +4298,7 @@ async function studentMarquee(){
       </div>`;
     }).join('');
     host.innerHTML = `<div class="marq">
-      <div class="marq-h">🏆 TOP 10 — ${esc(data.paperTitle||'').toUpperCase()}</div>
+      <div class="marq-h"><i data-lucide="trophy"></i> TOP 10 — ${esc(data.paperTitle||'').toUpperCase()}</div>
       <div class="marq-track" style="animation-duration:${Math.max(25, data.top.length*4)}s">${items}${items}</div>
     </div>`;
   } catch(e){
