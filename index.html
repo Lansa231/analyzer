@@ -693,7 +693,7 @@ function renderHdr(r){
     nav.innerHTML = '';
   }
   if(user && (r==='stuDash'||r==='teacherDash'||r==='studentView'||r==='examinerDash'||r==='examinerView')){
-    const roleLabel = role==='teacher'  ? (profile&&profile.isAdmin?'<i data-lucide="wrench"></i> Developer':'<i data-lucide="users"></i>‍<i data-lucide="users"></i> Teacher')
+    const roleLabel = role==='teacher'  ? (profile&&profile.isAdmin?'<i data-lucide="wrench"></i> Developer':'<i data-lucide="users"></i>‍ Teacher')
                     : role==='examiner' ? '<i data-lucide="clipboard-list"></i> Examiner'                     : role==='approver' ? '<i data-lucide="credit-card"></i> Payment Approver'
                     : '<i data-lucide="graduation-cap"></i> Student';
     h.innerHTML = `<span class="pill brand">${roleLabel}</span> ${themeBtn()} <button class="btn btn-danger btn-sm" id="logoutBtn">Log out</button>`;
@@ -2664,7 +2664,7 @@ function renderAttendanceSheetPDF({ paper, rows, examiner }) {
 /* ============================== TEACHER AUTH ============================== */
 function teacherAuth(){
   app.innerHTML = `<div class="card auth-card">
-    <h2><i data-lucide="users"></i>‍<i data-lucide="users"></i> Instructor Portal</h2>
+    <h2><i data-lucide="users"> Instructor Portal</h2>
     <div class="tabs" style="margin-bottom:6px">
       <button id="tIn" class="active">Sign In</button><button id="tUp">Create Account</button>
     </div>
@@ -2744,7 +2744,7 @@ function rankMarquee(students,papers){
 function teacherProfile(){
   const p=profile||{};
   app.innerHTML=`<div class="card auth-card" style="max-width:560px">
-    <h2><i data-lucide="users"></i>‍<i data-lucide="users"></i> ${p.profileDone?'Edit your profile':'Complete your details'}</h2>
+    <h2><i data-lucide="users"></i>${p.profileDone?'Edit your profile':'Complete your details'}</h2>
     <p class="sub">${p.profileDone?'Update your instructor details.':'One last step before you start entering marks.'}</p>
     <label>Full Name</label><input id="pn" value="${esc(p.fullName||'')}">
     <label>Phone Number</label><input id="pp" type="tel" placeholder="07X XXX XXXX" value="${esc(p.phone||'')}">
@@ -2816,7 +2816,7 @@ async function teacherDash(){
 
   app.innerHTML = `
   <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-    <div><b style="font-size:1.05rem"><i data-lucide="users"></i>‍<i data-lucide="users"></i> ${esc(profile.fullName||'Instructor')}</b>${profile.nickname?` <span class="sub" style="display:inline">“${esc(profile.nickname)}”</span>`:''} <span class="pill brand">${adm?'Developer':'Teacher'}</span> <button class="btn btn-ghost btn-sm" id="editProf">✏️ Profile</button>
+    <div><b style="font-size:1.05rem"><i data-lucide="users"></i>‍ ${esc(profile.fullName||'Instructor')}</b>${profile.nickname?` <span class="sub" style="display:inline">“${esc(profile.nickname)}”</span>`:''} <span class="pill brand">${adm?'Developer':'Teacher'}</span> <button class="btn btn-ghost btn-sm" id="editProf">✏️ Profile</button>
       <span class="sub" style="display:inline"> · ${roster.length} students · ${papers.length} papers</span></div>
     ${adm?`<label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
       <span class="switch"><input type="checkbox" id="regOpen" ${state.settings.teacherSignupOpen!==false?'checked':''}><span class="slider"></span></span>
