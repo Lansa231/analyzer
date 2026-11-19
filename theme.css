@@ -260,37 +260,5 @@ svg.lucide {
 
 /* Mobile — horizontal scrolling tabs */
 @media (max-width: 900px) {
-  .dash-layout {
-    grid-template-columns: 1fr;
-    gap: 14px;
-  }
-  .sidebar {
-    position: static;
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding: 6px;
-    max-height: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  .side-group {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 0;
-    flex-shrink: 0;
-  }
-  .side-label { display: none; }
-  .side-item {
-    white-space: nowrap;
-    width: auto;
-    margin: 0;
-    padding: 7px 12px;
-    border-left: none;
-    border-bottom: 2px solid transparent;
-    font-size: .82rem;
-  }
-  .side-item.active {
-    border-left: none;
-    border-bottom-color: var(--brand);
-  }
+
 }
