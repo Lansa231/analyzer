@@ -636,7 +636,7 @@ function route(){
   renderHdr(r);
   app.classList.toggle('landing-wide', r==='landing');
   const sf=document.getElementById('siteFoot'); if(sf) sf.style.display = (r==='landing')?'none':'';
-  { const fail=e=>{ busy(false); app.innerHTML=`<div class="card" style="max-width:560px;margin:28px auto"><h2>⚠️ Something went wrong</h2><div class="err">${esc(friendly(e))}</div><p class="sub" style="margin-top:8px">Technical detail: ${esc(e&&e.message||String(e))}</p><button class="btn btn-primary" onclick="location.reload()" style="width:auto">Reload</button></div>`; };
+  { const fail=e=>{ busy(false); app.innerHTML=`<div class="card" style="max-width:560px;margin:28px auto"><h2><i data-lucide="alert-triangle"></i> Something went wrong</h2><div class="err">${esc(friendly(e))}</div><p class="sub" style="margin-top:8px">Technical detail: ${esc(e&&e.message||String(e))}</p><button class="btn btn-primary" onclick="location.reload()" style="width:auto">Reload</button></div>`; };
     try{ const out=({landing,login,signup,forgot,stuDash,teacherAuth,teacherDash,studentView,contact,examinerAuth,examinerDash,examinerView,approverAuth,approverDash})[r](); if(out&&out.catch) out.catch(fail); }catch(e){ fail(e); } }
   try{ document.dispatchEvent(new CustomEvent('ca:view',{detail:{name:r}})); }catch(e){}
   window.scrollTo(0,0);
@@ -765,7 +765,7 @@ function bootFirebase(cfg){
     }
     try{ route(); } finally { busy(false); }
     if(lookupErr){
-      app.innerHTML = `<div class="card auth-card"><h2>⚠️ Account not found</h2><div class="err">${esc(lookupErr.message)}</div><p class="sub" style="margin-top:12px"><a href="#/contact"><i data-lucide="phone"></i> Contact us</a> · <a href="#/login">Try logging in</a> · <a href="#/signup">Sign up</a></p></div>`;
+      app.innerHTML = `<div class="card auth-card"><h2><i data-lucide="alert-triangle"></i> Account not found</h2><div class="err">${esc(lookupErr.message)}</div><p class="sub" style="margin-top:12px"><a href="#/contact"><i data-lucide="phone"></i> Contact us</a> · <a href="#/login">Try logging in</a> · <a href="#/signup">Sign up</a></p></div>`;
     }
   };
   try{ route(); }catch(e){ console.error(e); }
@@ -815,7 +815,7 @@ function contact(){
     ['<i data-lucide="mail"></i>','Email',CONTACT.email,v=>'mailto:'+v],
     ['<i data-lucide="send"></i>','Official Telegram channel',CONTACT.telegram,v=>v,v=>v.replace(/^https?:\/\//,'')],
     ['<i data-lucide="map-pin"></i>','Address',CONTACT.address,null],
-    ['🕒','Class hours',CONTACT.hours,null],
+    ['<i data-lucide="clock"></i>','Class hours',CONTACT.hours,null],
     ['<i data-lucide="book"></i>','Facebook',CONTACT.facebook,v=>v],
     ['<i data-lucide="play"></i>','YouTube',CONTACT.youtube,v=>v]
   ].filter(r=>r[2]);
@@ -961,7 +961,7 @@ function landing(){
               <div><i><i data-lucide="chevron-right"></i></i><span><i data-lucide="trending-up"></i> Progress charts across every paper</span></div>
               <div><i><i data-lucide="chevron-right"></i></i><span><i data-lucide="file-text"></i> Full paper-by-paper marks table with grade</span></div>
               <div><i><i data-lucide="chevron-right"></i></i><span><i data-lucide="lock"></i> Private — only you can see your marks</span></div>
-              <div><i><i data-lucide="chevron-right"></i></i><span>📚 Marking schemes &amp; PDFs per batch</span></div>
+              <div><i><i data-lucide="chevron-right"></i></i><span><i data-lucide="book-open"></i> Marking schemes &amp; PDFs per batch</span></div>
             </div>
             <div class="portal-cta">
              <a class="btn btn-gold" href="#/login"><i data-lucide="graduation-cap"></i> Student Login</a>
@@ -1221,12 +1221,12 @@ async function stuDash(){
   app.innerHTML = `
     <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;padding:20px 24px;background:linear-gradient(120deg,var(--brand),var(--brand2));border:none;color:#fff">
       <div>
-        <div style="font-size:.85rem;opacity:.9;font-weight:600">Welcome back 👋</div>
+        <div style="font-size:.85rem;opacity:.9;font-weight:600">Welcome back <i data-lucide="sparkles"></i></div>
         <h2 style="color:#fff;margin:4px 0 2px;font-size:1.5rem;letter-spacing:-.02em">Hello, ${esc(firstName)}</h2>
-        <div style="font-size:.85rem;opacity:.9">${esc(profile.batch||BATCHES[0])}${profile.center?' · '+esc(profile.center):''}${profile.school?' · '+esc(profile.school):''}</div>         <div style="margin-top:9px;display:flex;gap:8px;flex-wrap:wrap;font-size:.74rem">           <span style="background:rgba(255,255,255,.18);padding:3px 10px;border-radius:999px">🎫 Barcode <b class="mono">${esc(profile.barcode||'—')}</b></span>           <span style="background:rgba(255,255,255,.18);padding:3px 10px;border-radius:999px">🆔 NIC <b class="mono">${esc(profile.nic||'—')}</b></span>         </div>
+        <div style="font-size:.85rem;opacity:.9">${esc(profile.batch||BATCHES[0])}${profile.center?' · '+esc(profile.center):''}${profile.school?' · '+esc(profile.school):''}</div>         <div style="margin-top:9px;display:flex;gap:8px;flex-wrap:wrap;font-size:.74rem">           <span style="background:rgba(255,255,255,.18);padding:3px 10px;border-radius:999px"><i data-lucide="ticket"></i> Barcode <b class="mono">${esc(profile.barcode||'—')}</b></span>           <span style="background:rgba(255,255,255,.18);padding:3px 10px;border-radius:999px"><i data-lucide="id-card"></i> NIC <b class="mono">${esc(profile.nic||'—')}</b></span>         </div>
       </div>
     </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 14px"><button class="btn btn-ghost btn-sm" id="editMe">✏️ Edit my details</button><button class="btn btn-ghost btn-sm" id="reqCh">🔁 Change center / batch</button></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 14px"><button class="btn btn-ghost btn-sm" id="editMe"><i data-lucide="pencil"></i> Edit my details</button><button class="btn btn-ghost btn-sm" id="reqCh"><i data-lucide="refresh-cw"></i> Change center / batch</button></div>
     <div id="editBox"></div>
     <div id="stuMarquee"></div>
     <div id="stuBody"><div class="card"><p class="sub">Loading your marks…</p></div></div>`;
@@ -1265,7 +1265,7 @@ async function stuDash(){
       .sort((a,b) => String(a.p.date||'').localeCompare(String(b.p.date||'')));
 
     if(!rowsP.length){
-      $("#stuBody").innerHTML = `<div class="card"><p class="sub">📭 No published marks yet. Your teacher will publish them here after each paper.</p></div>`;
+      $("#stuBody").innerHTML = `<div class="card"><p class="sub"><i data-lucide="inbox"></i> No published marks yet. Your teacher will publish them here after each paper.</p></div>`;
       return;
     }
 
@@ -1286,7 +1286,7 @@ async function stuDash(){
         // Online student: own pool, own rank, never claimed as "top 100"
         rankWidget = `
           <div class="card" style="background:linear-gradient(135deg,#bfdbfe,#93c5fd);border:none;color:#1e3a8a;display:flex;align-items:center;gap:16px;padding:18px;margin-bottom:20px">
-            <div style="font-size:2.5rem;line-height:1">🌐</div>
+            <div style="font-size:2.5rem;line-height:1"><i data-lucide="globe"></i></div>
             <div>
               <div style="font-weight:800;font-size:1.1rem;color:#1e3a8a">Your rank among online students</div>
               <div style="font-weight:600;font-size:.92rem;margin-top:2px">Rank #${myRank} — ${esc(lastRanked.p.title)}</div>
@@ -1615,7 +1615,7 @@ async function examinerDash(){
     // ── Ask for a nickname once (short label shown next to attendance) ─────
   if(!profile.nickname || !String(profile.nickname).trim()){
     app.innerHTML = `<div class="card auth-card">
-      <h2>👋 Welcome to the Examiner Portal</h2>
+      <h2><i data-lucide="sparkles"></i> Welcome to the Examiner Portal</h2>
       <p class="sub">Please choose a short nickname — it appears next to every attendance you mark, so students and staff can see who marked them.</p>
       <label>Nickname</label>
       <input id="nickIn" maxlength="20" placeholder="e.g. Mr. Perera, Miss K, Kavi">
@@ -1670,7 +1670,7 @@ async function examinerDash(){
           <div><b>${esc(profile.fullName||'')}</b><small>Examiner · ${esc(profile.center||'')}</small></div>
         </div>
            <div class="tabs">
-          <button data-etab="profile" class="${(state.etab||'profile')==='profile'?'active':''}">👤 Profile</button>
+          <button data-etab="profile" class="${(state.etab||'profile')==='profile'?'active':''}"><i data-lucide="user"></i> Profile</button>
           <button data-etab="students" class="${state.etab==='students'?'active':''}">👨‍<i data-lucide="graduation-cap"></i> Students</button>
           <button data-etab="attendance" class="${state.etab==='attendance'?'active':''}">📅 My Attendance</button>
           <button data-etab="totalatt" class="${state.etab==='totalatt'?'active':''}"><i data-lucide="clipboard-list"></i> Total Attendance</button>
@@ -1695,7 +1695,7 @@ function examinerProfile(){
   const host = $("#etabBody"); if(!host) return;
   const p = profile;
   const row = (k,v) => `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div class="sub" style="margin:0">${k}</div><b>${esc(v||'—')}</b></div>`;
-  host.innerHTML = `<div class="card"><h2>👤 My Profile</h2>
+  host.innerHTML = `<div class="card"><h2><i data-lucide="user"></i> My Profile</h2>
     ${row('Full Name',p.fullName)}${row('Nickname',p.nickname)}${row('Gender',p.gender)}${row('NIC',p.nic)}${row('Attended Class',p.className)}${row('Exam Center',p.center)}${row('Email',p.email)}
     <p class="sub" style="margin-top:12px"><i data-lucide="lock"></i> NIC, center and email can only be changed by a developer.</p>
     <button class="btn btn-primary" id="epEdit" style="width:auto;margin-top:12px">Edit name / gender / class</button>
@@ -1748,7 +1748,7 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
              <div style="flex:1;min-width:200px"><label style="margin-top:0">Barcode (or NIC)</label>
           <div style="display:flex;gap:6px;align-items:stretch">
             <input id="eaB" placeholder="Scan or type, then press Enter" autocomplete="off" maxlength="12" style="flex:1;min-width:0">
-            <button type="button" id="eaScan" class="btn btn-ghost" style="width:auto;margin:0;padding:0 14px;font-size:1.15rem" title="Scan barcode with camera" aria-label="Scan barcode with camera">📷</button>
+            <button type="button" id="eaScan" class="btn btn-ghost" style="width:auto;margin:0;padding:0 14px;font-size:1.15rem" title="Scan barcode with camera" aria-label="Scan barcode with camera"><i data-lucide="camera"></i></button>
           </div>
         </div>
             <button class="btn btn-primary" id="eaAdd" style="width:auto;margin:0">+ Mark present</button>
@@ -2172,7 +2172,7 @@ async function approverDash() {
   app.innerHTML = `<div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <div><b style="font-size:1.05rem"><i data-lucide="credit-card"></i> ${esc(profile.fullName || 'Payment Approver')}</b> <span class="pill brand">Payment Approving</span></div></div>
     <div class="tabs">
-      <button data-atab="profile" class="${tab === 'profile' ? 'active' : ''}">👤 Profile</button>
+      <button data-atab="profile" class="${tab === 'profile' ? 'active' : ''}"><i data-lucide="user"></i> Profile</button>
       <button data-atab="students" class="${tab === 'students' ? 'active' : ''}">👨‍<i data-lucide="graduation-cap"></i> Students</button>
       <button data-atab="payments" class="${tab === 'payments' ? 'active' : ''}"><i data-lucide="credit-card"></i> Payments</button>
     </div><div id="atabBody"><div class="card"><p class="sub">Loading…</p></div></div>`;
@@ -2189,7 +2189,7 @@ async function approverDash() {
 function approverProfile() {
   const host = $("#atabBody"), p = profile;
   const row = (k, v) => `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div class="sub" style="margin:0">${k}</div><b>${esc(v || '—')}</b></div>`;
-  host.innerHTML = `<div class="card"><h2>👤 My Profile</h2>
+  host.innerHTML = `<div class="card"><h2><i data-lucide="user"></i> My Profile</h2>
     ${row('Full Name', p.fullName)}${row('Gender', p.gender)}${row('NIC', p.nic)}${row('Mobile', p.mobile)}${row('Email', p.email)}
     <p class="sub" style="margin-top:12px"><i data-lucide="lock"></i> NIC and email can only be changed by a developer.</p>
     <button class="btn btn-primary" id="apEdit" style="width:auto;margin-top:12px">Edit name / gender / mobile</button></div>`;
@@ -2250,7 +2250,7 @@ function approverPayments({ students, host }) {
     <p class="sub" style="margin:0 0 8px">Type or scan the student's barcode.</p>
     <div class="row"><div style="flex:1;min-width:200px"><label style="margin-top:0">Barcode</label>
       <div style="display:flex;gap:6px;align-items:stretch"><input id="pyB" placeholder="Barcode number" maxlength="12" autocomplete="off" style="flex:1;min-width:0">
-      <button type="button" id="pyScan" class="btn btn-ghost" style="width:auto;margin:0;padding:0 14px" title="Scan with camera" aria-label="Scan with camera">📷</button></div></div>
+      <button type="button" id="pyScan" class="btn btn-ghost" style="width:auto;margin:0;padding:0 14px" title="Scan with camera" aria-label="Scan with camera"><i data-lucide="camera"></i></button></div></div>
       <button class="btn btn-primary" id="pyGo" style="width:auto;margin:0">Search</button></div>
     <div id="pyErr"></div></div><div id="pyRes"></div>`;
 
@@ -2816,7 +2816,7 @@ async function teacherDash(){
 
   app.innerHTML = `
   <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-    <div><b style="font-size:1.05rem"><i data-lucide="users"></i>‍ ${esc(profile.fullName||'Instructor')}</b>${profile.nickname?` <span class="sub" style="display:inline">“${esc(profile.nickname)}”</span>`:''} <span class="pill brand">${adm?'Developer':'Teacher'}</span> <button class="btn btn-ghost btn-sm" id="editProf">✏️ Profile</button>
+    <div><b style="font-size:1.05rem"><i data-lucide="users"></i>‍ ${esc(profile.fullName||'Instructor')}</b>${profile.nickname?` <span class="sub" style="display:inline">“${esc(profile.nickname)}”</span>`:''} <span class="pill brand">${adm?'Developer':'Teacher'}</span> <button class="btn btn-ghost btn-sm" id="editProf"><i data-lucide="pencil"></i> Profile</button>
       <span class="sub" style="display:inline"> · ${roster.length} students · ${papers.length} papers</span></div>
     ${adm?`<label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
       <span class="switch"><input type="checkbox" id="regOpen" ${state.settings.teacherSignupOpen!==false?'checked':''}><span class="slider"></span></span>
@@ -2830,12 +2830,12 @@ async function teacherDash(){
     <button data-tab="students" class="${state.tab==='students'?'active':''}">👨‍<i data-lucide="graduation-cap"></i> Students</button>
     ${adm?`<button data-tab="attendance" class="${state.tab==='attendance'?'active':''}">✅ Attendance</button>`:''}
     <button data-tab="marks" class="${state.tab==='marks'?'active':''}"><i data-lucide="pencil-line"></i>Marks</button>
-    <button data-tab="analytics" class="${state.tab==='analytics'?'active':''}">📊 Analytics</button>
-    <button data-tab="ranks" class="${state.tab==='ranks'?'active':''}">🏅 Rankings</button>
-       <button data-tab="allmarks" class="${state.tab==='allmarks'?'active':''}">🌐 All Marks</button>
-    <button data-tab="videos" class="${state.tab==='videos'?'active':''}">📹 Videos</button>
+    <button data-tab="analytics" class="${state.tab==='analytics'?'active':''}"><i data-lucide="bar-chart-3"></i> Analytics</button>
+    <button data-tab="ranks" class="${state.tab==='ranks'?'active':''}"><i data-lucide="award"></i> Rankings</button>
+       <button data-tab="allmarks" class="${state.tab==='allmarks'?'active':''}"><i data-lucide="globe"></i> All Marks</button>
+    <button data-tab="videos" class="${state.tab==='videos'?'active':''}"><i data-lucide="video"></i> Videos</button>
     ${window.CA.tabs.map(t=>`<button data-tab="x_${t.id}" class="${state.tab==='x_'+t.id?'active':''}">${t.label}</button>`).join('')}
-    ${adm?`<button data-tab="teachers" class="${state.tab==='teachers'?'active':''}">🧑‍<i data-lucide="users"></i> Teachers</button><button data-tab="examiners" class="${state.tab==='examiners'?'active':''}"><i data-lucide="clipboard-list"></i> Examiners</button><button data-tab="approvers" class="${state.tab==='approvers'?'active':''}"><i data-lucide="credit-card"></i> Payment Approvers</button><button data-tab="payments" class="${state.tab==='payments'?'active':''}">💰 Payments</button><button data-tab="admin" class="${state.tab==='admin'?'active':''}">⚙️ Centers &amp; Payments</button><button data-tab="requests" class="${state.tab==='requests'?'active':''}">📨 Requests${pendReq?` (${pendReq})`:''}</button><button data-tab="files" class="${state.tab==='files'?'active':''}">📚 Marking PDFs</button>`:''}
+    ${adm?`<button data-tab="teachers" class="${state.tab==='teachers'?'active':''}">🧑‍<i data-lucide="users"></i> Teachers</button><button data-tab="examiners" class="${state.tab==='examiners'?'active':''}"><i data-lucide="clipboard-list"></i> Examiners</button><button data-tab="approvers" class="${state.tab==='approvers'?'active':''}"><i data-lucide="credit-card"></i> Payment Approvers</button><button data-tab="payments" class="${state.tab==='payments'?'active':''}"><i data-lucide="banknote"></i> Payments</button><button data-tab="admin" class="${state.tab==='admin'?'active':''}"><i data-lucide="settings"></i> Centers &amp; Payments</button><button data-tab="requests" class="${state.tab==='requests'?'active':''}"><i data-lucide="inbox"></i> Requests${pendReq?` (${pendReq})`:''}</button><button data-tab="files" class="${state.tab==='files'?'active':''}"><i data-lucide="book-open"></i> Marking PDFs</button>`:''}
   </div>
   <div id="tabBody"></div>`;
 
@@ -2884,7 +2884,7 @@ papersAll.forEach(p=>{
     app.innerHTML=`${back}<div id="svEditBox"></div>
     <div class="card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center">
       <div><b style="font-size:1.15rem"><i data-lucide="graduation-cap"></i> ${esc(s.fullName)}</b>${s.signedUp?'':' <span class="sub" style="display:inline">· has not signed up</span>'}</div>
-      <div>${adm&&s.signedUp?`<button class="btn btn-ghost btn-sm" id="svEdit">✏️ Edit</button> `:''}<button class="btn btn-danger btn-sm" id="svDel">Remove student</button></div></div>
+      <div>${adm&&s.signedUp?`<button class="btn btn-ghost btn-sm" id="svEdit"><i data-lucide="pencil"></i> Edit</button> `:''}<button class="btn btn-danger btn-sm" id="svDel">Remove student</button></div></div>
       <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:12px">${info('NIC',s.nic)}${info('Barcode',s.barcode)}${info('Gender',s.gender)}${info('Batch',batch)}${info('Center',s.center)}${info('Mobile',s.mobile)}${info('WhatsApp',s.whatsapp)}${info('School',s.school)}${info('Email',s.email)}${info('Paid via',s.payMethod)}</div></div>
     ${rows.length?`<div class="card"><h2><i data-lucide="trending-up"></i> Progress</h2><canvas id="svC"></canvas></div>
     <div class="card"><h2><i data-lucide="file-text"></i> Paper-by-paper</h2><div class="tbl-wrap"><table><tr><th>Date</th><th>Paper</th><th>Marks</th><th>%</th><th>Grade</th><th>Rank</th><th>Status</th></tr>
@@ -2924,7 +2924,7 @@ function tabStudents({roster,rosterAll,papers}){
   })();
   const table=a=>a.length?`<div class="tbl-wrap"><table><tr><th>Name</th><th>NIC</th><th>Barcode</th><th>Batch</th><th>Center</th><th>Contact</th><th>School</th><th>Paid via</th><th></th></tr>${a.map(row).join('')}</table></div>`:'<p class="sub">No students found.</p>';
   $("#tabBody").innerHTML=`
-  ${sumCard}<div id="attBox"></div><div class="card"><h2>🔎 Find a student</h2>
+  ${sumCard}<div id="attBox"></div><div class="card"><h2><i data-lucide="search"></i> Find a student</h2>
     <input id="q" placeholder="Search by NIC, barcode or name"><div id="qres"></div></div>
   <div class="card"><h2>Add Student to ${esc(state.batch)}</h2>
     <p class="sub" style="margin:0 0 4px">Add a student with their barcode or NIC (either one) and enter marks straight away — they can sign up later with the same NIC and barcode.</p>
@@ -2967,7 +2967,7 @@ function tabStudents({roster,rosterAll,papers}){
           <div style="flex:1;min-width:200px"><label style="margin-top:0">Barcode (or NIC)</label>
           <div style="display:flex;gap:6px;align-items:stretch">
             <input id="atB" placeholder="Scan or type, then press Enter" autocomplete="off" maxlength="12" style="flex:1;min-width:0">
-            <button type="button" id="atScan" class="btn btn-ghost" style="width:auto;margin:0;padding:0 14px;font-size:1.15rem" title="Scan barcode with camera" aria-label="Scan barcode with camera">📷</button>
+            <button type="button" id="atScan" class="btn btn-ghost" style="width:auto;margin:0;padding:0 14px;font-size:1.15rem" title="Scan barcode with camera" aria-label="Scan barcode with camera"><i data-lucide="camera"></i></button>
           </div>
         </div>
   <button class="btn btn-primary" id="atAdd" style="width:auto;margin:0">+ Mark present</button>
@@ -3131,7 +3131,7 @@ function tabAttendance({roster, rosterAll, papers, attAll}){
       <div style="flex:1;min-width:220px"><label style="margin-top:0">Barcode (or NIC)</label>
         <div style="display:flex;gap:6px;align-items:stretch">
           <input id="dvAtB" placeholder="Scan or type, then press Enter" autocomplete="off" maxlength="12" style="flex:1;min-width:0">
-          <button type="button" id="dvAtScan" class="btn btn-ghost" style="width:auto;margin:0;padding:0 14px;font-size:1.15rem" title="Scan barcode with camera" aria-label="Scan barcode with camera">📷</button>
+          <button type="button" id="dvAtScan" class="btn btn-ghost" style="width:auto;margin:0;padding:0 14px;font-size:1.15rem" title="Scan barcode with camera" aria-label="Scan barcode with camera"><i data-lucide="camera"></i></button>
         </div>
       </div>
       <button class="btn btn-primary" id="dvAtAdd" style="width:auto;margin:0">+ Mark present</button>
@@ -3332,7 +3332,7 @@ function tabRanks({papers, rosterAll}){
   const exportBar = () => `
     <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;align-items:center">
       <button type="button" class="btn btn-ghost btn-sm" data-copy-tsv><i data-lucide="clipboard-list"></i> Copy for Google Sheets</button>
-      <button type="button" class="btn btn-ghost btn-sm" data-dl-csv>⬇ Download CSV</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-dl-csv><i data-lucide="download"></i> Download CSV</button>
       <span class="sub" style="margin:0;font-size:.75rem">Open a blank Google Sheet, click cell A1, paste (Ctrl+V).</span>
     </div>`;
 
@@ -3364,7 +3364,7 @@ function tabRanks({papers, rosterAll}){
     center:     'Center by center'
   }[grp] || 'All centers';
 
-  const marqueeCard = profile.isAdmin ? `     <div class="card" style="margin-bottom:14px">       <h2>📺 Student Dashboard Marquee — Top 10</h2>       <p class="sub" style="margin:0 0 8px">Choose which paper's top 10 scrolls on every student's dashboard. All centers included, Online excluded.</p>       <div class="row">         <div><label style="margin-top:0">Paper</label>           <select id="marqSel">             <option value="">— Not set (no marquee on students) —</option>             ${papers.map(p=>`<option value="${p.id}"${p.id===state.marqueePaperId?' selected':''}>${esc(p.title)} (${esc(p.date||'no date')})</option>`).join('')}           </select>         </div>         <button class="btn btn-primary" id="marqSave" style="width:auto;margin:0">Save &amp; refresh top 10</button>       </div>       <div id="marqMsg"></div>     </div>` : '';    $("#tabBody").innerHTML = marqueeCard + `<div class="card"><h2>🏅 Rankings — ${esc(state.batch)}</h2>
+  const marqueeCard = profile.isAdmin ? `     <div class="card" style="margin-bottom:14px">       <h2>📺 Student Dashboard Marquee — Top 10</h2>       <p class="sub" style="margin:0 0 8px">Choose which paper's top 10 scrolls on every student's dashboard. All centers included, Online excluded.</p>       <div class="row">         <div><label style="margin-top:0">Paper</label>           <select id="marqSel">             <option value="">— Not set (no marquee on students) —</option>             ${papers.map(p=>`<option value="${p.id}"${p.id===state.marqueePaperId?' selected':''}>${esc(p.title)} (${esc(p.date||'no date')})</option>`).join('')}           </select>         </div>         <button class="btn btn-primary" id="marqSave" style="width:auto;margin:0">Save &amp; refresh top 10</button>       </div>       <div id="marqMsg"></div>     </div>` : '';    $("#tabBody").innerHTML = marqueeCard + `<div class="card"><h2><i data-lucide="award"></i> Rankings — ${esc(state.batch)}</h2>
     ${papers.length ? `<div class="row">
       <div><label>Rank by</label><select id="rkV">
         ${papers.map(p=>`<option value="${p.id}"${p.id===view?' selected':''}>${esc(p.title)} (${esc(p.date||'no date')})</option>`).join('')}
@@ -3478,7 +3478,7 @@ async function moveMarksCenter(nic,center){
 async function studentEditCard(host,s,admin,onDone){
   const L=await getLists(), uid=admin?s.id:user.uid;
   const O=(a,v)=>a.map(x=>`<option${x===v?' selected':''}>${esc(x)}</option>`).join('');
-  host.innerHTML=`<div class="card"><h2>✏️ ${admin?'Edit student details':'Edit my details'}</h2>
+  host.innerHTML=`<div class="card"><h2><i data-lucide="pencil"></i> ${admin?'Edit student details':'Edit my details'}</h2>
     ${admin?`<label>Full name</label><input id="ef_n" value="${esc(s.fullName||'')}">`:''}
     <label>Mobile Number</label><input id="ef_m" type="tel" value="${esc(s.mobile||'')}">
     <label>WhatsApp Number</label><input id="ef_w" type="tel" value="${esc(s.whatsapp||'')}">
@@ -3508,7 +3508,7 @@ async function studentRequestCard(host){
   const L=await getLists();
   const O=(a,v)=>a.map(x=>`<option${x===v?' selected':''}>${esc(x)}</option>`).join('');
   let cur=null; try{ const r=await getDoc(doc(db,'changeRequests',user.uid)); if(r.exists()) cur=r.data(); }catch(e){}
-  host.innerHTML=`<div class="card"><h2>🔁 Request center / batch change</h2>
+  host.innerHTML=`<div class="card"><h2><i data-lucide="refresh-cw"></i> Request center / batch change</h2>
     <p class="sub">The developer reviews every request. You'll see the result here.</p>
     ${cur?`<p class="sub">Your last request: <b>${esc(cur.status)}</b> — ${esc(cur.toCenter||'—')}, ${esc(cur.toBatch||'')}</p>`:''}
     <label>New center</label><select id="rq_c"><option value="">Keep current</option>${O(L.centers,'')}</select>
@@ -3564,7 +3564,7 @@ function tabExaminers(ctx){ tabExaminers0(ctx); paymentToggleCard(); } function 
           <button class="btn btn-danger btn-sm" data-ermt="${e.id}">Remove</button>
         </td></tr>`).join('')}
     </table></div>` : '<p class="sub">No examining instructors yet.</p>'}
-    <p class="sub" style="margin-top:10px">Verify each instructor's sign-up before they can take attendance. Click a name or the 📊 Attendance button to see that examiner's marked attendance.</p>
+    <p class="sub" style="margin-top:10px">Verify each instructor's sign-up before they can take attendance. Click a name or the <i data-lucide="bar-chart-3"></i> Attendance button to see that examiner's marked attendance.</p>
   </div>`;
   document.querySelectorAll('[data-etv]').forEach(b=>b.onclick=async()=>{
     busy(true);
@@ -3799,7 +3799,7 @@ function openExaminerAttendanceModal(ex, papersAll, rosterAll){
 }
 function tabRequests({requests}){
   const pend=requests.filter(r=>r.status==='pending');
-  $("#tabBody").innerHTML=`<div class="card"><h2>📨 Change requests (${pend.length} pending)</h2>
+  $("#tabBody").innerHTML=`<div class="card"><h2><i data-lucide="inbox"></i> Change requests (${pend.length} pending)</h2>
   ${requests.length?`<div class="tbl-wrap"><table><tr><th>Student</th><th>NIC</th><th>From</th><th>To</th><th>Reason</th><th>Status</th><th></th></tr>
   ${requests.map(r=>`<tr><td><b>${esc(r.name||'')}</b></td><td class="mono">${esc(r.nic)}</td><td>${esc(r.fromCenter||'—')}<br>${esc(r.fromBatch||'')}</td><td>${esc(r.toCenter||'—')}<br>${esc(r.toBatch||'')}</td><td>${esc(r.reason||'')}</td><td>${esc(r.status)}</td>
   <td style="white-space:nowrap">${r.status==='pending'?`<button class="btn btn-primary btn-sm" data-ap="${r.id}" style="width:auto">Approve</button> <button class="btn btn-danger btn-sm" data-rj="${r.id}">Reject</button>`:''}</td></tr>`).join('')}</table></div>`:'<p class="sub">No requests yet.</p>'}</div>`;
@@ -3818,7 +3818,7 @@ async function tabFiles(){
   const docs=await Promise.all(BATCHES.map(b=>getDoc(doc(db,'fileLists',batchKey(b))).catch(()=>null)));
   const lists={}; BATCHES.forEach((b,i)=>lists[b]=docs[i]?.exists()?(docs[i].data().items||[]):[]);
   const save=async(b)=>{ busy(true); try{ await setDoc(doc(db,'fileLists',batchKey(b)),{items:lists[b]}); }catch(e){ alert(friendly(e)); } busy(false); tabFiles(); };
-  $("#tabBody").innerHTML=`<div class="card"><h2>📚 Add a marking PDF</h2>
+  $("#tabBody").innerHTML=`<div class="card"><h2><i data-lucide="book-open"></i> Add a marking PDF</h2>
     <p class="sub" style="margin:0 0 6px">1) Post the PDF in your Telegram channel. 2) Tap the message → Copy Link (e.g. https://t.me/Wellbiopaper/123). 3) Paste the link here.</p>
     <div class="row"><div><label>Batch</label><select id="fb">${BATCHES.map(b=>`<option${b===state.batch?' selected':''}>${b}</option>`).join('')}</select></div>
     <div><label>Title</label><input id="ft" placeholder="e.g. Paper 3 — Marking scheme"></div>
@@ -3854,7 +3854,7 @@ async function tabVideos(){
   };
 
   $("#tabBody").innerHTML = `
-  <div class="card"><h2>📹 Add a paper-discussion video</h2>
+  <div class="card"><h2><i data-lucide="video"></i> Add a paper-discussion video</h2>
     <p class="sub" style="margin:0 0 6px">Upload the video to YouTube, then paste the link here. Students in the same batch will see it on their dashboard.</p>
     <div class="row">
       <div><label>Batch</label>
@@ -3912,7 +3912,7 @@ async function loadStuFiles(){
   try{
     const d=await getDoc(doc(db,'fileLists',batchKey(profile.batch||BATCHES[0]))), items=d.exists()?(d.data().items||[]):[];
     if(!items.length){ host.innerHTML=''; return; }
-    host.innerHTML=`<div class="card"><h2>📚 Marking schemes &amp; files</h2><div class="pdfgrid">${items.slice().reverse().map(it=>`<div class="pdfcard"><a href="${esc(itemUrl(it))}" target="_blank" rel="noopener">${itemThumb(it)}</a><div class="pt">${esc(it.title)}</div><div class="pb"><a class="btn btn-primary btn-sm" href="${esc(itemUrl(it))}" target="_blank" rel="noopener" style="width:auto">${it.url?'<i data-lucide="send"></i> Open in Telegram':'⬇ Download'}</a></div></div>`).join('')}</div></div>`;
+    host.innerHTML=`<div class="card"><h2><i data-lucide="book-open"></i> Marking schemes &amp; files</h2><div class="pdfgrid">${items.slice().reverse().map(it=>`<div class="pdfcard"><a href="${esc(itemUrl(it))}" target="_blank" rel="noopener">${itemThumb(it)}</a><div class="pt">${esc(it.title)}</div><div class="pb"><a class="btn btn-primary btn-sm" href="${esc(itemUrl(it))}" target="_blank" rel="noopener" style="width:auto">${it.url?'<i data-lucide="send"></i> Open in Telegram':'<i data-lucide="download"></i> Download'}</a></div></div>`).join('')}</div></div>`;
   }catch(e){ host.innerHTML=''; }
 }
   async function loadStuVideos(){
@@ -3920,7 +3920,7 @@ async function loadStuFiles(){
   try {
     const items = await getVideos(profile.batch || BATCHES[0]);
     if (!items.length) { host.innerHTML = ''; return; }
-    host.innerHTML = `<div class="card"><h2>📹 Paper discussion videos</h2>
+    host.innerHTML = `<div class="card"><h2><i data-lucide="video"></i> Paper discussion videos</h2>
       <div class="pdfgrid">${items.slice().reverse().map(it=>`
         <div class="pdfcard">
           <a href="${ytUrl(it.youtubeId)}" target="_blank" rel="noopener">
@@ -3956,7 +3956,7 @@ function tabAllMarks({papers,rosterAll}){
       body+=`<tr><td colspan="6" style="background:var(--bg);font-weight:700"><i data-lucide="users"></i> ${esc(x.center)} <span class="sub" style="display:inline">· ${c.n} students · average ${Math.round(c.t/c.n*10)/10}%</span></td></tr>`; }
     const can=adm||x.center===mine, nm=can?`<a class="nl" href="#/student/${encodeURIComponent(x.nic)}">${esc(x.name)}</a>`:esc(x.name);
     body+=`<tr><td><b>${x.rank}</b></td><td>${nm}</td><td class="mono">${esc(x.nic)}</td><td>${esc(x.center)}</td><td class="mono"><b>${x.m}</b> / ${sel.max}</td><td><span class="pill ${gCls(x.pc)}">${x.pc}%</span></td></tr>`; });
-  $("#tabBody").innerHTML=`<div class="card"><h2>🌐 All marks — ${esc(state.batch)}</h2>
+  $("#tabBody").innerHTML=`<div class="card"><h2><i data-lucide="globe"></i> All marks — ${esc(state.batch)}</h2>
     ${papers.length?`<div class="row"><div><label>Paper</label><select id="amP">${papers.map(p=>`<option value="${p.id}"${p.id===sel.id?' selected':''}>${esc(p.title)} (${esc(p.date||'no date')})</option>`).join('')}</select></div>
     <div><label>Arrange</label><select id="amS"><option value="high"${sort==='high'?' selected':''}>Highest → Lowest</option><option value="low"${sort==='low'?' selected':''}>Lowest → Highest</option><option value="center"${sort==='center'?' selected':''}>Center by center</option></select></div></div>`:'<p class="sub">No papers yet.</p>'}
     ${rows.length?`<div class="tbl-wrap"><table><tr><th>Rank</th><th>Student</th><th>NIC</th><th>Center</th><th>Marks</th><th>%</th></tr>${body}</table></div>`:(sel?'<p class="sub">No marks entered for this paper yet.</p>':'')}</div>`;
@@ -4085,7 +4085,7 @@ function drawMarksPane(students, papers){
 
   pane.innerHTML = `
   <div class="card">
-    <h2>✏️ Marks — ${esc(sel.subject)}: ${esc(sel.title)}
+    <h2><i data-lucide="pencil"></i> Marks — ${esc(sel.subject)}: ${esc(sel.title)}
       <span class="sub" style="display:inline">(max ${sel.max})</span>
       <span id="svLbl" class="saved" style="margin-left:8px"></span></h2>
     <p class="sub" style="margin:0 0 8px">
@@ -4212,8 +4212,8 @@ function tabAnalytics({papers}){
   const overall=avgOf(S.map(s=>s.avg));
   $("#tabBody").innerHTML=`
   <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px">
-      <h2 style="margin:0">📊 Analytics — ${esc(state.batch)}</h2>
-      <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" id="xls">⬇ Export Excel</button><button class="btn btn-ghost btn-sm" id="pdf">⬇ Export PDF</button></div></div>
+      <h2 style="margin:0"><i data-lucide="bar-chart-3"></i> Analytics — ${esc(state.batch)}</h2>
+      <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" id="xls"><i data-lucide="download"></i> Export Excel</button><button class="btn btn-ghost btn-sm" id="pdf"><i data-lucide="download"></i> Export PDF</button></div></div>
     <div class="grid g4" style="margin-top:10px">
       <div class="stat"><div class="num">${papers.length}</div><div class="lbl">Papers</div></div>
       <div class="stat"><div class="num">${S.length}</div><div class="lbl">Students with marks</div></div>
