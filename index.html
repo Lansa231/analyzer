@@ -450,6 +450,70 @@ main#app.landing-wide{overflow-x:clip}
   @media (hover:none){
     .lp .class-card:hover,.lp .feat:hover,.lp .c-item:hover,.lp .tg-card:hover{ transform:none; }
   }
+    /* ============================================================
+   Teacher sidebar — mobile layout (guaranteed last, !important)
+   ============================================================ */
+@media (max-width: 900px) {
+  .dash-layout {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+  .sidebar {
+    position: static !important;
+    top: auto !important;
+    display: flex !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 8px !important;
+    max-height: none !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .sidebar::-webkit-scrollbar {
+    height: 4px;
+  }
+  .sidebar::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 4px;
+  }
+  .side-group {
+    display: flex !important;
+    gap: 4px !important;
+    margin-bottom: 0 !important;
+    flex-shrink: 0 !important;
+    flex-wrap: nowrap !important;
+  }
+  .side-label {
+    display: none !important;
+  }
+  .side-item {
+    white-space: nowrap !important;
+    width: auto !important;
+    min-width: max-content !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    padding: 8px 14px !important;
+    border-left: none !important;
+    border-bottom: 2px solid transparent !important;
+    font-size: .82rem !important;
+    border-radius: 8px !important;
+  }
+  .side-item.active {
+    border-left: none !important;
+    border-bottom-color: var(--brand) !important;
+    background: var(--brand-soft) !important;
+    color: var(--brand) !important;
+  }
+  .side-item svg.lucide {
+    width: 16px !important;
+    height: 16px !important;
+    flex-shrink: 0 !important;
+  }
+}
 </style>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
