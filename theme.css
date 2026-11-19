@@ -133,3 +133,44 @@
 ::selection {
   background: rgba(201,162,74,.38);
 }
+/* ============================================================
+   Lucide icons — sizing & alignment
+   ============================================================ */
+[data-lucide],
+svg.lucide {
+  width: 1.1em;
+  height: 1.1em;
+  stroke-width: 2;
+  vertical-align: -0.15em;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* Slightly smaller in tight button rows */
+.btn-sm [data-lucide],
+.btn-sm svg.lucide {
+  width: 1em;
+  height: 1em;
+}
+
+/* Coloured icons inherit colour from their text context */
+.side-item [data-lucide],
+.side-item svg.lucide {
+  color: inherit;
+}
+
+/* Nav pill links */
+.nav-link [data-lucide],
+.nav-link svg.lucide {
+  color: inherit;
+}
+
+/* Icon tiles — landing page feature icons, contact icons */
+.lp .feat .fic svg.lucide,
+.lp .c-item .ic svg.lucide,
+.lp .tg-card .ic svg.lucide,
+.lp .c-item svg.lucide {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--brand);
+}
