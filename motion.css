@@ -1,8 +1,18 @@
-/* ===== S.K. Wellala — motion layer (load AFTER the inline <style> blocks) ===== */
+/* ===== S.K. Wellala — motion layer =====
+   Load AFTER theme.css. Contains:
+     1. Motion animations (hover, entrances, marquee)
+     2. See-more button (for long tables)
+     3. Mobile dashboard drawer (hamburger + slide-in sidebar)
+     4. Reduced-motion overrides — ALWAYS LAST
+*/
+
 :root{--ease:cubic-bezier(.22,.8,.3,1)}
 html{scroll-behavior:smooth}
 
-/* ---------- Icons (replace emoji) ---------- */
+
+/* ============================================================
+   1. ICONS — legacy `.svgi` helpers (harmless if unused)
+   ============================================================ */
 .svgi{display:inline-flex;width:1.15em;height:1.15em;vertical-align:-.2em;margin-right:.15em;flex:none;transition:transform .3s var(--ease)}
 .svgi svg{width:100%;height:100%;display:block}
 .svgi:only-child{margin:0}
@@ -13,19 +23,25 @@ html{scroll-behavior:smooth}
 .lp-hero-badge .svgi{animation:sway 3.2s ease-in-out infinite;transform-origin:50% 90%}
 @keyframes sway{50%{transform:rotate(14deg)}}
 
-/* ---------- Floating emoji background -> soft drifting light ---------- */
+
+/* ============================================================
+   2. BACKGROUND ORBS — soft drifting light (blue-tinted)
+   ============================================================ */
 .bgfx{display:none!important}
 body::before,body::after{content:"";position:fixed;z-index:-1;border-radius:50%;filter:blur(80px);pointer-events:none;opacity:.32}
-body::before{width:420px;height:420px;left:-120px;top:18%;background:rgba(34,160,107,.4);animation:orb1 24s ease-in-out infinite alternate}
-body::after{width:380px;height:380px;right:-110px;bottom:4%;background:rgba(217,169,58,.3);animation:orb2 28s ease-in-out infinite alternate}
+body::before{width:420px;height:420px;left:-120px;top:18%;background:rgba(6,182,212,.35);animation:orb1 24s ease-in-out infinite alternate}
+body::after{width:380px;height:380px;right:-110px;bottom:4%;background:rgba(217,169,58,.28);animation:orb2 28s ease-in-out infinite alternate}
 [data-theme="dark"] body::before,[data-theme="dark"] body::after{opacity:.2}
 @keyframes orb1{to{transform:translate(160px,-120px) scale(1.2)}}
 @keyframes orb2{to{transform:translate(-180px,100px) scale(1.15)}}
 
-/* ---------- Buttons: lift, press, shine, ripple ---------- */
+
+/* ============================================================
+   3. BUTTONS — lift, press, shine, ripple
+   ============================================================ */
 .btn,.tabs button,.foot-contact,.nav-link,.nav-toggle{position:relative;overflow:hidden;transition:transform .18s var(--ease),box-shadow .25s,filter .2s,background .2s,color .2s,border-color .2s}
 .nav-link{display:inline-block}
-.btn:not(:disabled):hover,.foot-contact:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(21,128,61,.22)}
+.btn:not(:disabled):hover,.foot-contact:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(3,105,161,.22)}
 .btn:not(:disabled):active,.tabs button:active,.foot-contact:active,.nav-toggle:active{transform:translateY(0) scale(.95)}
 .btn-gold::after,.btn-primary::after,.btn-primary-solid::after,.foot-contact::after{content:"";position:absolute;top:0;left:-70%;width:45%;height:100%;pointer-events:none;background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-20deg);transition:left .65s var(--ease)}
 .btn-gold:hover::after,.btn-primary:hover::after,.btn-primary-solid:hover::after,.foot-contact:hover::after{left:130%}
@@ -34,21 +50,27 @@ body::after{width:380px;height:380px;right:-110px;bottom:4%;background:rgba(217,
 .click-ring{position:fixed;z-index:9999;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--brand);pointer-events:none;animation:ring .55s ease-out forwards}
 @keyframes ring{to{transform:scale(4.5);opacity:0}}
 
-/* ---------- Tabs, nav, header ---------- */
+
+/* ============================================================
+   4. TABS, NAV, HEADER — hover states and active accents
+   ============================================================ */
 .tabs button:hover:not(.active){border-color:var(--brand);color:var(--brand);transform:translateY(-1px)}
-.tabs button.active{box-shadow:0 6px 16px rgba(21,128,61,.28)}
+.tabs button.active{box-shadow:0 6px 16px rgba(3,105,161,.28)}
 .nav-link::after{content:"";position:absolute;left:14px;right:14px;bottom:4px;height:2px;border-radius:2px;background:var(--brand);transform:scaleX(0);transition:transform .3s var(--ease)}
 .nav-link:hover::after,.nav-link.active::after{transform:scaleX(1)}
 .nav-link.active{color:var(--brand)!important}
-header.scrolled{box-shadow:0 6px 24px rgba(20,80,40,.12)}
+header.scrolled{box-shadow:0 6px 24px rgba(3,7,30,.12)}
 .logo{transition:letter-spacing .3s var(--ease)}
 .logo:hover{letter-spacing:.075em}
 .nav-mobile a{transition:background .15s,padding-left .2s var(--ease)}
 .nav-mobile a:hover{padding-left:20px}
 
-/* ---------- Cards: lift + cursor spotlight ---------- */
+
+/* ============================================================
+   5. CARDS — lift, cursor spotlight (blue-tinted)
+   ============================================================ */
 .card,.class-card,.feat,.c-item,.tg-card,.stat,.pdfcard{position:relative}
-.card::after,.class-card::after,.feat::after,.c-item::after,.tg-card::after,.stat::after,.pdfcard::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),rgba(34,160,107,.17),transparent 70%)}
+.card::after,.class-card::after,.feat::after,.c-item::after,.tg-card::after,.stat::after,.pdfcard::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),rgba(6,182,212,.17),transparent 70%)}
 .card:hover::after,.class-card:hover::after,.feat:hover::after,.c-item:hover::after,.tg-card:hover::after,.stat:hover::after,.pdfcard:hover::after{opacity:1}
 .card{transition:border-color .25s,box-shadow .25s}
 .card:hover{border-color:var(--brand-soft)}
@@ -65,23 +87,31 @@ header.scrolled{box-shadow:0 6px 24px rgba(20,80,40,.12)}
 #centers div[style*="box-shadow"]{transition:transform .2s var(--ease),border-color .2s,background .2s}
 #centers div[style*="box-shadow"]:hover{transform:translateX(5px);border-color:var(--brand);background:var(--brand-soft)}
 
-/* ---------- Tables, lists, inputs ---------- */
+
+/* ============================================================
+   6. TABLES, LISTS, INPUTS
+   ============================================================ */
 td{transition:background .2s}
 tr:hover td{background:var(--brand-soft)}
 tr:hover td:first-child{box-shadow:inset 3px 0 0 var(--brand)}
 .list-item,.paper-row,.crow{transition:background .2s,padding-left .2s var(--ease)}
 .list-item:hover,.paper-row:hover{background:var(--brand-soft);padding-left:10px;border-radius:10px}
 input,select,textarea{transition:border-color .2s,box-shadow .2s,background .2s}
-input:focus,select:focus,textarea:focus{box-shadow:0 0 0 4px rgba(34,160,107,.18)}
+input:focus,select:focus,textarea:focus{box-shadow:0 0 0 4px rgba(6,182,212,.18)}
 .pill{transition:transform .2s var(--ease)}
 .pill:hover{transform:scale(1.07)}
 .switch:active .slider:before{width:22px}
 
-/* ---------- Entrances ---------- */
+
+/* ============================================================
+   7. ENTRANCES
+   ============================================================ */
 @keyframes up{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
 .lp-hero-in>*{opacity:0;animation:up .85s var(--ease) forwards}
-.lp-hero-in>:nth-child(1){animation-delay:.05s}.lp-hero-in>:nth-child(2){animation-delay:.18s}
-.lp-hero-in>:nth-child(3){animation-delay:.32s}.lp-hero-in>:nth-child(4){animation-delay:.46s}
+.lp-hero-in>:nth-child(1){animation-delay:.05s}
+.lp-hero-in>:nth-child(2){animation-delay:.18s}
+.lp-hero-in>:nth-child(3){animation-delay:.32s}
+.lp-hero-in>:nth-child(4){animation-delay:.46s}
 .lp-hero-in>:nth-child(5){animation-delay:.6s}
 .lp-hero-bg::before{content:"";position:absolute;width:520px;height:520px;right:-120px;top:-170px;border-radius:50%;background:radial-gradient(circle,rgba(253,230,138,.35),transparent 65%);animation:drift 14s ease-in-out infinite alternate}
 @keyframes drift{to{transform:translate(-100px,80px) scale(1.15)}}
@@ -91,11 +121,188 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 4px rgba(34,160,107,.18
 .bar,.mock-bar i,.gb-track>div{transform-origin:left;animation:grow 1s var(--ease) both}
 @keyframes grow{from{transform:scaleX(0)}}
 
-/* ---------- Marquee avatars (initials instead of animal faces) ---------- */
+
+/* ============================================================
+   8. MARQUEE — initials, hover lift
+   ============================================================ */
 .face{font-size:1rem;font-weight:800;color:#12281c;letter-spacing:0;transition:transform .25s var(--ease)}
 .marq-item:hover .face{transform:scale(1.14) rotate(-4deg)}
 
-@media (prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
-  .lp-hero-in>*{opacity:1}.rv{opacity:1;transform:none}
+
+/* ============================================================
+   9. SEE MORE — "show more rows" button under large tables
+   ============================================================ */
+.tbl-see-more {
+  display: block;
+  margin: 10px auto 0;
+  padding: 8px 22px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: .82rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease;
+}
+.tbl-see-more:hover {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+.tbl-see-more:active { transform: scale(.97); }
+@media (max-width: 760px) {
+  .tbl-see-more { font-size: .78rem; padding: 7px 16px; }
+}
+
+
+/* ============================================================
+   10. MOBILE DASHBOARD DRAWER
+   ------------------------------------------------------------
+   Below 900px:
+     • Sidebar becomes a fixed drawer sliding from the left
+     • Hamburger button floats top-left, opens the drawer
+     • Overlay darkens the screen behind the drawer
+     • Tabs stack vertically, styled as full-width rows
+   Above 900px: nothing here applies — desktop sidebar stays.
+   ============================================================ */
+
+.dash-hamburger,
+.dash-overlay { display: none; }
+.dash-hamburger.hidden,
+.dash-overlay.hidden { display: none !important; }
+
+@media (max-width: 900px) {
+
+  /* Single-column layout — no reserved sidebar column */
+  .dash-layout { display: block !important; }
+
+  /* ─── Sidebar = fixed drawer ───────────────────────────── */
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    height: 100dvh !important;          /* mobile-safe: ignores address bar */
+    width: 280px !important;
+    max-width: 82vw !important;
+    transform: translateX(-100%) !important;
+    transition: transform .28s ease !important;
+    z-index: 200 !important;
+    background: var(--card) !important;
+    border: 0 !important;
+    border-right: 1px solid var(--line) !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,.15) !important;
+    padding: 20px 16px !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+  .sidebar.open { transform: translateX(0) !important; }
+
+  /* ─── Tabs inside the drawer: vertical stack ───────────── */
+  .sidebar .side-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    margin: 0 !important;
+  }
+
+  .sidebar .side-label {
+    display: block !important;           /* show "Teaching" / "Admin" */
+    padding: 6px 12px 2px !important;
+  }
+
+  .sidebar .side-item {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    border-left: 3px solid transparent !important;
+    border-bottom: none !important;
+    padding: 11px 14px !important;
+    margin: 0 !important;
+    white-space: normal !important;
+    border-radius: 10px !important;
+    background: transparent !important;
+    color: var(--ink) !important;
+  }
+  .sidebar .side-item.active {
+    background: var(--brand) !important;
+    color: #fff !important;
+    border-left-color: var(--brand) !important;
+    border-bottom: none !important;
+  }
+
+  /* ─── Hamburger button ─────────────────────────────────── */
+  .dash-hamburger {
+    display: inline-flex !important;
+    position: fixed !important;
+    top: 72px !important;
+    left: 12px !important;
+    z-index: 60 !important;
+    width: 42px !important;
+    height: 42px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    padding: 0 !important;
+    background: var(--card) !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 10px !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,.10) !important;
+  }
+  .dash-hamburger span {
+    display: block !important;
+    width: 18px !important;
+    height: 2px !important;
+    background: var(--ink) !important;
+    border-radius: 2px !important;
+    transition: transform .25s ease, opacity .2s ease !important;
+  }
+  .dash-hamburger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg) !important; }
+  .dash-hamburger.open span:nth-child(2) { opacity: 0 !important; }
+  .dash-hamburger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg) !important; }
+
+  /* ─── Overlay behind drawer ────────────────────────────── */
+  .dash-overlay {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0,0,0,.4) !important;
+    z-index: 150 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity .25s ease !important;
+  }
+  .dash-overlay.open { opacity: 1 !important; pointer-events: auto !important; }
+
+  /* ─── Reserved space so the hamburger doesn't overlap
+         the first card. Tune this number if you want
+         less whitespace at the top of the dashboard.  ──── */
+  .dash-main { padding-top: 56px !important; }
+}
+
+
+/* ============================================================
+   11. REDUCED MOTION — ALWAYS LAST so it can override the
+       drawer's transform animation for accessibility.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,*::before,*::after{
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .lp-hero-in>* { opacity: 1; }
+  .rv { opacity: 1; transform: none; }
+  /* Drawer opens instantly instead of sliding */
+  .sidebar { transition: none !important; }
+  .dash-overlay { transition: none !important; }
 }
