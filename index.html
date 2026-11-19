@@ -2829,7 +2829,33 @@ async function teacherDash(){
   <div class="tabs">
     <button data-tab="students" class="${state.tab==='students'?'active':''}">👨‍<i data-lucide="graduation-cap"></i> Students</button>
     ${adm?`<button data-tab="attendance" class="${state.tab==='attendance'?'active':''}">✅ Attendance</button>`:''}
-    <button data-tab="marks" class="${state.tab==='marks'?'active':''}"><i data-lucide="pencil-line"></i>Marks</button>
+    <button data-tab="marks" class  <div class="dash-layout">
+    <aside class="sidebar">
+      <div class="side-group">
+        <div class="side-label">Teaching</div>
+        <button class="side-item ${state.tab==='students'?'active':''}" data-tab="students"><i data-lucide="graduation-cap"></i> Students</button>
+        ${adm?`<button class="side-item ${state.tab==='attendance'?'active':''}" data-tab="attendance"><i data-lucide="clipboard-check"></i> Attendance</button>`:''}
+        <button class="side-item ${state.tab==='marks'?'active':''}" data-tab="marks"><i data-lucide="pencil-line"></i> Marks</button>
+        <button class="side-item ${state.tab==='analytics'?'active':''}" data-tab="analytics"><i data-lucide="bar-chart-3"></i> Analytics</button>
+        <button class="side-item ${state.tab==='ranks'?'active':''}" data-tab="ranks"><i data-lucide="award"></i> Rankings</button>
+        <button class="side-item ${state.tab==='allmarks'?'active':''}" data-tab="allmarks"><i data-lucide="globe"></i> All Marks</button>
+        <button class="side-item ${state.tab==='videos'?'active':''}" data-tab="videos"><i data-lucide="video"></i> Videos</button>
+        ${window.CA.tabs.map(t=>`<button class="side-item ${state.tab==='x_'+t.id?'active':''}" data-tab="x_${t.id}">${t.label}</button>`).join('')}
+      </div>
+      ${adm?`
+      <div class="side-group">
+        <div class="side-label">Admin</div>
+        <button class="side-item ${state.tab==='teachers'?'active':''}" data-tab="teachers"><i data-lucide="users"></i> Teachers</button>
+        <button class="side-item ${state.tab==='examiners'?'active':''}" data-tab="examiners"><i data-lucide="clipboard-list"></i> Examiners</button>
+        <button class="side-item ${state.tab==='approvers'?'active':''}" data-tab="approvers"><i data-lucide="credit-card"></i> Approvers</button>
+        <button class="side-item ${state.tab==='payments'?'active':''}" data-tab="payments"><i data-lucide="banknote"></i> Payments</button>
+        <button class="side-item ${state.tab==='admin'?'active':''}" data-tab="admin"><i data-lucide="settings"></i> Centers &amp; Payments</button>
+        <button class="side-item ${state.tab==='requests'?'active':''}" data-tab="requests"><i data-lucide="inbox"></i> Requests${pendReq?`<span class="side-badge">${pendReq}</span>`:''}</button>
+        <button class="side-item ${state.tab==='files'?'active':''}" data-tab="files"><i data-lucide="book-open"></i> Marking PDFs</button>
+      </div>`:''}
+    </aside>
+    <div id="tabBody"></div>
+  </div>`;"><i data-lucide="pencil-line"></i>Marks</button>
     <button data-tab="analytics" class="${state.tab==='analytics'?'active':''}"><i data-lucide="bar-chart-3"></i> Analytics</button>
     <button data-tab="ranks" class="${state.tab==='ranks'?'active':''}"><i data-lucide="award"></i> Rankings</button>
        <button data-tab="allmarks" class="${state.tab==='allmarks'?'active':''}"><i data-lucide="globe"></i> All Marks</button>
