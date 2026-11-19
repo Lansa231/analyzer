@@ -4317,7 +4317,23 @@ document.addEventListener('click', e => {
 });
 
 chartDefaults();
-  if ('serviceWorker' in navigator) {
+
+/* ============================================================
+   Lucide — auto-render icons whenever the DOM changes
+   ============================================================ */
+if (window.lucide) {
+  let lucideTimer = null;
+  const renderIcons = () => {
+    clearTimeout(lucideTimer);
+    lucideTimer = setTimeout(() => {
+      if (document.querySelector('[data-lucide]')) lucide.createIcons();
+    }, 30);
+  };
+  new MutationObserver(renderIcons).observe(document.body, { childList: true, subtree: true });
+  renderIcons();
+}
+
+if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
 </script>
