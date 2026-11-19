@@ -2839,6 +2839,8 @@ async function teacherDash(){
   <div style="display:flex;gap:8px;align-items:center;margin:8px 0"><label style="margin:0">Center:</label>
     ${adm?`<select id="ctrSel" style="width:auto"><option>All</option>${state.lists.centers.map(c=>`<option${state.center===c?' selected':''}>${esc(c)}</option>`).join('')}</select>`:`<b>${esc(profile.center||'— (no center set)')}</b> <span class="sub" style="margin:0">· you only see students in your center</span>`}</div>
   ${rankMarquee(roster,papers)}
+  <button class="dash-hamburger" id="dashBurger" aria-label="Menu"><span></span><span></span><span></span></button>
+  <div class="dash-overlay" id="dashOverlay"></div>
   <div class="dash-layout">
     <aside class="sidebar">
       <div class="side-group">
@@ -2872,6 +2874,12 @@ async function teacherDash(){
   if($("#regOpen")) $("#regOpen").onchange=async e=>{
     await setDoc(doc(db,'settings','registration'),{teacherSignupOpen:e.target.checked},{merge:true});
   };
+    { const burger=$("#dashBurger"), ov=$("#dashOverlay"), sb=document.querySelector('.sidebar');
+    const setDrawer=o=>{ sb.classList.toggle('open',o); burger.classList.toggle('open',o); ov.classList.toggle('open',o); };
+    burger.onclick=()=>setDrawer(!sb.classList.contains('open'));
+    ov.onclick=()=>setDrawer(false);
+    sb.addEventListener('click',e=>{ if(e.target.closest('.side-item')) setDrawer(false); });
+  }
   document.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>{ state.batch=b.dataset.batch; state.selPaper=null; state.rankPaper=null; teacherDash(); });
   if($("#ctrSel")) $("#ctrSel").onchange=e=>{ state.center=e.target.value; teacherDash(); };
   if(!adm && ['teachers','admin','requests','files','approvers','payments','attendance'].includes(state.tab)) state.tab='students';
