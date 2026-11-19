@@ -693,7 +693,7 @@ function renderHdr(r){
     nav.innerHTML = '';
   }
   if(user && (r==='stuDash'||r==='teacherDash'||r==='studentView'||r==='examinerDash'||r==='examinerView')){
-    const roleLabel = role==='teacher'  ? (profile&&profile.isAdmin?'<i data-lucide="wrench"></i> Developer':'<i data-lucide="users"></i>‍ Teacher')
+    const roleLabel = role==='teacher'  ? (profile&&profile.isAdmin?'<i data-lucide="wrench"></i> Developer':'<i data-lucide="users"></i> Teacher')
                     : role==='examiner' ? '<i data-lucide="clipboard-list"></i> Examiner'                     : role==='approver' ? '<i data-lucide="credit-card"></i> Payment Approver'
                     : '<i data-lucide="graduation-cap"></i> Student';
     h.innerHTML = `<span class="pill brand">${roleLabel}</span> ${themeBtn()} <button class="btn btn-danger btn-sm" id="logoutBtn">Log out</button>`;
@@ -780,7 +780,7 @@ function bootFirebase(cfg){
 setTheme(localStorage.getItem('ca_theme')||'light');
 (function(){
   if (matchMedia('(max-width:760px)').matches || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const f=document.createElement('div'); f.className='bgfx'; const E=['<i data-lucide="dna"></i>','<i data-lucide="leaf"></i>','<i data-lucide="flask-conical"></i>','🧫','🍃','🦠','🧠','🫀','🌱'];
+  const f=document.createElement('div'); f.className='bgfx'; const E=['🧫','🍃','🦠','🧠','🫀','🌱'];
   for(let i=0;i<8;i++){ const e=document.createElement('span'); e.textContent=E[i%E.length];
     e.style.cssText=`left:${Math.random()*96}%;font-size:${18+Math.random()*24}px;animation-duration:${22+Math.random()*26}s;animation-delay:-${Math.random()*40}s`; f.appendChild(e); }
   document.body.prepend(f); })();
@@ -859,10 +859,10 @@ function landing(){
     </section>
 
     <div class="lp-trust">
-      <div><i><i data-lucide="trending-up"></i></i><span>Progress charts <b>per paper</b></span></div>
-      <div><i><i data-lucide="file-text"></i></i><span>Paper-by-paper <b>marks history</b></span></div>
-      <div><i><i data-lucide="lock"></i></i><span>Private — <b>only you</b> see your marks</span></div>
-      <div><i><i data-lucide="smartphone"></i></i><span>Works on <b>any device</b></span></div>
+<div><i data-lucide="trending-up"></i><span>Progress charts <b>per paper</b></span></div>
+<div><i data-lucide="file-text"></i><span>Paper-by-paper <b>marks history</b></span></div>
+<div><i data-lucide="lock"></i><span>Private — <b>only you</b> see your marks</span></div>
+<div><i data-lucide="smartphone"></i><span>Works on <b>any device</b></span></div>
     </div>
 
     <section id="classes">
@@ -931,7 +931,7 @@ function landing(){
             <span><i data-lucide="target"></i> Kandy District Top</span>
             <span><i data-lucide="dna"></i> Biology Specialist</span>
             <span><i data-lucide="graduation-cap"></i> University Graduate</span>
-            <span>👨‍<i data-lucide="stethoscope"></i> Doctor-Maker</span>
+            <span><i data-lucide="stethoscope"></i> Doctor-Maker</span>
           </div>
         </div>
       </div>
@@ -4321,6 +4321,7 @@ chartDefaults();
 /* ============================================================
    Lucide — auto-render icons whenever the DOM changes
    ============================================================ */
+/* Lucide — auto-render icons on every DOM change */
 if (window.lucide) {
   let lucideTimer = null;
   const renderIcons = () => {
