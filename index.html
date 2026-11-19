@@ -453,65 +453,121 @@ main#app.landing-wide{overflow-x:clip}
     /* ============================================================
    Teacher sidebar — mobile layout (guaranteed last, !important)
    ============================================================ */
+/* ============================================================
+   Teacher sidebar — bulletproof mobile override
+   Forces single-column layout, kills drawer behaviour, sidebar
+   becomes an always-visible horizontal scroll strip.
+   ============================================================ */
 @media (max-width: 900px) {
+
+  /* 1. Kill the two-column grid — no reserved space on the left */
   .dash-layout {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    gap: 14px !important;
+    display: block !important;
+    grid-template-columns: none !important;
+    grid-template-rows: none !important;
+    gap: 0 !important;
   }
-  .sidebar {
+
+  /* 2. Sidebar: full width, static flow, horizontal strip */
+  .dash-layout > aside.sidebar,
+  .dash-layout > .sidebar {
     position: static !important;
     top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    float: none !important;
+    clear: both !important;
     display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 0 14px 0 !important;
+    padding: 6px !important;
     gap: 6px !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
-    padding: 8px !important;
-    max-height: none !important;
-    width: 100% !important;
     box-sizing: border-box !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    z-index: auto !important;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
   }
-  .sidebar::-webkit-scrollbar {
-    height: 4px;
-  }
-  .sidebar::-webkit-scrollbar-thumb {
-    background: var(--line);
-    border-radius: 4px;
-  }
-  .side-group {
+
+  /* 3. Kill any drawer class that tries to hide or slide it */
+  .sidebar.open,
+  .sidebar.is-open,
+  .sidebar.active,
+  .sidebar.show,
+  .sidebar[data-open="true"] {
+    position: static !important;
+    transform: none !important;
+    visibility: visible !important;
+    opacity: 1 !important;
     display: flex !important;
-    gap: 4px !important;
-    margin-bottom: 0 !important;
-    flex-shrink: 0 !important;
-    flex-wrap: nowrap !important;
+    left: auto !important;
+    top: auto !important;
   }
+
+  /* 4. Groups and items flow horizontally */
+  .sidebar .side-group {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    margin: 0 !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+  }
+
   .side-label {
     display: none !important;
   }
+
   .side-item {
+    flex-shrink: 0 !important;
     white-space: nowrap !important;
     width: auto !important;
     min-width: max-content !important;
-    flex-shrink: 0 !important;
     margin: 0 !important;
     padding: 8px 14px !important;
     border-left: none !important;
     border-bottom: 2px solid transparent !important;
-    font-size: .82rem !important;
     border-radius: 8px !important;
+    background: none !important;
+    color: var(--muted) !important;
+    font-size: .82rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
   }
+
   .side-item.active {
     border-left: none !important;
     border-bottom-color: var(--brand) !important;
     background: var(--brand-soft) !important;
     color: var(--brand) !important;
   }
-  .side-item svg.lucide {
+
+  .side-item svg.lucide,
+  .side-item [data-lucide] {
     width: 16px !important;
     height: 16px !important;
     flex-shrink: 0 !important;
+  }
+
+  /* 5. Content takes the whole row below the sidebar */
+  .dash-layout > #tabBody {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
   }
 }
 </style>
