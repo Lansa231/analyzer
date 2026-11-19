@@ -592,7 +592,7 @@ function chartDefaults(){
   Chart.defaults.color = dark ? '#8fa6b3' : '#5b7280';
   Chart.defaults.borderColor = dark ? 'rgba(143,166,179,.15)' : 'rgba(91,114,128,.12)';
 }
-const themeBtn = () => `<button class="btn btn-ghost btn-sm" id="themeBtn">${document.documentElement.dataset.theme==='dark'?'<i data-lucide="sun"></i> Light':'<i data-lucide="moon"></i> Dark'}</button>`;
+const themeBtn = () => `<button class="btn btn-ghost btn-sm" id="themeBtn">${document.documentElement.dataset.theme==='dark'?'<i data-lucide="sun"></i> ':'<i data-lucide="moon"></i> '}</button>`;
 function bindTheme(){ const b=$("#themeBtn"); if(b) b.onclick=()=>{ setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'); route(); }; }
 
 /* ============================== STATE ============================== */
