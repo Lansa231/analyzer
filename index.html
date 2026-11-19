@@ -592,7 +592,7 @@ function chartDefaults(){
   Chart.defaults.color = dark ? '#8fa6b3' : '#5b7280';
   Chart.defaults.borderColor = dark ? 'rgba(143,166,179,.15)' : 'rgba(91,114,128,.12)';
 }
-const themeBtn = () => `<button class="btn btn-ghost btn-sm" id="themeBtn">${document.documentElement.dataset.theme==='dark'?'☀️ Light':'🌙 Dark'}</button>`;
+const themeBtn = () => `<button class="btn btn-ghost btn-sm" id="themeBtn">${document.documentElement.dataset.theme==='dark'?'<i data-lucide="sun"></i> Light':'<i data-lucide="moon"></i> Dark'}</button>`;
 function bindTheme(){ const b=$("#themeBtn"); if(b) b.onclick=()=>{ setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'); route(); }; }
 
 /* ============================== STATE ============================== */
@@ -663,7 +663,7 @@ function renderHdr(r){
       <a href="#course"><span>Our Course</span><span>→</span></a>
       <a href="#portal"><span>Marks Portal</span><span>→</span></a>
       <a href="#centers"><span>Paper Centers</span><span>→</span></a>
-      <a href="#/login" class="btn btn-gold">🎓 Login</a>
+      <a href="#/login" class="btn btn-gold"><i data-lucide="graduation-cap"></i> Login</a>
     </div>
     `;
     // smooth-scroll for in-page anchors (both desktop pill and mobile menu)
@@ -693,9 +693,9 @@ function renderHdr(r){
     nav.innerHTML = '';
   }
   if(user && (r==='stuDash'||r==='teacherDash'||r==='studentView'||r==='examinerDash'||r==='examinerView')){
-    const roleLabel = role==='teacher'  ? (profile&&profile.isAdmin?'🛠 Developer':'👩‍🏫 Teacher')
-                    : role==='examiner' ? '📋 Examiner'                     : role==='approver' ? '💳 Payment Approver'
-                    : '🎓 Student';
+    const roleLabel = role==='teacher'  ? (profile&&profile.isAdmin?'<i data-lucide="wrench"></i> Developer':'<i data-lucide="users"></i>‍<i data-lucide="users"></i> Teacher')
+                    : role==='examiner' ? '<i data-lucide="clipboard-list"></i> Examiner'                     : role==='approver' ? '<i data-lucide="credit-card"></i> Payment Approver'
+                    : '<i data-lucide="graduation-cap"></i> Student';
     h.innerHTML = `<span class="pill brand">${roleLabel}</span> ${themeBtn()} <button class="btn btn-danger btn-sm" id="logoutBtn">Log out</button>`;
     $("#logoutBtn").onclick = async ()=>{ if(unsubStu){unsubStu();unsubStu=null;} await signOut(auth); };
   } else {
@@ -846,7 +846,7 @@ function landing(){
         <h1>Master Biology.<br><em>Track every paper</em>, watch yourself improve.</h1>
         <p class="lead">The same Biology class that built doctors — now with a marks portal. Your teacher publishes results paper-by-paper, so you can see exactly how you're growing, from your phone or computer.</p>
    <div class="lp-hero-cta">
-  <a class="btn btn-gold btn-lg" href="#/login">🎓 Student Login</a>
+  <a class="btn btn-gold btn-lg" href="#/login"><i data-lucide="graduation-cap"></i> Student Login</a>
   <a class="btn btn-on-dark btn-lg" href="#/signup">Sign Up</a>
 </div>
         <div class="lp-hero-stats">
@@ -930,7 +930,7 @@ function landing(){
           <div class="teacher-tags">
             <span>🎯 Kandy District Top</span>
             <span>🧬 Biology Specialist</span>
-            <span>🎓 University Graduate</span>
+            <span><i data-lucide="graduation-cap"></i> University Graduate</span>
             <span>👨‍⚕️ Doctor-Maker</span>
           </div>
         </div>
@@ -964,7 +964,7 @@ function landing(){
               <div><i>▸</i><span>📚 Marking schemes &amp; PDFs per batch</span></div>
             </div>
             <div class="portal-cta">
-             <a class="btn btn-gold" href="#/login">🎓 Student Login</a>
+             <a class="btn btn-gold" href="#/login"><i data-lucide="graduation-cap"></i> Student Login</a>
 <a class="btn btn-on-dark" href="#/signup">Sign Up →</a>
             </div>
           </div>
@@ -1038,7 +1038,7 @@ function landing(){
 /* ============================== AUTH: STUDENT ============================== */
 function login(){
   app.innerHTML = `<div class="card auth-card">
-    <h2>🎓 Student Login</h2>
+    <h2><i data-lucide="graduation-cap"></i> Student Login</h2>
     <label>Email, NIC or barcode number</label>
     <input id="idf" placeholder="you@email.com, NIC or barcode" autocomplete="username">
     <label>Password</label>
@@ -1087,7 +1087,7 @@ async function signup(){
   const O=a=>a.map(x=>`<option>${esc(x)}</option>`).join('');
   app.innerHTML = `<div class="split"><div class="side"><div class="side-txt"><div style="font-size:2rem">🧬</div><h2>S.K. Wellala<br>Biology Paper Class</h2><p>Join your class, follow every paper and watch your progress grow.</p></div></div>
   <div class="card auth-card">
-    <h2>🎓 Student Sign Up</h2>
+    <h2><i data-lucide="graduation-cap"></i> Student Sign Up</h2>
     <label>Full Name</label><input id="nm" placeholder="e.g. Kasun Perera">
     <div class="field-err" id="e-nm"></div>
     <label>Gender</label><select id="gen"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select><div class="field-err" id="e-gen"></div>
@@ -1524,7 +1524,7 @@ async function openBarcodeScanner(){
 /* ============================== EXAMINER: AUTH ============================== */
 function examinerAuth(){
   app.innerHTML = `<div class="card auth-card">
-    <h2>📋 Examining Instructor</h2>
+    <h2><i data-lucide="clipboard-list"></i> Examining Instructor</h2>
     <div class="tabs" style="margin-bottom:6px">
       <button id="eIn" class="active">Sign In</button><button id="eUp">Create Account</button>
     </div>
@@ -1658,11 +1658,11 @@ async function examinerDash(){
 
   app.innerHTML = `
     <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-      <div><b style="font-size:1.05rem">📋 ${esc(profile.fullName||'Examiner')}</b>
+      <div><b style="font-size:1.05rem"><i data-lucide="clipboard-list"></i> ${esc(profile.fullName||'Examiner')}</b>
         <span class="pill brand">Examiner</span>
         <span class="sub" style="display:inline"> · ${esc(profile.center||'—')} · ${students.length} students · ${papers.length} papers</span></div>
     </div>
-    <div class="tabs">${BATCHES.map(b=>`<button data-ebatch="${b}" class="${batch===b?'active':''}">🎓 ${b}</button>`).join('')}</div>
+    <div class="tabs">${BATCHES.map(b=>`<button data-ebatch="${b}" class="${batch===b?'active':''}"><i data-lucide="graduation-cap"></i> ${b}</button>`).join('')}</div>
     <div class="dash-layout">
       <aside class="sidebar">
         <div class="side-user">
@@ -1671,9 +1671,9 @@ async function examinerDash(){
         </div>
            <div class="tabs">
           <button data-etab="profile" class="${(state.etab||'profile')==='profile'?'active':''}">👤 Profile</button>
-          <button data-etab="students" class="${state.etab==='students'?'active':''}">👨‍🎓 Students</button>
+          <button data-etab="students" class="${state.etab==='students'?'active':''}">👨‍<i data-lucide="graduation-cap"></i> Students</button>
           <button data-etab="attendance" class="${state.etab==='attendance'?'active':''}">📅 My Attendance</button>
-          <button data-etab="totalatt" class="${state.etab==='totalatt'?'active':''}">📋 Total Attendance</button>
+          <button data-etab="totalatt" class="${state.etab==='totalatt'?'active':''}"><i data-lucide="clipboard-list"></i> Total Attendance</button>
         </div>
       </aside>
       <div class="dash-main" id="etabBody"></div>
@@ -1766,7 +1766,7 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
             <td style="text-align:right"><button class="btn btn-danger btn-sm" data-rm-day="${esc(nic)}">Remove</button></td></tr>`;
         }).join('')}</table></div>` : ''}
     </div>
-        <div class="card"><h2>👨‍🎓 All students in ${esc(profile.center||'—')} (${(studentsAll||[]).length})</h2>
+        <div class="card"><h2>👨‍<i data-lucide="graduation-cap"></i> All students in ${esc(profile.center||'—')} (${(studentsAll||[]).length})</h2>
       <p class="sub" style="margin:0 0 12px">Grouped by batch · name, school, barcode only.</p>
       ${(function renderGroups(){
         const groups = {};
@@ -1780,7 +1780,7 @@ function examinerStudents({papers, students, studentsAll, att, batch}){
           const isActive = b === batch;
           return `<div style="margin-bottom:18px">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-              <span class="pill ${isActive?'brand':''}" style="font-weight:800">🎓 ${esc(b)}</span>
+              <span class="pill ${isActive?'brand':''}" style="font-weight:800"><i data-lucide="graduation-cap"></i> ${esc(b)}</span>
               <span class="sub" style="margin:0">· ${list.length} student${list.length===1?'':'s'}</span>
               ${isActive ? '<span class="sub" style="margin:0;color:var(--brand);font-weight:700">· active</span>' : ''}
             </div>
@@ -1989,7 +1989,7 @@ function examinerTotalAttendance({ papers, students, studentsAll, att, batch }) 
   };
 
   host.innerHTML = `<div class="card">
-    <h2>📋 Total Attendance — All Markers</h2>
+    <h2><i data-lucide="clipboard-list"></i> Total Attendance — All Markers</h2>
     <p class="sub" style="margin:0 0 8px">Every student marked present for a paper in your center, by any examiner, teacher, or developer.</p>
     <div class="row">
       <div><label style="margin-top:0">Paper</label>
@@ -2089,7 +2089,7 @@ async function attendanceWidget(host, s, added) {
 /* ============================== APPROVER: AUTH ============================== */
 function approverAuth() {
   app.innerHTML = `<div class="card auth-card">
-    <h2>💳 Payment Approving</h2>
+    <h2><i data-lucide="credit-card"></i> Payment Approving</h2>
     <div class="tabs" style="margin-bottom:6px"><button id="aIn" class="active">Sign In</button><button id="aUp">Create Account</button></div>
     <div id="afIn">
       <label>Email</label><input id="aem" type="email" placeholder="you@email.com" autocomplete="email">
@@ -2170,11 +2170,11 @@ async function approverDash() {
   }
   const tab = state.atab || 'profile';
   app.innerHTML = `<div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-      <div><b style="font-size:1.05rem">💳 ${esc(profile.fullName || 'Payment Approver')}</b> <span class="pill brand">Payment Approving</span></div></div>
+      <div><b style="font-size:1.05rem"><i data-lucide="credit-card"></i> ${esc(profile.fullName || 'Payment Approver')}</b> <span class="pill brand">Payment Approving</span></div></div>
     <div class="tabs">
       <button data-atab="profile" class="${tab === 'profile' ? 'active' : ''}">👤 Profile</button>
-      <button data-atab="students" class="${tab === 'students' ? 'active' : ''}">👨‍🎓 Students</button>
-      <button data-atab="payments" class="${tab === 'payments' ? 'active' : ''}">💳 Payments</button>
+      <button data-atab="students" class="${tab === 'students' ? 'active' : ''}">👨‍<i data-lucide="graduation-cap"></i> Students</button>
+      <button data-atab="payments" class="${tab === 'payments' ? 'active' : ''}"><i data-lucide="credit-card"></i> Payments</button>
     </div><div id="atabBody"><div class="card"><p class="sub">Loading…</p></div></div>`;
   document.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { state.atab = b.dataset.atab; approverDash(); });
   if (tab === 'profile') return approverProfile();
@@ -2217,7 +2217,7 @@ function approverStudents({ students, centers, host }) {
   if (!host) return;
   const batch = BATCHES.includes(state.apBatch) ? state.apBatch : BATCHES[0];
   const ctr = state.apCenter || 'All';
-  host.innerHTML = `<div class="tabs">${BATCHES.map(b => `<button data-apb="${b}" class="${b === batch ? 'active' : ''}">🎓 ${b}</button>`).join('')}</div>
+  host.innerHTML = `<div class="tabs">${BATCHES.map(b => `<button data-apb="${b}" class="${b === batch ? 'active' : ''}"><i data-lucide="graduation-cap"></i> ${b}</button>`).join('')}</div>
     <div class="card"><div class="row">
       <div><label style="margin-top:0">Center</label><select id="apC"><option>All</option>${centers.map(c => `<option${c === ctr ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
       <div style="flex:2;min-width:200px"><label style="margin-top:0">Search student</label><input id="apQ" placeholder="Name, NIC or barcode" value="${esc(state.apQ || '')}"></div>
@@ -2229,7 +2229,7 @@ function approverStudents({ students, centers, host }) {
     const by = {}; list.forEach(s => (by[s.center || 'No center'] ??= []).push(s));
     $("#apList").innerHTML = Object.keys(by).sort().map(c => {
       const a = by[c].sort((x, y) => String(x.fullName || '').localeCompare(String(y.fullName || '')));
-      return `<div class="card"><h2>🏫 ${esc(c)} <span class="sub" style="display:inline">· ${a.length} student${a.length === 1 ? '' : 's'}</span></h2>
+      return `<div class="card"><h2><i data-lucide="users"></i> ${esc(c)} <span class="sub" style="display:inline">· ${a.length} student${a.length === 1 ? '' : 's'}</span></h2>
         <div class="tbl-wrap"><table><tr><th>Name</th><th>NIC</th><th>Barcode</th><th>Mobile</th><th>School</th></tr>
         ${a.map(s => `<tr><td><b>${esc(s.fullName || '')}</b></td><td class="mono">${esc(s.nic || '—')}</td><td class="mono">${esc(s.barcode || '—')}</td><td>${esc(s.mobile || '—')}</td><td>${esc(s.school || '—')}</td></tr>`).join('')}
         </table></div></div>`;
@@ -2246,7 +2246,7 @@ function approverPayments({ students, host }) {
   host = host || $("#atabBody");
   if (!host) { console.error('[approverPayments] no host container'); return; }
   const info = (k, v) => `<div><span class="sub">${k}</span><br><b>${esc(v || '—')}</b></div>`;
-  host.innerHTML = `<div class="card"><h2>💳 Check a student's payment</h2>
+  host.innerHTML = `<div class="card"><h2><i data-lucide="credit-card"></i> Check a student's payment</h2>
     <p class="sub" style="margin:0 0 8px">Type or scan the student's barcode.</p>
     <div class="row"><div style="flex:1;min-width:200px"><label style="margin-top:0">Barcode</label>
       <div style="display:flex;gap:6px;align-items:stretch"><input id="pyB" placeholder="Barcode number" maxlength="12" autocomplete="off" style="flex:1;min-width:0">
@@ -2310,7 +2310,7 @@ async function tabApprovers() {
   $("#tabBody").innerHTML = '<div class="card"><p class="sub">Loading…</p></div>';
   const snap = await getDocs(collection(db, 'approvers')).catch(() => null);
   const list = snap ? snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.fullName).localeCompare(String(b.fullName))) : [];
-  $("#tabBody").innerHTML = `<div class="card"><h2>💳 All payment approvers (${list.length})</h2>
+  $("#tabBody").innerHTML = `<div class="card"><h2><i data-lucide="credit-card"></i> All payment approvers (${list.length})</h2>
     ${list.length ? `<div class="tbl-wrap"><table><tr><th>Name</th><th>Email</th><th>NIC</th><th>Mobile</th><th>Status</th><th></th></tr>
       ${list.map(a => `<tr><td><b>${esc(a.fullName || '')}</b></td><td>${esc(a.email || '')}</td><td class="mono">${esc(a.nic || '—')}</td><td>${esc(a.mobile || '—')}</td>
         <td>${a.verified ? '<span class="vbadge">✔ Verified</span>' : '<span class="sub" style="display:inline">(not verified)</span>'}</td>
@@ -2664,7 +2664,7 @@ function renderAttendanceSheetPDF({ paper, rows, examiner }) {
 /* ============================== TEACHER AUTH ============================== */
 function teacherAuth(){
   app.innerHTML = `<div class="card auth-card">
-    <h2>👩‍🏫 Instructor Portal</h2>
+    <h2><i data-lucide="users"></i>‍<i data-lucide="users"></i> Instructor Portal</h2>
     <div class="tabs" style="margin-bottom:6px">
       <button id="tIn" class="active">Sign In</button><button id="tUp">Create Account</button>
     </div>
@@ -2744,7 +2744,7 @@ function rankMarquee(students,papers){
 function teacherProfile(){
   const p=profile||{};
   app.innerHTML=`<div class="card auth-card" style="max-width:560px">
-    <h2>👩‍🏫 ${p.profileDone?'Edit your profile':'Complete your details'}</h2>
+    <h2><i data-lucide="users"></i>‍<i data-lucide="users"></i> ${p.profileDone?'Edit your profile':'Complete your details'}</h2>
     <p class="sub">${p.profileDone?'Update your instructor details.':'One last step before you start entering marks.'}</p>
     <label>Full Name</label><input id="pn" value="${esc(p.fullName||'')}">
     <label>Phone Number</label><input id="pp" type="tel" placeholder="07X XXX XXXX" value="${esc(p.phone||'')}">
@@ -2816,18 +2816,18 @@ async function teacherDash(){
 
   app.innerHTML = `
   <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-    <div><b style="font-size:1.05rem">👩‍🏫 ${esc(profile.fullName||'Instructor')}</b>${profile.nickname?` <span class="sub" style="display:inline">“${esc(profile.nickname)}”</span>`:''} <span class="pill brand">${adm?'Developer':'Teacher'}</span> <button class="btn btn-ghost btn-sm" id="editProf">✏️ Profile</button>
+    <div><b style="font-size:1.05rem"><i data-lucide="users"></i>‍<i data-lucide="users"></i> ${esc(profile.fullName||'Instructor')}</b>${profile.nickname?` <span class="sub" style="display:inline">“${esc(profile.nickname)}”</span>`:''} <span class="pill brand">${adm?'Developer':'Teacher'}</span> <button class="btn btn-ghost btn-sm" id="editProf">✏️ Profile</button>
       <span class="sub" style="display:inline"> · ${roster.length} students · ${papers.length} papers</span></div>
     ${adm?`<label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
       <span class="switch"><input type="checkbox" id="regOpen" ${state.settings.teacherSignupOpen!==false?'checked':''}><span class="slider"></span></span>
       <span style="font-size:.8rem">New teacher signups</span></label>`:''}
   </div>
-  <div class="tabs">${BATCHES.map(b=>`<button data-batch="${b}" class="${state.batch===b?'active':''}">🎓 ${b}</button>`).join('')}</div>
+  <div class="tabs">${BATCHES.map(b=>`<button data-batch="${b}" class="${state.batch===b?'active':''}"><i data-lucide="graduation-cap"></i> ${b}</button>`).join('')}</div>
   <div style="display:flex;gap:8px;align-items:center;margin:8px 0"><label style="margin:0">Center:</label>
     ${adm?`<select id="ctrSel" style="width:auto"><option>All</option>${state.lists.centers.map(c=>`<option${state.center===c?' selected':''}>${esc(c)}</option>`).join('')}</select>`:`<b>${esc(profile.center||'— (no center set)')}</b> <span class="sub" style="margin:0">· you only see students in your center</span>`}</div>
   ${rankMarquee(roster,papers)}
   <div class="tabs">
-    <button data-tab="students" class="${state.tab==='students'?'active':''}">👨‍🎓 Students</button>
+    <button data-tab="students" class="${state.tab==='students'?'active':''}">👨‍<i data-lucide="graduation-cap"></i> Students</button>
     ${adm?`<button data-tab="attendance" class="${state.tab==='attendance'?'active':''}">✅ Attendance</button>`:''}
     <button data-tab="marks" class="${state.tab==='marks'?'active':''}">📝 Marks</button>
     <button data-tab="analytics" class="${state.tab==='analytics'?'active':''}">📊 Analytics</button>
@@ -2835,7 +2835,7 @@ async function teacherDash(){
        <button data-tab="allmarks" class="${state.tab==='allmarks'?'active':''}">🌐 All Marks</button>
     <button data-tab="videos" class="${state.tab==='videos'?'active':''}">📹 Videos</button>
     ${window.CA.tabs.map(t=>`<button data-tab="x_${t.id}" class="${state.tab==='x_'+t.id?'active':''}">${t.label}</button>`).join('')}
-    ${adm?`<button data-tab="teachers" class="${state.tab==='teachers'?'active':''}">🧑‍🏫 Teachers</button><button data-tab="examiners" class="${state.tab==='examiners'?'active':''}">📋 Examiners</button><button data-tab="approvers" class="${state.tab==='approvers'?'active':''}">💳 Payment Approvers</button><button data-tab="payments" class="${state.tab==='payments'?'active':''}">💰 Payments</button><button data-tab="admin" class="${state.tab==='admin'?'active':''}">⚙️ Centers &amp; Payments</button><button data-tab="requests" class="${state.tab==='requests'?'active':''}">📨 Requests${pendReq?` (${pendReq})`:''}</button><button data-tab="files" class="${state.tab==='files'?'active':''}">📚 Marking PDFs</button>`:''}
+    ${adm?`<button data-tab="teachers" class="${state.tab==='teachers'?'active':''}">🧑‍<i data-lucide="users"></i> Teachers</button><button data-tab="examiners" class="${state.tab==='examiners'?'active':''}"><i data-lucide="clipboard-list"></i> Examiners</button><button data-tab="approvers" class="${state.tab==='approvers'?'active':''}"><i data-lucide="credit-card"></i> Payment Approvers</button><button data-tab="payments" class="${state.tab==='payments'?'active':''}">💰 Payments</button><button data-tab="admin" class="${state.tab==='admin'?'active':''}">⚙️ Centers &amp; Payments</button><button data-tab="requests" class="${state.tab==='requests'?'active':''}">📨 Requests${pendReq?` (${pendReq})`:''}</button><button data-tab="files" class="${state.tab==='files'?'active':''}">📚 Marking PDFs</button>`:''}
   </div>
   <div id="tabBody"></div>`;
 
@@ -2883,7 +2883,7 @@ papersAll.forEach(p=>{
     const info=(k,v)=>`<div><span class="sub">${k}</span><br><b>${esc(v||'—')}</b></div>`;
     app.innerHTML=`${back}<div id="svEditBox"></div>
     <div class="card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center">
-      <div><b style="font-size:1.15rem">🎓 ${esc(s.fullName)}</b>${s.signedUp?'':' <span class="sub" style="display:inline">· has not signed up</span>'}</div>
+      <div><b style="font-size:1.15rem"><i data-lucide="graduation-cap"></i> ${esc(s.fullName)}</b>${s.signedUp?'':' <span class="sub" style="display:inline">· has not signed up</span>'}</div>
       <div>${adm&&s.signedUp?`<button class="btn btn-ghost btn-sm" id="svEdit">✏️ Edit</button> `:''}<button class="btn btn-danger btn-sm" id="svDel">Remove student</button></div></div>
       <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:12px">${info('NIC',s.nic)}${info('Barcode',s.barcode)}${info('Gender',s.gender)}${info('Batch',batch)}${info('Center',s.center)}${info('Mobile',s.mobile)}${info('WhatsApp',s.whatsapp)}${info('School',s.school)}${info('Email',s.email)}${info('Paid via',s.payMethod)}</div></div>
     ${rows.length?`<div class="card"><h2>📈 Progress</h2><canvas id="svC"></canvas></div>
@@ -2917,7 +2917,7 @@ function tabStudents({roster,rosterAll,papers}){
     const by={}; B.forEach(r=>{ const o=(by[r.center||'No center']??={s:0,n:0}); r.signedUp?o.s++:o.n++; });
     const S=B.filter(r=>r.signedUp).length, N=B.length-S;
     const rows=Object.keys(by).sort().map(c=>`<tr><td><b>${esc(c)}</b></td><td>${by[c].s+by[c].n}</td><td><span class="pill good">${by[c].s}</span></td><td><span class="pill warn">${by[c].n}</span></td></tr>`).join('');
-    return `<div class="card"><h2>📋 Sign-up status — ${esc(state.batch)}</h2>
+    return `<div class="card"><h2><i data-lucide="clipboard-list"></i> Sign-up status — ${esc(state.batch)}</h2>
       <div class="grid g4"><div class="stat"><div class="num">${B.length}</div><div class="lbl">All students</div></div><div class="stat"><div class="num">${S}</div><div class="lbl">Signed up</div></div><div class="stat"><div class="num">${N}</div><div class="lbl">Not signed up</div></div></div>
       <div class="tbl-wrap" style="margin-top:12px"><table><tr><th>Center</th><th>All</th><th>Signed up</th><th>Not signed up</th></tr>${rows}<tr><td><b>Total</b></td><td><b>${B.length}</b></td><td><b>${S}</b></td><td><b>${N}</b></td></tr></table></div>
       <p class="sub" style="margin-top:8px">"Not signed up" means a teacher added the student (with marks) but they haven't created an account yet.</p></div>`;
@@ -3331,7 +3331,7 @@ function tabRanks({papers, rosterAll}){
 
   const exportBar = () => `
     <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;align-items:center">
-      <button type="button" class="btn btn-ghost btn-sm" data-copy-tsv>📋 Copy for Google Sheets</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-copy-tsv><i data-lucide="clipboard-list"></i> Copy for Google Sheets</button>
       <button type="button" class="btn btn-ghost btn-sm" data-dl-csv>⬇ Download CSV</button>
       <span class="sub" style="margin:0;font-size:.75rem">Open a blank Google Sheet, click cell A1, paste (Ctrl+V).</span>
     </div>`;
@@ -3350,7 +3350,7 @@ function tabRanks({papers, rosterAll}){
     const by={}; rows.forEach(x=>(by[x.center]??=[]).push(x));
     body = Object.keys(by).sort().map(c=>{
       const a = rankRows(by[c]);
-      return `<h2 style="margin-top:18px">🏫 ${esc(c)} <span class="sub" style="display:inline">· ${a.length} students · average ${avgOf(a.map(x=>x.pc))}%</span></h2>${tbl(a)}`;
+      return `<h2 style="margin-top:18px"><i data-lucide="users"></i> ${esc(c)} <span class="sub" style="display:inline">· ${a.length} students · average ${avgOf(a.map(x=>x.pc))}%</span></h2>${tbl(a)}`;
     }).join('');
   } else {
     body = tbl(rankRows(rows));
@@ -3529,7 +3529,7 @@ async function studentRequestCard(host){
 }
 function tabTeachers({teachers,admins}){
   const me_=user.uid;
-  $("#tabBody").innerHTML=`<div class="card"><h2>🧑‍🏫 All teachers (${teachers.length})</h2>
+  $("#tabBody").innerHTML=`<div class="card"><h2>🧑‍<i data-lucide="users"></i> All teachers (${teachers.length})</h2>
   ${teachers.length?`<div class="tbl-wrap"><table><tr><th>Name</th><th>Email</th><th>Center</th><th>Phone</th><th>Role</th><th></th></tr>
   ${teachers.map(t=>{ const a=admins[t.id], isOwner=a&&a.owner===true, self=t.id===me_;
     return `<tr><td><b>${esc(t.fullName||'')}</b>${t.nickname?` <span class="sub" style="display:inline">“${esc(t.nickname)}”</span>`:''}${t.verified?' <span class="vbadge">✔ Verified</span>':' <span class="sub" style="display:inline">(not verified)</span>'}</td>
@@ -3548,7 +3548,7 @@ function tabTeachers({teachers,admins}){
   document.querySelectorAll('[data-demote]').forEach(b=>b.onclick=async()=>{ if(!confirm('Remove developer access?')) return; busy(true); try{ await deleteDoc(doc(db,'admins',b.dataset.demote)); }catch(e){ alert(friendly(e)); } busy(false); teacherDash(); });
 }
 function tabExaminers(ctx){ tabExaminers0(ctx); paymentToggleCard(); } function tabExaminers0({examiners, papersAll, rosterAll}){
-  $("#tabBody").innerHTML = `<div class="card"><h2>📋 All examining instructors (${examiners.length})</h2>
+  $("#tabBody").innerHTML = `<div class="card"><h2><i data-lucide="clipboard-list"></i> All examining instructors (${examiners.length})</h2>
     ${examiners.length ? `<div class="tbl-wrap"><table><tr><th>Name</th><th>Email</th><th>NIC</th><th>Center</th><th>Class</th><th>Status</th><th></th></tr>
       ${examiners.map(e=>`<tr>
         <td><b><a class="nl" href="#/examiner-view/${e.id}">${esc(e.fullName||'')}</a></b></td>
@@ -3661,7 +3661,7 @@ async function examinerView(){
       app.innerHTML = `${back}
         <div class="card">
           <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center">
-            <div><b style="font-size:1.15rem">📋 ${esc(ex.fullName||'Examiner')}</b>
+            <div><b style="font-size:1.15rem"><i data-lucide="clipboard-list"></i> ${esc(ex.fullName||'Examiner')}</b>
               ${ex.verified?'<span class="vbadge">✔ Verified</span>':'<span class="pill warn">Not verified</span>'}</div>
             <span class="pill brand">Examiner</span>
           </div>
@@ -3669,7 +3669,7 @@ async function examinerView(){
             ${info('Gender',ex.gender)}${info('NIC',ex.nic)}${info('Attended class',ex.className)}${info('Exam center',ex.center)}${info('Email',ex.email)}
           </div>
         </div>
-        <div class="tabs">${BATCHES.map(b=>`<button data-xb="${b}" class="${b===batch?'active':''}">🎓 ${b}</button>`).join('')}</div>
+        <div class="tabs">${BATCHES.map(b=>`<button data-xb="${b}" class="${b===batch?'active':''}"><i data-lucide="graduation-cap"></i> ${b}</button>`).join('')}</div>
         <div class="grid g4" style="margin-bottom:20px">
           <div class="stat"><div class="num">${papers.length}</div><div class="lbl">Papers in ${esc(batch)}</div></div>
           <div class="stat"><div class="num">${withAtt}</div><div class="lbl">Papers with attendance</div></div>
@@ -3719,7 +3719,7 @@ function openExaminerAttendanceModal(ex, papersAll, rosterAll){
     <div style="background:var(--card);border-radius:16px;max-width:900px;width:100%;max-height:88vh;overflow-y:auto;padding:24px;box-shadow:var(--shadow)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:16px;flex-wrap:wrap">
         <div>
-          <h2 style="margin:0">📋 ${esc(ex.fullName||'Examiner')}</h2>
+          <h2 style="margin:0"><i data-lucide="clipboard-list"></i> ${esc(ex.fullName||'Examiner')}</h2>
           <p class="sub" style="margin:4px 0 0">${esc(ex.center||'—')} · ${esc(ex.email||'—')} · NIC ${esc(ex.nic||'—')}${ex.className?' · '+esc(ex.className):''}${ex.verified?' · <span class="vbadge">✔ Verified</span>':' · (not verified)'}</p>
         </div>
         <button class="btn btn-ghost btn-sm" id="exmClose">✕ Close</button>
@@ -3936,7 +3936,7 @@ function tabAdmin(){
   const block=(k,title,ph)=>`<div class="card"><h2>${title}</h2><div class="row"><div><input id="in_${k}" placeholder="${ph}"></div>
     <button class="btn btn-primary" data-add="${k}" style="width:auto;margin:0">+ Add</button></div>
     ${L[k].length?L[k].map((x,i)=>`<div class="paper-row"><b>${esc(x)}</b><button class="btn btn-danger btn-sm" data-rmv="${k}:${i}">Remove</button></div>`).join(''):'<p class="sub">None yet.</p>'}</div>`;
-  $("#tabBody").innerHTML=block('centers','🏫 Exam Centers','e.g. Ratnapura Center')+block('payMethods','💳 Payment Methods','e.g. Bank deposit, Cash, Online');
+  $("#tabBody").innerHTML=block('centers','<i data-lucide="users"></i> Exam Centers','e.g. Ratnapura Center')+block('payMethods','<i data-lucide="credit-card"></i> Payment Methods','e.g. Bank deposit, Cash, Online');
   const save=async(k)=>{ busy(true); await setDoc(doc(db,'settings','lists'),{[k]:L[k]},{merge:true}); busy(false); teacherDash(); };
   document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{ const k=b.dataset.add, v=$("#in_"+k).value.trim(); if(!v||L[k].includes(v)) return; L[k]=[...L[k],v]; save(k); });
   document.querySelectorAll('[data-rmv]').forEach(b=>b.onclick=()=>{ const [k,i]=b.dataset.rmv.split(':'); L[k]=L[k].filter((_,j)=>j!==+i); save(k); });
@@ -3953,7 +3953,7 @@ function tabAllMarks({papers,rosterAll}){
   let last=null, body='';
   rows.forEach(x=>{
     if(sort==='center' && x.center!==last){ last=x.center; const c=cs[x.center];
-      body+=`<tr><td colspan="6" style="background:var(--bg);font-weight:700">🏫 ${esc(x.center)} <span class="sub" style="display:inline">· ${c.n} students · average ${Math.round(c.t/c.n*10)/10}%</span></td></tr>`; }
+      body+=`<tr><td colspan="6" style="background:var(--bg);font-weight:700"><i data-lucide="users"></i> ${esc(x.center)} <span class="sub" style="display:inline">· ${c.n} students · average ${Math.round(c.t/c.n*10)/10}%</span></td></tr>`; }
     const can=adm||x.center===mine, nm=can?`<a class="nl" href="#/student/${encodeURIComponent(x.nic)}">${esc(x.name)}</a>`:esc(x.name);
     body+=`<tr><td><b>${x.rank}</b></td><td>${nm}</td><td class="mono">${esc(x.nic)}</td><td>${esc(x.center)}</td><td class="mono"><b>${x.m}</b> / ${sel.max}</td><td><span class="pill ${gCls(x.pc)}">${x.pc}%</span></td></tr>`; });
   $("#tabBody").innerHTML=`<div class="card"><h2>🌐 All marks — ${esc(state.batch)}</h2>
@@ -3996,7 +3996,7 @@ function tabMarks({students,papers}){
         </div>
       </div>`).join('') : (profile.isAdmin?'<p class="sub">No papers yet — create one above.</p>':'<p class="sub">No papers yet — the developer creates the papers.</p>')}
   </div>
-  <div class="card"><h2>📋 Marks entered</h2>     ${papers.length?`<label style="margin-top:0">Paper</label><select id="mkStatSel">${papers.map(p=>`<option value="${p.id}"${sel&&p.id===sel.id?' selected':''}>${esc(p.title)} (${esc(p.date||'no date')})</option>`).join('')}</select>`:''}     <div id="mkStat"><p class="sub">No papers yet.</p></div></div>   <div id="marksPane"></div>`;
+  <div class="card"><h2><i data-lucide="clipboard-list"></i> Marks entered</h2>     ${papers.length?`<label style="margin-top:0">Paper</label><select id="mkStatSel">${papers.map(p=>`<option value="${p.id}"${sel&&p.id===sel.id?' selected':''}>${esc(p.title)} (${esc(p.date||'no date')})</option>`).join('')}</select>`:''}     <div id="mkStat"><p class="sub">No papers yet.</p></div></div>   <div id="marksPane"></div>`;
     { const selEl=$("#mkStatSel"), host=$("#mkStat");
     const draw=()=>{
       const p=papers.find(x=>x.id===selEl.value); if(!p) return;
@@ -4225,7 +4225,7 @@ function tabAnalytics({papers}){
     ${pS.map(x=>`<tr><td><b>${esc(x.p.title)}</b></td><td class="mono">${esc(x.p.date||'—')}</td><td>${x.n}</td><td>${x.avg!=null?`<span class="pill ${gCls(x.avg)}">${x.avg}%</span>`:'—'}</td><td>${x.hi??'—'}</td><td>${x.lo??'—'}</td></tr>`).join('')}</table></div>`:'<p class="sub">No papers yet.</p>'}</div>
   <div class="card"><h2>🏆 Top performers</h2>
       ${ranked.slice(0,5).map(x=>`<div class="list-item"><span><b>${x.rank}.</b> ${nameLink(x.nic,x.fullName,x.center)}</span><span class="pill ${gCls(x.v)}">${x.v}% · ${grade(x.v)}</span></div>`).join('')||'<p class="sub">No marks yet.</p>'}</div>
-  <div class="card"><h2>📋 Class rankings (overall average)</h2>
+  <div class="card"><h2><i data-lucide="clipboard-list"></i> Class rankings (overall average)</h2>
     ${ranked.length?`<div class="tbl-wrap"><table><tr><th>Rank</th><th>Name</th><th>NIC</th><th>Center</th><th>Papers</th><th>Average</th><th>Grade</th></tr>
     ${ranked.map(x=>`<tr><td><b>#${x.rank}</b></td><td>${nameLink(x.nic,x.fullName,x.center)}</td><td class="mono">${esc(x.nic)}</td><td>${esc(x.center||'—')}</td><td>${x.n}</td><td><span class="pill ${gCls(x.v)}">${x.v}%</span></td><td><span class="pill ${gCls(x.v)}">${grade(x.v)}</span></td></tr>`).join('')}</table></div>`:'<p class="sub">No marks entered yet.</p>'}</div>`;
   if($("#cPap")) lazyChart('c1', $("#cPap"), () => ({type:'bar',data:{labels:pS.map(x=>x.p.title),datasets:[{label:'Average %',data:pS.map(x=>x.avg??0),backgroundColor:'#22a06b',borderRadius:8}]},options:{plugins:{legend:{display:false}},scales:{y:{min:0,max:100}}}})); if($("#xls")) $("#xls").onclick=async()=>{
