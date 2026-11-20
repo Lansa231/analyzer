@@ -2826,7 +2826,7 @@ function initSidebar(){
   if(!sb.querySelector('.side-top')){
     const top = document.createElement('div');
     top.className = 'side-top';
-    top.innerHTML = `<span class="side-brand"><span class="side-logo"><i data-lucide="dna"></i></span><b>Wellbiopaper.lk</b></span>
+    top.innerHTML = `<span class="side-brand"><span class="side-logo"></i></span><b>Wellbiopaper.lk</b></span>
       <button type="button" class="side-collapse" id="sideCollapse" aria-label="Collapse sidebar" title="Collapse / expand"><i data-lucide="panel-left"></i></button>`;
     sb.prepend(top);
     top.querySelector('#sideCollapse').onclick = () => {
