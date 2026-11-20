@@ -21,7 +21,7 @@
   /* ---------- YouTube: id extraction + in-app player ---------- */
   function extractYtId(u) {
     const s = String(u || '');
-    const m = s.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|v\/|live\/)|youtu\.be\/|img\.youtube\.com\/vi\/|i\.ytimg\.com\/vi\/)([A-Za-z0-9_-]{11})/);
+    const m = s.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|v\/|live\/)|youtu\.be\/|img\.youtube\.com\/vi\/|i\.ytimg\.com\/vi(?:_webp)?\/|i\d?\.ytimg\.com\/vi(?:_webp)?\/)([A-Za-z0-9_-]{11})/);
     if (m) return m[1];
     return /^[A-Za-z0-9_-]{11}$/.test(s.trim()) ? s.trim() : '';
   }
@@ -114,7 +114,20 @@ body.yt-locked{overflow:hidden}
         for (let n = t; n && n !== scope.parentElement; n = n.parentElement) {
           const s = idsIn(n);
           if (s.size === 1) { card = n; id = Array.from(s)[0]; break; }
-          if (s.size > 1) break;
+          if (s.size > 1) {
+            /* Flat layout: thumbnails and text are siblings with no wrapper per video.
+               Pick the video box nearest to the spot that was touched. */
+            let best = null, bd = Infinity;
+            Array.from(n.children).filter(c => idsIn(c).size === 1).forEach(c => {
+              const r = c.getBoundingClientRect();
+              const dx = Math.max(r.left - e.clientX, 0, e.clientX - r.right);
+              const dy = Math.max(r.top - e.clientY, 0, e.clientY - r.bottom);
+              const d = Math.hypot(dx, dy);
+              if (d < bd) { bd = d; best = c; }
+            });
+            if (best && bd < 160) { card = best; id = Array.from(idsIn(best))[0]; }
+            break;
+          }
         }
         /* if the touch landed on a whole-card link that held one video, climb to the card wrapper for the title */
         if (card) card = card.closest('.pdfcard') || card;
@@ -122,7 +135,8 @@ body.yt-locked{overflow:hidden}
       if (!card || !id) return;
 
       e.preventDefault();
-      const title = (card.dataset.title || (card.querySelector('.pt, .title, b, strong') || {}).textContent || card.getAttribute('title') || 'Video').trim();
+      const title = (card.dataset.title || (card.querySelector('.pt, .title, b, strong') || {}).textContent ||
+        (t.closest('.pt, .title, b, strong') || {}).textContent || card.getAttribute('title') || 'Video').trim();
       if (typeof window.openYtWatch === 'function') window.openYtWatch(id, title); else open(id, title);
     }, true);
   });
