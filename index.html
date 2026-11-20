@@ -152,6 +152,55 @@ canvas{max-height:320px;}
   .pdfcard img,.pdfph{width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--brand-soft);display:grid;place-items:center;font-size:2.6rem}
 .pdfcard img.yt-thumb{aspect-ratio:16/9}
 .pdfcard .pt{padding:8px 10px;font-weight:700;font-size:.85rem}.pdfcard .pb{display:flex;gap:6px;padding:0 10px 10px}
+  /* ===== Big YouTube video grid — matches YouTube's own sizing ===== */
+.pdfgrid:has(.yt-thumb),
+.pdfgrid:has(img[src*="ytimg"]){
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+  gap: 18px !important;
+}
+
+/* YouTube card = 16:9 thumbnail, padding like YouTube's card */
+.pdfgrid:has(.yt-thumb) .pdfcard,
+.pdfgrid:has(img[src*="ytimg"]) .pdfcard{
+  border-radius: 14px;
+  overflow: hidden;
+}
+.pdfgrid:has(.yt-thumb) .pdfcard img,
+.pdfgrid:has(.yt-thumb) .pdfcard img.yt-thumb,
+.pdfgrid:has(img[src*="ytimg"]) .pdfcard img{
+  width: 100% !important;
+  aspect-ratio: 16 / 9 !important;
+  object-fit: cover;
+  display: block;
+}
+.pdfgrid:has(.yt-thumb) .pdfcard .pt{
+  padding: 10px 12px 12px;
+  font-size: .92rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+/* Mobile: single full-width column, exactly like YouTube mobile */
+@media (max-width: 760px){
+  .pdfgrid:has(.yt-thumb),
+  .pdfgrid:has(img[src*="ytimg"]){
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+  .pdfgrid:has(.yt-thumb) .pdfcard img,
+  .pdfgrid:has(img[src*="ytimg"]) .pdfcard img{
+    aspect-ratio: 16 / 9 !important;
+  }
+  .pdfgrid:has(.yt-thumb) .pdfcard .pt{
+    font-size: .9rem;
+  }
+}
+
+/* Very narrow phones: shrink to keep 16:9 fill clean */
+@media (max-width: 420px){
+  .pdfgrid:has(.yt-thumb) .pdfcard{border-radius: 10px;}
+  .pdfgrid:has(.yt-thumb) .pdfcard .pt{padding: 8px 10px 10px; font-size: .86rem;}
+}
 </style>
 
 <!-- ============ LANDING STYLES ============ -->
