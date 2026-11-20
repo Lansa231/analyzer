@@ -1,3 +1,102 @@
+/* ============ In-app YouTube player ============ */
+(function installYtPlayer(){
+  if (window.__ytPlayerInstalled) return;
+  window.__ytPlayerInstalled = true;
+
+  let modal = null;
+
+  function extractYtId(u){
+    const s = String(u || '');
+    const m = s.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|v\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if (m) return m[1];
+    return /^[A-Za-z0-9_-]{11}$/.test(s.trim()) ? s.trim() : '';
+  }
+  window.extractYtId = extractYtId;
+
+  function ensureModal(){
+    if (modal && document.body.contains(modal)) return modal;
+    modal = document.createElement('div');
+    modal.id = 'ytModal';
+    modal.className = 'yt-modal';
+    modal.innerHTML = `
+      <div class="yt-backdrop" data-yt-close></div>
+      <div class="yt-dialog" role="dialog" aria-modal="true" aria-label="Video player">
+        <div class="yt-head">
+          <b class="yt-title"></b>
+          <a class="yt-ext" href="#" target="_blank" rel="noopener">Open in YouTube ↗</a>
+          <button type="button" class="yt-close" data-yt-close aria-label="Close">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor"
+                 stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="yt-frame-wrap"><div class="yt-frame"></div></div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target.closest('[data-yt-close]')) close(); });
+    return modal;
+  }
+
+  function close(){
+    if (!modal) return;
+    modal.classList.remove('open');
+    document.body.classList.remove('yt-locked');
+    const f = modal.querySelector('.yt-frame');
+    if (f) f.innerHTML = '';
+  }
+
+  function open(id, title){
+    const vid = String(id || '').trim();
+    if (!/^[A-Za-z0-9_-]{11}$/.test(vid)) return;
+    ensureModal();
+    const label = (title || 'Video').trim();
+    modal.querySelector('.yt-title').textContent = label;
+    modal.querySelector('.yt-ext').href = 'https://www.youtube.com/watch?v=' + vid;
+    modal.querySelector('.yt-frame').innerHTML =
+      `<iframe src="https://www.youtube.com/embed/${vid}?autoplay=1&rel=0&modestbranding=1&playsinline=1"
+               title="${label.replace(/"/g, '&quot;')}" loading="lazy"
+               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+               referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+    modal.classList.add('open');
+    document.body.classList.add('yt-locked');
+  }
+
+  window.openYtPlayer  = open;
+  window.closeYtPlayer = close;
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && modal && modal.classList.contains('open')) close();
+  });
+
+  document.addEventListener('click', e => {
+    const t = e.target instanceof Element ? e.target : null;
+    if (!t) return;
+    if (t.closest('#ytModal')) return;
+
+    const el = t.closest('a[href], [data-yt-id], [data-video-id]');
+    if (!el) return;
+
+    const inScope = el.closest('#stuPane') || el.closest('#stuVideos')
+                 || el.hasAttribute('data-yt-id') || el.hasAttribute('data-video-id');
+    if (!inScope) return;
+
+    let id = el.dataset.ytId || el.dataset.videoId || '';
+    if (!id) id = extractYtId(el.getAttribute('href') || '');
+    if (!id) {
+      const img = el.querySelector('img');
+      if (img) id = extractYtId(img.getAttribute('src') || '');
+    }
+    if (!id) return;
+
+    e.preventDefault();
+
+    const title = (el.dataset.title
+      || el.querySelector('.pt, .title, b, strong')?.textContent
+      || el.getAttribute('title')
+      || 'Video').trim();
+
+    open(id, title);
+  }, true);
+})();
 /* features.js \u2014 add-on file for Class Analyzer. Upload next to index.html.
    index.html announces events; this file listens and adds things to the page. */
 
