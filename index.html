@@ -630,6 +630,7 @@ window.CA={myRanks,esc,pct,grade,gCls,SUBJECTS,BATCHES,app,go,busy,friendly,stat
 function route(){
   if(unsubStu){ unsubStu(); unsubStu=null; }
   killCharts();
+   document.body.classList.remove('has-side');   
   const r = location.hash.startsWith('#/student/') ? 'studentView' : location.hash.startsWith('#/examiner-view/') ? 'examinerView' : (routes()[location.hash] || 'landing');
   if(role==='examiner' && ['stuDash','teacherDash','studentView','examinerView'].includes(r)) return go('#/examiner/dashboard');
   if(r==='stuDash' && !(user && role==='student')) return go('#/login');
@@ -2674,6 +2675,28 @@ function renderAttendanceSheetPDF({ paper, rows, examiner }) {
   const exSafe = examiner ? (examiner.fullName || '').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 25) : '';
   doc.save(`attendance_${safe}${exSafe ? '_' + exSafe : ''}_sheet.pdf`);
 }
+  /* ===== Desktop big / collapsible sidebar (teacher dashboard) ===== */
+function initSidebar(){
+  const sb = document.querySelector('.sidebar');
+  if(!sb) return;
+  document.body.classList.add('has-side');
+  document.body.classList.toggle('side-collapsed', localStorage.getItem('ca_side') === 'collapsed');
+
+  // tooltips so icons still make sense when collapsed
+  sb.querySelectorAll('.side-item').forEach(b => { b.title = b.textContent.replace(/\d+$/,'').trim(); });
+
+  if(!sb.querySelector('.side-top')){
+    const top = document.createElement('div');
+    top.className = 'side-top';
+    top.innerHTML = `<span class="side-brand"><span class="side-logo"><i data-lucide="dna"></i></span><b>S.K. Wellala</b></span>
+      <button type="button" class="side-collapse" id="sideCollapse" aria-label="Collapse sidebar" title="Collapse / expand"><i data-lucide="panel-left"></i></button>`;
+    sb.prepend(top);
+    top.querySelector('#sideCollapse').onclick = () => {
+      const c = document.body.classList.toggle('side-collapsed');
+      localStorage.setItem('ca_side', c ? 'collapsed' : 'open');
+    };
+  }
+}
 /* ============================== TEACHER AUTH ============================== */
 function teacherAuth(){
   app.innerHTML = `<div class="card auth-card">
@@ -2775,6 +2798,7 @@ function teacherProfile(){
 }
 async function teacherDash(){
   if(!profile) return;
+   document.body.classList.remove('has-side'); 
   if(!profile.isAdmin && profile.verified!==true){
     app.innerHTML=`<div class="card auth-card"><h2>⏳ Awaiting verification</h2><p class="sub">Your instructor account is created. The site developer must verify it before you can enter marks.</p><button class="btn btn-primary" id="recheck">Check again</button></div>`;
     $("#recheck").onclick=async()=>{ try{ const t=await getDoc(doc(db,'teachers',user.uid)); if(t.exists()) profile={...t.data(),isAdmin:profile.isAdmin}; }catch(e){} teacherDash(); };
@@ -2890,6 +2914,7 @@ async function teacherDash(){
   if(xt){ try{ xt.render({...ctx,el:$("#tabBody")}); }catch(e){ $("#tabBody").innerHTML=`<div class="card"><div class="err">${esc(e.message)}</div></div>`; } }
   else (tabs[state.tab]||tabStudents)(ctx);
   try{ document.dispatchEvent(new CustomEvent('ca:teacher-view',{detail:{tab:state.tab,batch:state.batch,adm}})); }catch(e){}
+initSidebar();  
 }
 async function studentView(){
   const nic=decodeURIComponent(location.hash.slice('#/student/'.length)).toUpperCase(), adm=!!profile.isAdmin;
