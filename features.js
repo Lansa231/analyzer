@@ -1,3 +1,15 @@
+/* Mobile guard: kill link navigation on YouTube cards before it starts.
+   Does NOT change desktop behaviour — desktop still uses the click handler below. */
+document.addEventListener('touchstart', e => {
+  const t = e.target instanceof Element ? e.target : null;
+  if (!t) return;
+  const el = t.closest('a[href*="youtu"], a[href*="youtu.be"], [data-yt-id], [data-video-id]');
+  if (!el) return;
+  const inScope = el.closest('#stuPane') || el.closest('#stuVideos')
+               || el.hasAttribute('data-yt-id') || el.hasAttribute('data-video-id');
+  if (!inScope) return;
+  if (e.cancelable) e.preventDefault();     // ← stops iOS/Android pre-navigation
+}, { capture: true, passive: false });
 /* ============ In-app YouTube player ============ */
 (function installYtPlayer(){
   if (window.__ytPlayerInstalled) return;
