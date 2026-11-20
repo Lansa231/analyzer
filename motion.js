@@ -156,15 +156,6 @@ document.body.insertAdjacentHTML('beforeend', '<svg width="0" height="0" style="
     .map(([id, c]) => `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">${stops(c)}</linearGradient>`).join('') + '</defs></svg>');
 queue.add(document.body); flush();
 
-/* ---------- Hover spotlight that follows the cursor ---------- */
-if (FINE && !RM) {
-  const SPOT = '.card,.class-card,.feat,.c-item,.tg-card,.stat,.pdfcard'; let pend = null;
-  document.addEventListener('pointermove', e => {
-    const t = e.target.closest && e.target.closest(SPOT); if (!t) return;
-    if (pend) return; pend = requestAnimationFrame(() => { pend = null; const r = t.getBoundingClientRect();
-      t.style.setProperty('--mx', e.clientX - r.left + 'px'); t.style.setProperty('--my', e.clientY - r.top + 'px'); });
-  }, { passive: true });
-}
 
 /* ---------- Header shadow on scroll ---------- */
 addEventListener('scroll', () => { const h = document.querySelector('header'); if (h) h.classList.toggle('scrolled', scrollY > 8); }, { passive: true });
