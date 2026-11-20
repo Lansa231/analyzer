@@ -332,9 +332,16 @@ main#app.wide{max-width:1280px}
 .side-user .av{width:42px;height:42px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:800;font-size:1.1rem;flex:none}
 .side-user b{display:block;font-size:.9rem;line-height:1.2}.side-user small{color:var(--muted);font-size:.74rem}
 .dash-main{min-width:0}
+.sidebar{max-height:calc(100vh - 104px);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+.sidebar,.sidebar .tabs{scrollbar-width:thin;scrollbar-color:transparent transparent;transition:scrollbar-color .3s}
+.sidebar.is-scrolling,.sidebar .tabs.is-scrolling{scrollbar-color:rgba(100,130,170,.6) transparent}
+.sidebar::-webkit-scrollbar,.sidebar .tabs::-webkit-scrollbar{width:6px;height:6px}
+.sidebar::-webkit-scrollbar-track,.sidebar .tabs::-webkit-scrollbar-track{background:transparent}
+.sidebar::-webkit-scrollbar-thumb,.sidebar .tabs::-webkit-scrollbar-thumb{background:transparent;border-radius:999px}
+.sidebar.is-scrolling::-webkit-scrollbar-thumb,.sidebar .tabs.is-scrolling::-webkit-scrollbar-thumb{background:rgba(100,130,170,.6)}
 @media (max-width:900px){
   .dash-layout{display:block}
-  .sidebar{position:static;margin-bottom:14px;padding:10px}
+  .sidebar{position:static;max-height:none;overflow:visible;margin-bottom:14px;padding:10px}
   .sidebar .tabs{flex-direction:row;overflow-x:auto;padding-bottom:4px}
   .sidebar .tabs button{width:auto;white-space:nowrap;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px}
   .side-user{display:none}
@@ -352,6 +359,15 @@ main#app.wide{max-width:1280px}
 .ld-txt{color:#fff;font-weight:700;letter-spacing:.12em;font-size:.8rem;animation:ldpulse 1.3s ease-in-out infinite}
 @keyframes ldpulse{50%{opacity:.45}}`;
     document.head.appendChild(st);
+
+    /* show the sidebar scrollbar only while it is being scrolled */
+    document.addEventListener('scroll', e => {
+      const el = e.target;
+      if (!(el instanceof Element) || !(el.matches('.sidebar, .sidebar .tabs'))) return;
+      el.classList.add('is-scrolling');
+      clearTimeout(el.__sbTimer);
+      el.__sbTimer = setTimeout(() => el.classList.remove('is-scrolling'), 800);
+    }, true);
 
     const profileTab = {
       id: 'profile', label: '\ud83d\udc64 Profile',
