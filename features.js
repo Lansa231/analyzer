@@ -40,7 +40,8 @@
 .yt-close{border:0;background:transparent;color:inherit;cursor:pointer;display:grid;place-items:center;padding:4px}
 .yt-frame-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000}
 .yt-frame,.yt-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-body.yt-locked{overflow:hidden}`;
+body.yt-locked{overflow:hidden}
+#stuVideos .pdfcard,#stuVideos .pdfcard *,#stuVideos [data-yt-id],#stuVideos [data-yt-id] *{cursor:pointer;-webkit-tap-highlight-color:transparent}`;
     document.head.appendChild(css);
 
     let modal = null;
@@ -92,18 +93,36 @@ body.yt-locked{overflow:hidden}`;
     document.addEventListener('click', e => {
       const t = e.target instanceof Element ? e.target : null;
       if (!t || t.closest('#ytModal')) return;
-      const el = t.closest('a[href], [data-yt-id], [data-video-id]');
-      if (!el) return;
-      const inScope = el.closest('#stuPane') || el.closest('#stuVideos') || el.hasAttribute('data-yt-id') || el.hasAttribute('data-video-id');
-      if (!inScope) return;
+      /* every YouTube id that a node (or anything inside it) points to */
+      const idsIn = node => {
+        const set = new Set();
+        [node].concat(Array.from(node.querySelectorAll('*'))).forEach(x => {
+          const d = x.dataset || {};
+          [d.ytId, d.videoId, extractYtId(x.getAttribute('href') || ''), extractYtId(x.getAttribute('src') || ''),
+           extractYtId(x.getAttribute('onclick') || '')].forEach(v => { if (v) set.add(v); });
+        });
+        return set;
+      };
 
-      let id = el.dataset.ytId || el.dataset.videoId || '';
-      if (!id) id = extractYtId(el.getAttribute('href') || '');
-      if (!id) { const img = el.querySelector('img'); if (img) id = extractYtId(img.getAttribute('src') || ''); }
-      if (!id) return;
+      /* Walk up from the exact spot that was touched (image, title, text, padding)
+         until we reach the smallest box that holds exactly one video: that box is the card. */
+      let card = null, id = '';
+      const scope = t.closest('#stuVideos, #stuPane');
+      const marked = t.closest('[data-yt-id], [data-video-id]');
+      if (marked) { card = marked; id = marked.dataset.ytId || marked.dataset.videoId; }
+      else if (scope) {
+        for (let n = t; n && n !== scope.parentElement; n = n.parentElement) {
+          const s = idsIn(n);
+          if (s.size === 1) { card = n; id = Array.from(s)[0]; break; }
+          if (s.size > 1) break;
+        }
+        /* if the touch landed on a whole-card link that held one video, climb to the card wrapper for the title */
+        if (card) card = card.closest('.pdfcard') || card;
+      }
+      if (!card || !id) return;
 
       e.preventDefault();
-      const title = (el.dataset.title || (el.querySelector('.pt, .title, b, strong') || {}).textContent || el.getAttribute('title') || 'Video').trim();
+      const title = (card.dataset.title || (card.querySelector('.pt, .title, b, strong') || {}).textContent || card.getAttribute('title') || 'Video').trim();
       if (typeof window.openYtWatch === 'function') window.openYtWatch(id, title); else open(id, title);
     }, true);
   });
