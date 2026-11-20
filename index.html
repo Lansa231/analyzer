@@ -658,6 +658,7 @@ window.CA={myRanks,esc,pct,grade,gCls,SUBJECTS,BATCHES,app,go,busy,friendly,stat
 function route(){
   if(unsubStu){ unsubStu(); unsubStu=null; }
   killCharts();
+  window.closeYtPlayer?.(); 
    document.body.classList.remove('has-side');   
   const r = location.hash.startsWith('#/student/') ? 'studentView' : location.hash.startsWith('#/examiner-view/') ? 'examinerView' : (routes()[location.hash] || 'landing');
   if(role==='examiner' && ['stuDash','teacherDash','studentView','examinerView'].includes(r)) return go('#/examiner/dashboard');
@@ -1507,6 +1508,7 @@ async function stuDash(){
   const setTab = id => {
     state.stab = id;
     killCharts();
+     window.closeYtPlayer?.();  
     document.querySelectorAll('[data-stab]').forEach(b => b.classList.toggle('active', b.dataset.stab === id));
     renderTab();
     window.scrollTo(0,0);
