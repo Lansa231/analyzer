@@ -369,3 +369,7 @@ svg.lucide {
     position: absolute; top: 4px; right: 8px; margin: 0; font-size: .62rem;
   }
 }
+/* clicks always hit the button, never the icon inside it */
+button [data-lucide], button svg.lucide,
+a [data-lucide], a svg.lucide,
+.side-item *, .tabs button * { pointer-events: none; }
