@@ -69,7 +69,7 @@
    "softer overlay" rule that has the same class name). */
 .lp-hero-bg {
   background:
-    linear-gradient(105deg, rgba(3,7,30,.42) 0%, rgba(3,7,30,.68) 62%, rgba(3,7,30,.86) 100%),
+    linear-gradient(105deg, rgba(3,7,30,.80) 0%, rgba(3,7,30,.68) 62%, rgba(3,7,30,.02) 100%),
     radial-gradient(circle at 78% 28%, rgba(6,182,212,.30), transparent 55%),
     url('hero-photo.jpg') center/cover no-repeat,
     linear-gradient(135deg, #082f49, #075985 55%, #06b6d4) !important;
