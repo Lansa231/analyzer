@@ -1228,33 +1228,44 @@ function forgot(){
 /* ============================== STUDENT DASHBOARD ============================== */
 async function stuDash(){
   if(!profile) return;
+  if(unsubStu){ unsubStu(); unsubStu=null; }
   try{ const f=await getDoc(doc(db,'students',user.uid)); if(f.exists()) profile=f.data(); }catch(e){}
 
+  const TABS=[
+    ['dashboard','layout-dashboard','Dashboard'],
+    ['profile','user','Profile'],
+    ['performance','trending-up','Performance'],
+    ['markings','book-open','Markings'],
+    ['discussions','video','Discussions']
+  ];
+  if(!TABS.some(t=>t[0]===state.stab)) state.stab='dashboard';
+  const batch = profile.batch || BATCHES[0];
   const firstName = (profile.fullName||'Student').split(' ')[0];
+  let papers = null;   // loaded once, reused when switching tabs (no refetch = instant tabs)
 
+  /* ---------- shell: sidebar + content pane ---------- */
   app.innerHTML = `
-    <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;padding:20px 24px;background:linear-gradient(120deg,var(--brand),var(--brand2));border:none;color:#fff">
-      <div>
-        <div style="font-size:.85rem;opacity:.9;font-weight:600">Welcome back <i data-lucide="sparkles"></i></div>
-        <h2 style="color:#fff;margin:4px 0 2px;font-size:1.5rem;letter-spacing:-.02em">Hello, ${esc(firstName)}</h2>
-        <div style="font-size:.85rem;opacity:.9">${esc(profile.batch||BATCHES[0])}${profile.center?' · '+esc(profile.center):''}${profile.school?' · '+esc(profile.school):''}</div>         <div style="margin-top:9px;display:flex;gap:8px;flex-wrap:wrap;font-size:.74rem">           <span style="background:rgba(255,255,255,.18);padding:3px 10px;border-radius:999px"><i data-lucide="ticket"></i> Barcode <b class="mono">${esc(profile.barcode||'—')}</b></span>           <span style="background:rgba(255,255,255,.18);padding:3px 10px;border-radius:999px"><i data-lucide="id-card"></i> NIC <b class="mono">${esc(profile.nic||'—')}</b></span>         </div>
-      </div>
-    </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 14px"><button class="btn btn-ghost btn-sm" id="editMe"><i data-lucide="pencil"></i> Edit my details</button><button class="btn btn-ghost btn-sm" id="reqCh"><i data-lucide="refresh-cw"></i> Change center / batch</button></div>
-    <div id="editBox"></div>
-    <div id="stuMarquee"></div>
-    <div id="stuBody"><div class="card"><p class="sub">Loading your marks…</p></div></div>`;
-  $("#editMe").onclick=()=>studentEditCard($("#editBox"),profile,false,()=>stuDash());
-  $("#reqCh").onclick=()=>studentRequestCard($("#editBox"));
-  studentMarquee();
-   { const fd=document.createElement('div'); fd.id='stuFiles'; $("#stuBody").insertAdjacentElement('afterend',fd); loadStuFiles();
-    const vd=document.createElement('div'); vd.id='stuVideos'; fd.insertAdjacentElement('afterend',vd); loadStuVideos(); }
+    <button class="dash-hamburger" id="dashBurger" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="dash-overlay" id="dashOverlay"></div>
+    <div class="dash-layout">
+      <aside class="sidebar">
+        <div class="side-group">
+          <div class="side-label">Student</div>
+          ${TABS.map(([id,ic,lb])=>`<button type="button" class="side-item ${state.stab===id?'active':''}" data-stab="${id}"><i data-lucide="${ic}"></i> ${lb}</button>`).join('')}
+        </div>
+      </aside>
+      <div class="dash-main" id="stuPane"></div>
+    </div>`;
 
-  // --- LOADER ---
-  // We fetch all published papers, then for each paper we:
-  //   1. Fetch my own mark (marks/{paperId}_{nic})
-  //   2. If ranks are published, fetch ALL marks for that paper so we can compute rank
-  // We populate p.scores[nic] = my mark for the row, and store all marks in p._all.
+  { const burger=$("#dashBurger"), ov=$("#dashOverlay"), sb=document.querySelector('.sidebar');
+    const setDrawer=o=>{ sb.classList.toggle('open',o); burger.classList.toggle('open',o); ov.classList.toggle('open',o); };
+    burger.onclick=()=>setDrawer(!sb.classList.contains('open'));
+    ov.onclick=()=>setDrawer(false);
+    sb.addEventListener('click',e=>{ if(e.target.closest('.side-item')) setDrawer(false); });
+  }
+  if(typeof initSidebar==='function') initSidebar();
+
+  /* ---------- data loader (my marks + ranks for published papers) ---------- */
   const q = query(collection(db,'papers'), where('published','==',true));
   const load = async () => {
     const nic = skeyOf(profile);
@@ -1269,27 +1280,84 @@ async function stuDash(){
     });
     return ps;
   };
+  const ensure = async () => { if(!papers) papers = await load(); return papers; };
 
-  const renderBody = papers => {
+  /* ============ PAGE: DASHBOARD ============ */
+  const pageDashboard = () => {
+    const h = new Date().getHours();
+    const greet = h<12 ? 'Good Morning' : h<17 ? 'Good Afternoon' : 'Good Evening';
+    $("#stuPane").innerHTML = `
+      <div class="card" style="padding:26px 24px;background:linear-gradient(120deg,var(--brand),var(--brand2));border:none;color:#fff">
+        <div style="font-size:.85rem;opacity:.9;font-weight:600"><i data-lucide="sparkles"></i> Welcome back</div>
+        <h2 style="color:#fff;margin:6px 0 4px;font-size:1.7rem;letter-spacing:-.02em">${greet}, ${esc(firstName)}!</h2>
+        <div style="font-size:.88rem;opacity:.92">${esc(batch)}${profile.center?' · '+esc(profile.center):''}${profile.school?' · '+esc(profile.school):''}</div>
+      </div>
+      <div id="stuMarquee"></div>
+      <div style="text-align:center;margin:8px 0 20px">
+        <button type="button" class="btn btn-primary" id="goPerf" style="width:auto;padding:13px 34px;margin:0"><i data-lucide="trending-up"></i> See My Performance</button>
+      </div>`;
+    $("#goPerf").onclick = () => setTab('performance');
+    studentMarquee();
+  };
+
+  /* ============ PAGE: PROFILE ============ */
+  const pageProfile = () => {
+    const info = (k,v) => `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div class="sub" style="margin:0">${k}</div><b>${esc(v||'—')}</b></div>`;
+    $("#stuPane").innerHTML = `
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:10px">
+          <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;display:grid;place-items:center;font-size:1.6rem;font-weight:800">${esc((profile.fullName||'?').charAt(0).toUpperCase())}</div>
+          <div>
+            <h2 style="margin:0;font-size:1.3rem">${esc(profile.fullName||'')}</h2>
+            <div class="sub" style="margin:2px 0 0">${esc(batch)}${profile.center?' · '+esc(profile.center):''}</div>
+          </div>
+        </div>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));column-gap:28px">
+          ${info('Full name',profile.fullName)}${info('Gender',profile.gender)}
+          ${info('NIC',profile.nic)}${info('Barcode',profile.barcode)}
+          ${info('Email',profile.email)}${info('Mobile',profile.mobile)}
+          ${info('WhatsApp',profile.whatsapp)}${info('School',profile.school)}
+          ${info('Batch',batch)}${info('Exam center',profile.center)}
+          ${info('Payment method',profile.payMethod)}
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-ghost btn-sm" id="editMe"><i data-lucide="pencil"></i> Edit my details</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="reqCh"><i data-lucide="refresh-cw"></i> Change center / batch</button>
+        </div>
+      </div>
+      <div id="editBox"></div>`;
+    $("#editMe").onclick = () => studentEditCard($("#editBox"), profile, false, () => stuDash());
+    $("#reqCh").onclick  = () => studentRequestCard($("#editBox"));
+  };
+
+  /* ============ PAGE: PERFORMANCE ============ */
+  const pagePerformance = async () => {
+    const pane = $("#stuPane");
+    if(!papers) pane.innerHTML = `<div class="card"><p class="sub">Loading your marks…</p></div>`;
+    try{ await ensure(); }
+    catch(e){ if(state.stab==='performance') pane.innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; return; }
+    if(state.stab!=='performance') return;
+    killCharts();
+
     const rowsP = papers
-      .filter(p => (p.batch||BATCHES[0]) === (profile.batch||BATCHES[0]))
-      .filter(p => state.stuSubject==='All' || p.subject===state.stuSubject)
+      .filter(p => (p.batch||BATCHES[0]) === batch)
       .map(p => ({ p, m: p.scores?.[skeyOf(profile)] }))
       .filter(r => r.m != null)
       .sort((a,b) => String(a.p.date||'').localeCompare(String(b.p.date||'')));
 
     if(!rowsP.length){
-      $("#stuBody").innerHTML = `<div class="card"><p class="sub"><i data-lucide="inbox"></i> No published marks yet. Your teacher will publish them here after each paper.</p></div>`;
+      pane.innerHTML = `<div class="card"><p class="sub"><i data-lucide="inbox"></i> No published marks yet. Your teacher will publish them here after each paper.</p></div>`;
       return;
     }
 
-    const marks = rowsP.map(r => pct(r.m, r.p.max));
-    const best = Math.max(...marks);
-    const avg = Math.round(marks.reduce((a,b)=>a+b,0)/marks.length*10)/10;
+    const marks  = rowsP.map(r => pct(r.m, r.p.max));
+    const best   = Math.max(...marks);
+    const avg    = Math.round(marks.reduce((a,b)=>a+b,0)/marks.length*10)/10;
     const latest = marks[marks.length-1];
     const bestRow = rowsP[marks.indexOf(best)];
+    const lastRow = rowsP[rowsP.length-1];
 
-    // RANK WIDGET
+    /* rank widget */
     const isOnlineStudent = /online/i.test(String(profile.center || ''));
     let rankWidget = '';
     const rankedPapers = rowsP.filter(r => r.p._rank);
@@ -1297,134 +1365,135 @@ async function stuDash(){
       const lastRanked = rankedPapers[rankedPapers.length - 1];
       const myRank = lastRanked.p._rank;
       if(isOnlineStudent){
-        // Online student: own pool, own rank, never claimed as "top 100"
-        rankWidget = `
-          <div class="card" style="background:linear-gradient(135deg,#bfdbfe,#93c5fd);border:none;color:#1e3a8a;display:flex;align-items:center;gap:16px;padding:18px;margin-bottom:20px">
-            <div style="font-size:2.5rem;line-height:1"><i data-lucide="globe"></i></div>
-            <div>
-              <div style="font-weight:800;font-size:1.1rem;color:#1e3a8a">Your rank among online students</div>
-              <div style="font-weight:600;font-size:.92rem;margin-top:2px">Rank #${myRank} — ${esc(lastRanked.p.title)}</div>
-            </div>
-          </div>`;
+        rankWidget = `<div class="card" style="background:linear-gradient(135deg,#bfdbfe,#93c5fd);border:none;color:#1e3a8a;display:flex;align-items:center;gap:16px;padding:18px;margin-bottom:20px">
+          <div style="font-size:2.5rem;line-height:1"><i data-lucide="globe"></i></div>
+          <div><div style="font-weight:800;font-size:1.1rem;color:#1e3a8a">Your rank among online students</div>
+          <div style="font-weight:600;font-size:.92rem;margin-top:2px">Rank #${myRank} — ${esc(lastRanked.p.title)}</div></div></div>`;
       } else if(myRank <= 100){
-        rankWidget = `
-          <div class="card" style="background:linear-gradient(135deg,#fef08a,#fde047);border:none;color:#422006;display:flex;align-items:center;gap:16px;padding:18px;margin-bottom:20px">
-            <div style="font-size:2.5rem;line-height:1"><i data-lucide="trophy"></i></div>
-            <div>
-              <div style="font-weight:800;font-size:1.1rem;color:#422006">You're in the Top 100!</div>
-              <div style="font-weight:600;font-size:.92rem;margin-top:2px">Rank #${myRank} — ${esc(lastRanked.p.title)}</div>
-            </div>
-          </div>`;
+        rankWidget = `<div class="card" style="background:linear-gradient(135deg,#fef08a,#fde047);border:none;color:#422006;display:flex;align-items:center;gap:16px;padding:18px;margin-bottom:20px">
+          <div style="font-size:2.5rem;line-height:1"><i data-lucide="trophy"></i></div>
+          <div><div style="font-weight:800;font-size:1.1rem;color:#422006">You're in the Top 100!</div>
+          <div style="font-weight:600;font-size:.92rem;margin-top:2px">Rank #${myRank} — ${esc(lastRanked.p.title)}</div></div></div>`;
       }
     }
 
-    const bestCard = `${rankWidget}
-      <div class="ma-grid" style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:22px;align-items:stretch">
-        <div class="card" style="margin:0;display:flex;flex-direction:column">
-          <h2 style="margin:0 0 14px"><i data-lucide="trending-up"></i> Progress — ${esc(state.stuSubject)}</h2>
-          <div style="background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:16px">
-            <div class="gb-row" style="border:none;padding:0">
-              <div class="gb-head" style="display:flex;justify-content:space-between;margin-bottom:8px">
-                <span class="gb-title" style="font-weight:700;font-size:.9rem">Latest paper — ${esc(rowsP[rowsP.length-1].p.title)}</span>
-                <span class="gb-date" style="color:var(--muted);font-size:.74rem">${esc(rowsP[rowsP.length-1].p.date||'—')}</span>
-              </div>
-              <div class="gb-track" style="height:14px;border-radius:999px;background:var(--line);overflow:hidden">
-                <div style="height:100%;border-radius:999px;background:linear-gradient(90deg,var(--brand),var(--brand2));width:${latest}%"></div>
-              </div>
-              <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:.76rem;color:var(--muted)">
-                <span>${rowsP[rowsP.length-1].m} / ${rowsP[rowsP.length-1].p.max} marks</span>
-                <b style="color:var(--brand)">${latest}%</b>
-              </div>
-            </div>
-          </div>
-          <canvas id="c1" style="margin-top:auto"></canvas>
-        </div>
-        <div class="card" style="margin:0;display:flex;flex-direction:column;justify-content:center;text-align:center">
-          <div class="ma-best">
-            <div class="ma-trophy" style="font-size:3.5rem;animation:maBounce 1.8s ease-in-out infinite;line-height:1;filter:drop-shadow(0 10px 18px rgba(255,190,0,.45))"><i data-lucide="trophy"></i></div>
-            <div class="ma-best-title" style="font-weight:800;font-size:.9rem;margin-top:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Best mark</div>
-            <div class="ma-best-mark" style="font-size:1.7rem;font-weight:800;color:var(--brand);line-height:1.1">${best}%</div>
-            <div class="sub" style="margin-top:4px;font-size:.78rem">${esc(bestRow.p.title)}</div>
-            <div class="ma-mini" style="display:flex;gap:10px;margin-top:16px">
-              <div style="flex:1;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 6px">
-                <div class="n" style="font-weight:800;font-size:1.02rem;color:var(--brand)">${rowsP.length}</div>
-                <div class="l" style="font-size:.7rem;color:var(--muted);margin-top:2px">Papers sat</div>
-              </div>
-              <div style="flex:1;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 6px">
-                <div class="n" style="font-weight:800;font-size:1.02rem;color:var(--brand)">${avg}%</div>
-                <div class="l" style="font-size:.7rem;color:var(--muted);margin-top:2px">Average</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <style>
-        @keyframes maBounce{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-8px) scale(1.06)}}
-        @media (prefers-reduced-motion:reduce){.ma-trophy{animation:none!important}}
-        @media(max-width:760px){.ma-grid{grid-template-columns:1fr!important}}
-      </style>`;
-
-    const rows = rowsP.map(r => {
+    const tableRows = rowsP.map(r => {
       const p = pct(r.m, r.p.max);
       const barColor = p>=75?'linear-gradient(90deg,#10b981,#34d399)':
                        p>=65?'linear-gradient(90deg,#3b82f6,#60a5fa)':
                        p>=55?'linear-gradient(90deg,#f59e0b,#fbbf24)':
                        p>=35?'linear-gradient(90deg,#f97316,#fb923c)':
                              'linear-gradient(90deg,#ef4444,#f87171)';
-
-           const rankCol = r.p._rank ? `<b>#${r.p._rank}</b>` : '—';
+      const rankCol = r.p._rank ? `<b>#${r.p._rank}</b>` : '—';
       return `<tr>
         <td class="mono">${esc(r.p.date||'—')}</td>
         <td>${esc(r.p.title)}</td>
         <td class="mono"><b>${r.m}</b> / ${r.p.max}</td>
-        <td style="min-width:140px">
-          <div class="bar-wrap" style="background:var(--line);border-radius:8px;height:8px;overflow:hidden">
-            <div class="bar" style="height:100%;border-radius:8px;width:${p}%;background:${barColor};transition:width 1s ease"></div>
-          </div>
-        </td>
+        <td style="min-width:140px"><div class="bar-wrap" style="background:var(--line);border-radius:8px;height:8px;overflow:hidden">
+          <div class="bar" style="height:100%;border-radius:8px;width:${p}%;background:${barColor}"></div></div></td>
         <td>${rankCol}</td>
         <td><span class="pill ${gCls(p)}">${p}%</span></td>
         <td><span class="pill ${gCls(p)}">${grade(p)}</span></td>
       </tr>`;
     }).join('');
 
-    $("#stuBody").innerHTML = bestCard + `
+    pane.innerHTML = `${rankWidget}
+      <div class="ma-grid" style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:22px;align-items:stretch">
+        <div class="card" style="margin:0;display:flex;flex-direction:column">
+          <h2 style="margin:0 0 14px"><i data-lucide="trending-up"></i> My Progress</h2>
+          <div style="background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <span style="font-weight:700;font-size:.9rem">Latest paper — ${esc(lastRow.p.title)}</span>
+              <span style="color:var(--muted);font-size:.74rem">${esc(lastRow.p.date||'—')}</span>
+            </div>
+            <div style="height:14px;border-radius:999px;background:var(--line);overflow:hidden">
+              <div style="height:100%;border-radius:999px;background:linear-gradient(90deg,var(--brand),var(--brand2));width:${latest}%"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:.76rem;color:var(--muted)">
+              <span>${lastRow.m} / ${lastRow.p.max} marks</span><b style="color:var(--brand)">${latest}%</b>
+            </div>
+          </div>
+          <canvas id="c1" style="margin-top:auto"></canvas>
+        </div>
+        <div class="card" style="margin:0;display:flex;flex-direction:column;justify-content:center;text-align:center">
+          <div style="font-size:3.5rem;line-height:1;animation:maBounce 1.8s ease-in-out infinite;filter:drop-shadow(0 10px 18px rgba(255,190,0,.45))"><i data-lucide="trophy"></i></div>
+          <div style="font-weight:800;font-size:.9rem;margin-top:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Best mark</div>
+          <div style="font-size:1.7rem;font-weight:800;color:var(--brand);line-height:1.1">${best}%</div>
+          <div class="sub" style="margin-top:4px;font-size:.78rem">${esc(bestRow.p.title)}</div>
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <div style="flex:1;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 6px">
+              <div style="font-weight:800;font-size:1.02rem;color:var(--brand)">${rowsP.length}</div>
+              <div style="font-size:.7rem;color:var(--muted);margin-top:2px">Papers sat</div></div>
+            <div style="flex:1;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 6px">
+              <div style="font-weight:800;font-size:1.02rem;color:var(--brand)">${avg}%</div>
+              <div style="font-size:.7rem;color:var(--muted);margin-top:2px">Average</div></div>
+          </div>
+        </div>
+      </div>
+      <style>
+        @keyframes maBounce{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-8px) scale(1.06)}}
+        @media(max-width:760px){.ma-grid{grid-template-columns:1fr!important}}
+      </style>
       <div class="card" style="margin-top:20px">
         <h2><i data-lucide="file-text"></i> Paper-by-Paper Marks</h2>
-        <div class="tbl-wrap">
-          <table>
-            <tr><th>Date</th><th>Paper</th><th>Marks</th><th>Progress</th><th>Rank</th><th>%</th><th>Grade</th></tr>
-            ${rows}
-          </table>
-        </div>
+        <div class="tbl-wrap"><table>
+          <tr><th>Date</th><th>Paper</th><th>Marks</th><th>Progress</th><th>Rank</th><th>%</th><th>Grade</th></tr>
+          ${tableRows}
+        </table></div>
       </div>`;
 
     lazyChart('s1', $("#c1"), () => ({
       type:'line',
       data:{
         labels: rowsP.map(r=>r.p.title),
-        datasets:[{
-          label:'My score %',
-          data: rowsP.map(r=>pct(r.m, r.p.max)),
-                   borderColor:'#0369a1',
-          backgroundColor:'rgba(3,105,161,.12)',
-          fill:true, tension:.35, pointRadius:5, pointBackgroundColor:'#06b6d4'
-        }]
+        datasets:[{ label:'My score %', data: rowsP.map(r=>pct(r.m, r.p.max)),
+          borderColor:'#0369a1', backgroundColor:'rgba(3,105,161,.12)',
+          fill:true, tension:.35, pointRadius:5, pointBackgroundColor:'#06b6d4' }]
       },
       options:{
         scales:{ y:{ min:0, max:100, title:{display:true,text:'Percentage'} } },
         plugins:{ legend:{display:true}, tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y}%`}} }
       }
     }));
- };  
-  window.drawStu = () => load().then(renderBody).catch(e=>{ $("#stuBody").innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; });
+  };
+
+  /* ============ PAGE: MARKINGS (files added by developer) ============ */
+  const pageMarkings = async () => {
+    $("#stuPane").innerHTML = `<div id="stuFiles"><div class="card"><p class="sub">Loading…</p></div></div>`;
+    await loadStuFiles();
+    const h = $("#stuFiles");
+    if(h && !h.innerHTML.trim()) h.innerHTML = `<div class="card"><h2><i data-lucide="book-open"></i> Markings</h2><p class="sub"><i data-lucide="inbox"></i> No marking schemes or files have been added yet. They will appear here.</p></div>`;
+  };
+
+  /* ============ PAGE: DISCUSSIONS (videos added by developer) ============ */
+  const pageDiscussions = async () => {
+    $("#stuPane").innerHTML = `<div id="stuVideos"><div class="card"><p class="sub">Loading…</p></div></div>`;
+    await loadStuVideos();
+    const h = $("#stuVideos");
+    if(h && !h.innerHTML.trim()) h.innerHTML = `<div class="card"><h2><i data-lucide="video"></i> Discussions</h2><p class="sub"><i data-lucide="inbox"></i> No paper discussion videos have been added yet. They will appear here.</p></div>`;
+  };
+
+  /* ---------- tab switching (instant, no page reload) ---------- */
+  const PAGES = { dashboard:pageDashboard, profile:pageProfile, performance:pagePerformance, markings:pageMarkings, discussions:pageDiscussions };
+  const renderTab = () => { try{ const r=PAGES[state.stab](); if(r && r.catch) r.catch(e=>{ $("#stuPane").innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; }); }catch(e){ $("#stuPane").innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; } };
+  const setTab = id => {
+    state.stab = id;
+    killCharts();
+    document.querySelectorAll('[data-stab]').forEach(b => b.classList.toggle('active', b.dataset.stab === id));
+    renderTab();
+    window.scrollTo(0,0);
+  };
+  document.querySelectorAll('[data-stab]').forEach(b => b.onclick = () => setTab(b.dataset.stab));
+
+  /* ---------- live refresh when teacher publishes marks ---------- */
+  window.drawStu = () => load().then(p => { papers = p; if(state.stab==='performance') pagePerformance(); }).catch(()=>{});
   let firstSnap = true;
   unsubStu = onSnapshot(q, () => {
     if (firstSnap) { firstSnap = false; return; }
-    load().then(renderBody).catch(()=>{});
+    window.drawStu();
   }, ()=>{});
-  const first = await load().catch(()=>[]);
-  renderBody(first);
+
+  renderTab();
 }
   /* ============================================================
    Universal barcode scanner (camera → text)
@@ -4385,14 +4454,19 @@ chartDefaults();
 /* Lucide — auto-render icons on every DOM change */
 if (window.lucide) {
   let lucideTimer = null;
-  const renderIcons = () => {
+  const obs = new MutationObserver(muts => {
+    // only react when new icon placeholders were actually added
+    const needs = muts.some(m => [...m.addedNodes].some(n =>
+      n.nodeType === 1 && ((n.matches && n.matches('[data-lucide]')) || (n.querySelector && n.querySelector('[data-lucide]')))));
+    if (!needs) return;
     clearTimeout(lucideTimer);
     lucideTimer = setTimeout(() => {
-      if (document.querySelector('[data-lucide]')) lucide.createIcons();
+      obs.disconnect();                       // don't trigger ourselves
+      try { lucide.createIcons(); } finally { obs.observe(document.body, { childList: true, subtree: true }); }
     }, 30);
-  };
-  new MutationObserver(renderIcons).observe(document.body, { childList: true, subtree: true });
-  renderIcons();
+  });
+  obs.observe(document.body, { childList: true, subtree: true });
+  lucide.createIcons();
 }
 
 if ('serviceWorker' in navigator) {
