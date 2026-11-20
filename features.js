@@ -94,7 +94,8 @@
       || el.getAttribute('title')
       || 'Video').trim();
 
-    open(id, title);
+    if (window.openYtWatch) { window.openYtWatch(id, title); }
+    else { open(id, title); }        // modal fallback
   }, true);
 })();
 /* features.js \u2014 add-on file for Class Analyzer. Upload next to index.html.
