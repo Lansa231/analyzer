@@ -3,41 +3,60 @@
   if (window.__videoCardsHardened) return;
   window.__videoCardsHardened = true;
 
-  function harden(root){
-    if (!root || !root.querySelectorAll) return;
-    const xid = window.extractYtId || (() => '');
+function harden(root){
+  if (!root || !root.querySelectorAll) return;
+  const xid = window.extractYtId || (() => '');
 
-    /* Any anchor that points at YouTube → convert to a plain data-yt-id node.
-       Removing href + target means iOS/Android has nothing to navigate to,
-       so the browser's pre-click navigation never fires. */
-    root.querySelectorAll('a[href]').forEach(a => {
-      const id = xid(a.getAttribute('href') || '');
-      if (!id) return;
-      if (!a.dataset.ytId) a.dataset.ytId = id;
-      if (!a.dataset.title) {
-        const t = a.querySelector('.pt, .title, b, strong')?.textContent?.trim();
-        if (t) a.dataset.title = t;
-      }
-      a.removeAttribute('href');
-      a.removeAttribute('target');
-      a.removeAttribute('rel');
-      a.style.cursor = 'pointer';
-    });
-
-    /* window.open(...) onclicks → same treatment */
-    root.querySelectorAll('[onclick]').forEach(el => {
-      const m = (el.getAttribute('onclick') || '')
-        .match(/(?:youtu\.be\/|[?&]v=|\/embed\/)([A-Za-z0-9_-]{11})/);
-      if (!m) return;
-      el.dataset.ytId = m[1];
-      if (!el.dataset.title) {
-        const t = el.querySelector('.pt, .title, b, strong')?.textContent?.trim();
-        if (t) el.dataset.title = t;
-      }
-      el.removeAttribute('onclick');
-      el.style.cursor = 'pointer';
-    });
+  function cardTitle(el){
+    const t = el.querySelector('.pt, .title, b, strong')?.textContent?.trim();
+    return t || '';
   }
+
+  function elevate(el, id, title){
+    /* Put the ID on the entire card wrapper so image AND text are clickable */
+    const card = el.closest('.pdfcard') || el;
+    if (!card.dataset.ytId) card.dataset.ytId = id;
+    if (title && !card.dataset.title) card.dataset.title = title;
+    card.style.cursor = 'pointer';
+    /* Also keep it on the link/element in case click lands on a non-card node */
+    if (el !== card) {
+      if (!el.dataset.ytId) el.dataset.ytId = id;
+      if (title && !el.dataset.title) el.dataset.title = title;
+    }
+  }
+
+  /* Anchors pointing at YouTube */
+  root.querySelectorAll('a[href]').forEach(a => {
+    const id = xid(a.getAttribute('href') || '');
+    if (!id) return;
+    elevate(a, id, cardTitle(a));
+    a.removeAttribute('href');
+    a.removeAttribute('target');
+    a.removeAttribute('rel');
+    a.style.cursor = 'pointer';
+  });
+
+  /* window.open(...) onclicks */
+  root.querySelectorAll('[onclick]').forEach(el => {
+    const m = (el.getAttribute('onclick') || '')
+      .match(/(?:youtu\.be\/|[?&]v=|\/embed\/)([A-Za-z0-9_-]{11})/);
+    if (!m) return;
+    elevate(el, m[1], cardTitle(el));
+    el.removeAttribute('onclick');
+  });
+
+  /* Thumbnail-only cards: img.youtube.com/vi/ID/... but no anchor, no onclick */
+  root.querySelectorAll('.pdfcard').forEach(card => {
+    if (card.dataset.ytId) return;
+    const img = card.querySelector('img[src*="youtube"], img[src*="ytimg"]');
+    if (!img) return;
+    const id = xid(img.getAttribute('src') || '');
+    if (!id) return;
+    card.dataset.ytId = id;
+    card.dataset.title = cardTitle(card) || 'Video';
+    card.style.cursor = 'pointer';
+  });
+}
 
   /* Same pattern as the rest of features.js: cheap polling, but only does work
      when a video grid actually exists in the DOM. */
