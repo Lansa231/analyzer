@@ -69,9 +69,7 @@ header.scrolled{box-shadow:0 6px 24px rgba(3,7,30,.12)}
 /* ============================================================
    5. CARDS — lift, cursor spotlight (blue-tinted)
    ============================================================ */
-.card,.class-card,.feat,.c-item,.tg-card,.stat,.pdfcard{position:relative}
-.card::after,.class-card::after,.feat::after,.c-item::after,.tg-card::after,.stat::after,.pdfcard::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),rgba(6,182,212,.17),transparent 70%)}
-.card:hover::after,.class-card:hover::after,.feat:hover::after,.c-item:hover::after,.tg-card:hover::after,.stat:hover::after,.pdfcard:hover::after{opacity:1}
+
 .card{transition:border-color .25s,box-shadow .25s}
 .card:hover{border-color:var(--brand-soft)}
 .stat,.pdfcard{transition:transform .25s var(--ease),border-color .25s,box-shadow .25s}
