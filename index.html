@@ -2823,17 +2823,34 @@ function initSidebar(){
   // tooltips so icons still make sense when collapsed
   sb.querySelectorAll('.side-item').forEach(b => { b.title = b.textContent.replace(/\d+$/,'').trim(); });
 
-  if(!sb.querySelector('.side-top')){
-    const top = document.createElement('div');
-    top.className = 'side-top';
-   top.innerHTML = `<b>Wellbiopaper.lk</b>'; 
-      <button type="button" class="side-collapse" id="sideCollapse" aria-label="Collapse sidebar" title="Collapse / expand"><i data-lucide="panel-left"></i></button>`;
-    sb.prepend(top);
-    top.querySelector('#sideCollapse').onclick = () => {
-      const c = document.body.classList.toggle('side-collapsed');
-      localStorage.setItem('ca_side', c ? 'collapsed' : 'open');
-    };
+ if(!sb.querySelector('.side-top')){
+  const top = document.createElement('div');
+  top.className = 'side-top';
+  top.innerHTML = `
+    <b class="side-brand">Wellbiopaper.lk</b>
+    <button type="button" class="side-collapse" id="sideCollapse"
+            aria-label="Collapse sidebar" title="Collapse / expand">
+      <i data-lucide="panel-left"></i>
+    </button>`;
+  sb.prepend(top);
+
+  /* restore collapsed state from a previous visit */
+  if(localStorage.getItem('ca_side') === 'collapsed'){
+    document.body.classList.add('side-collapsed');
+    top.querySelector('[data-lucide]').setAttribute('data-lucide', 'panel-right');
   }
+
+  top.querySelector('#sideCollapse').onclick = () => {
+    const c = document.body.classList.toggle('side-collapsed');
+    localStorage.setItem('ca_side', c ? 'collapsed' : 'open');
+    /* swap the arrow direction */
+    top.querySelector('[data-lucide]').setAttribute('data-lucide', c ? 'panel-right' : 'panel-left');
+    /* re-render the lucide icons — this is the piece that was missing */
+    if (window.lucide?.createIcons) window.lucide.createIcons();
+  };
+
+  /* render the icon on first paint */
+  if (window.lucide?.createIcons) window.lucide.createIcons();
 }
 /* ============================== TEACHER AUTH ============================== */
 function teacherAuth(){
