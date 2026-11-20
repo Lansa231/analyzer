@@ -462,7 +462,35 @@ main#app.landing-wide{overflow-x:clip}
    Teacher dashboard — mobile layout (definitive)
    Single column, sidebar = horizontal scroll strip, no drawer.
    ============================================================ */
-
+/* ===== In-app YouTube player ===== */
+.yt-modal{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:16px}
+.yt-modal.open{display:flex}
+.yt-backdrop{position:absolute;inset:0;background:rgba(3,10,20,.80);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.yt-dialog{position:relative;z-index:2;width:100%;max-width:1000px;background:#0b1220;border:1px solid rgba(255,255,255,.12);
+  border-radius:16px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6);animation:ytIn .22s ease}
+@keyframes ytIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+.yt-head{display:flex;align-items:center;gap:10px;padding:9px 10px 9px 16px;
+  background:rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.09)}
+.yt-title{color:#e6eef2;font-size:.88rem;font-weight:700;flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.yt-ext{color:#7dd3fc;font-size:.76rem;font-weight:700;text-decoration:none;padding:6px 10px;border-radius:8px;flex:none}
+.yt-ext:hover{background:rgba(255,255,255,.1)}
+.yt-close{background:rgba(255,255,255,.10);border:none;color:#e6eef2;width:34px;height:34px;border-radius:9px;
+  display:grid;place-items:center;cursor:pointer;flex:none;transition:.15s}
+.yt-close:hover{background:rgba(255,255,255,.2)}
+.yt-frame-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000}
+@supports not (aspect-ratio:1/1){.yt-frame-wrap{height:0;padding-bottom:56.25%}}
+.yt-frame,.yt-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+body.yt-locked{overflow:hidden}
+@media(max-width:600px){
+  .yt-modal{padding:0}
+  .yt-dialog{max-width:none;border-radius:0;min-height:100dvh;display:flex;flex-direction:column;justify-content:center}
+  .yt-dialog .yt-head{order:-1}
+}
+#stuVideos .pdfcard:has(a[href*="youtu"]),
+#stuVideos .pdfcard:has(img.yt-thumb){cursor:pointer}
+#stuVideos .pdfcard:has(img.yt-thumb) img.yt-thumb{transition:filter .2s}
+#stuVideos .pdfcard:hover img.yt-thumb{filter:brightness(.82)}
 </style>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
