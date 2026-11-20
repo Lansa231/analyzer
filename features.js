@@ -1,4 +1,57 @@
+/* ============ Harden video cards: strip hrefs so mobile can't navigate ============ */
+(function hardenVideoCards(){
+  if (window.__videoCardsHardened) return;
+  window.__videoCardsHardened = true;
 
+  function harden(root){
+    if (!root || !root.querySelectorAll) return;
+    const xid = window.extractYtId || (() => '');
+
+    /* Any anchor that points at YouTube → convert to a plain data-yt-id node.
+       Removing href + target means iOS/Android has nothing to navigate to,
+       so the browser's pre-click navigation never fires. */
+    root.querySelectorAll('a[href]').forEach(a => {
+      const id = xid(a.getAttribute('href') || '');
+      if (!id) return;
+      if (!a.dataset.ytId) a.dataset.ytId = id;
+      if (!a.dataset.title) {
+        const t = a.querySelector('.pt, .title, b, strong')?.textContent?.trim();
+        if (t) a.dataset.title = t;
+      }
+      a.removeAttribute('href');
+      a.removeAttribute('target');
+      a.removeAttribute('rel');
+      a.style.cursor = 'pointer';
+    });
+
+    /* window.open(...) onclicks → same treatment */
+    root.querySelectorAll('[onclick]').forEach(el => {
+      const m = (el.getAttribute('onclick') || '')
+        .match(/(?:youtu\.be\/|[?&]v=|\/embed\/)([A-Za-z0-9_-]{11})/);
+      if (!m) return;
+      el.dataset.ytId = m[1];
+      if (!el.dataset.title) {
+        const t = el.querySelector('.pt, .title, b, strong')?.textContent?.trim();
+        if (t) el.dataset.title = t;
+      }
+      el.removeAttribute('onclick');
+      el.style.cursor = 'pointer';
+    });
+  }
+
+  /* Same pattern as the rest of features.js: cheap polling, but only does work
+     when a video grid actually exists in the DOM. */
+  const sweep = () => {
+    const v = document.getElementById('stuVideos');
+    if (!v) return;
+    /* Only sweep when there's still an <a href> or [onclick] with a youtube link */
+    if (v.querySelector('a[href*="youtu"], [onclick*="youtu"]')) harden(v);
+  };
+  setInterval(sweep, 400);
+
+  /* Hash route change → immediate sweep so the very first tap on a fresh page works */
+  window.addEventListener('hashchange', () => setTimeout(sweep, 150));
+})();
 /* ============ In-app YouTube player ============ */
 (function installYtPlayer(){
   if (window.__ytPlayerInstalled) return;
