@@ -373,3 +373,4 @@ button [data-lucide], button svg.lucide,
 a [data-lucide], a svg.lucide,
 .side-item *, .tabs button * { pointer-events: none; }
 .lp-hero-bg::after, .lp-hero-bg::before { display: none; }
+.dash-overlay { cursor: pointer; }
