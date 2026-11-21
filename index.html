@@ -4341,7 +4341,12 @@ function tabMarks({students,papers}){
     if(!confirm('Delete this paper and all its marks?')) return;
     busy(true); try{ const ms=await getDocs(query(collection(db,'marks'),where('pid','==',b.dataset.delp))); for(const d of ms.docs) await deleteDoc(d.ref).catch(()=>{}); }catch(e){} await deleteDoc(doc(db,'papers',b.dataset.delp)); busy(false); state.selPaper=null; teacherDash();
   });
-  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{ state.selPaper=b.dataset.open; drawMarksPane(students,papers); });
+  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
+    state.selPaper=b.dataset.open;
+    const ms=$("#mkStatSel");
+    if(ms){ ms.value=b.dataset.open; ms.dispatchEvent(new Event('change')); }
+    drawMarksPane(students,papers);
+  });
   drawMarksPane(students,papers);
 }
 function drawMarksPane(students, papers){
