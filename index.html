@@ -3012,6 +3012,7 @@ async function teacherDash(){
     return;
   }
   if(!profile.profileDone || state.editProfile){ state.editProfile=false; return teacherProfile(); }
+    busy(true);
   const [stuSnap, penSnap, papSnap, setSnap, lstSnap, tchSnap, mkSnap, admSnap, reqSnap, attSnap, marqSnap, exmSnap] = await Promise.all([
     getDocs(profile.isAdmin?collection(db,'students'):query(collection(db,'students'),where('center','==',profile.center||''))),
     getDocs(profile.isAdmin?collection(db,'pending'):query(collection(db,'pending'),where('center','==',profile.center||''))),
@@ -3021,7 +3022,7 @@ async function teacherDash(){
     profile.isAdmin?getDocs(collection(db,'admins')):null, profile.isAdmin?getDocs(collection(db,'changeRequests')):null,     getDocs(profile.isAdmin?collection(db,'attendance'):query(collection(db,'attendance'),where('center','==',profile.center||''))).catch(()=>null),
      getDoc(doc(db,'settings','marquee')).catch(()=>null),
     profile.isAdmin ? getDocs(collection(db,'examiners')) : null
-  ]).catch(e=>{ app.innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; return [null]; });
+  ]).catch(e=>{ busy(false); app.innerHTML=`<div class="card"><div class="err">${esc(friendly(e))}</div></div>`; return [null]; });
   if(!stuSnap) return;
   const students=stuSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.fullName.localeCompare(b.fullName));
   const pending=penSnap.docs.map(d=>({...d.data(),key:d.id}));
@@ -3111,7 +3112,7 @@ async function teacherDash(){
     ov.onclick=()=>setDrawer(false);
     sb.addEventListener('click',e=>{ if(e.target.closest('.side-item')) setDrawer(false); });
   }
-  document.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>{ state.batch=b.dataset.batch; state.selPaper=null; state.rankPaper=null; teacherDash(); });
+  document.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>{ state.batch=b.dataset.batch; state.selPaper=null; state.rankPaper=null; $("#tabBody").innerHTML='<div class="card"><p class="sub">Loading…</p></div>'; teacherDash(); });
   if($("#ctrSel")) $("#ctrSel").onchange=e=>{ state.center=e.target.value; teacherDash(); };
   if(!adm && ['teachers','admin','requests','files','approvers','payments','attendance'].includes(state.tab)) state.tab='students';
   const tabs={students:tabStudents,attendance:tabAttendance,marks:tabMarks,analytics:tabAnalytics,ranks:tabRanks,allmarks:tabAllMarks,requests:tabRequests,files:tabFiles,teachers:tabTeachers,examiners:tabExaminers,approvers:tabApprovers,payments:tabPaymentsAdmin,admin:tabAdmin,videos:tabVideos};
@@ -3121,7 +3122,8 @@ async function teacherDash(){
   if(xt){ try{ xt.render({...ctx,el:$("#tabBody")}); }catch(e){ $("#tabBody").innerHTML=`<div class="card"><div class="err">${esc(e.message)}</div></div>`; } }
   else (tabs[state.tab]||tabStudents)(ctx);
   try{ document.dispatchEvent(new CustomEvent('ca:teacher-view',{detail:{tab:state.tab,batch:state.batch,adm}})); }catch(e){}
-initSidebar();  
+initSidebar();
+  busy(false);
 }
 async function studentView(){
   const nic=decodeURIComponent(location.hash.slice('#/student/'.length)).toUpperCase(), adm=!!profile.isAdmin;
