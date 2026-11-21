@@ -111,7 +111,6 @@
 /* Teacher photo card on landing page. */
 .lp .teacher-photo {
   background:
-    linear-gradient(150deg, rgba(3,7,30,.42), rgba(3,7,30,.68)),
     url('teacher-photo.jpg') center/cover no-repeat,
     linear-gradient(150deg, #082f49, #075985 60%, #06b6d4) !important;
 }
