@@ -1866,17 +1866,16 @@ async function examinerDash(){
         <span class="sub" style="display:inline"> · ${esc(profile.center||'—')} · ${students.length} students · ${papers.length} papers</span></div>
     </div>
     <div class="tabs">${BATCHES.map(b=>`<button data-ebatch="${b}" class="${batch===b?'active':''}"><i data-lucide="graduation-cap"></i> ${b}</button>`).join('')}</div>
+    <button class="dash-hamburger" id="dashBurger" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="dash-overlay" id="dashOverlay"></div>
     <div class="dash-layout">
       <aside class="sidebar">
-        <div class="side-user">
-          <div class="av">${esc((profile.fullName||'?').charAt(0).toUpperCase())}</div>
-          <div><b>${esc(profile.fullName||'')}</b><small>Examiner · ${esc(profile.center||'')}</small></div>
-        </div>
-           <div class="tabs">
-          <button data-etab="profile" class="${(state.etab||'profile')==='profile'?'active':''}"><i data-lucide="user"></i> Profile</button>
-          <button data-etab="students" class="${state.etab==='students'?'active':''}">👨‍<i data-lucide="graduation-cap"></i> Students</button>
-          <button data-etab="attendance" class="${state.etab==='attendance'?'active':''}">📅 My Attendance</button>
-          <button data-etab="totalatt" class="${state.etab==='totalatt'?'active':''}"><i data-lucide="clipboard-list"></i> Total Attendance</button>
+        <div class="side-group">
+          <div class="side-label">Examiner</div>
+          <button type="button" class="side-item ${(state.etab||'profile')==='profile'?'active':''}" data-etab="profile"><i data-lucide="user"></i> Profile</button>
+          <button type="button" class="side-item ${state.etab==='students'?'active':''}" data-etab="students"><i data-lucide="graduation-cap"></i> Students</button>
+          <button type="button" class="side-item ${state.etab==='attendance'?'active':''}" data-etab="attendance"><i data-lucide="calendar-check"></i> My Attendance</button>
+          <button type="button" class="side-item ${state.etab==='totalatt'?'active':''}" data-etab="totalatt"><i data-lucide="clipboard-list"></i> Total Attendance</button>
         </div>
       </aside>
       <div class="dash-main" id="etabBody"></div>
@@ -1888,6 +1887,13 @@ async function examinerDash(){
   document.querySelectorAll('[data-etab]').forEach(b=>b.onclick=()=>{
     state.etab=b.dataset.etab; examinerDash();
   });
+    { const burger=$("#dashBurger"), ov=$("#dashOverlay"), sb=document.querySelector('.sidebar');
+    const setDrawer=o=>{ sb.classList.toggle('open',o); burger.classList.toggle('open',o); ov.classList.toggle('open',o); };
+    burger.onclick=()=>setDrawer(!sb.classList.contains('open'));
+    ov.onclick=()=>setDrawer(false);
+    sb.addEventListener('click',e=>{ if(e.target.closest('.side-item')) setDrawer(false); });
+  }
+  initSidebar();
    if(state.etab === 'students') examinerStudents({papers, students, studentsAll, att, batch});
   else if(state.etab === 'attendance') examinerAttendance({papers, students, studentsAll, att, batch});
   else if(state.etab === 'totalatt') examinerTotalAttendance({papers, students, studentsAll, att, batch});
