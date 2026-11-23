@@ -1,7 +1,7 @@
 /* features.js - add-on file for Class Analyzer. Upload next to index.html.
    index.html announces events; this file listens and adds things to the page.
    Everything lives inside one function so names cannot clash with index.html. */
-(function () {
+(function () { 
   'use strict';
   if (window.__featuresLoaded) return;
   window.__featuresLoaded = true;
