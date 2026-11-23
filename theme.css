@@ -374,3 +374,5 @@ a [data-lucide], a svg.lucide,
 .side-item *, .tabs button * { pointer-events: none; }
 .lp-hero-bg::after, .lp-hero-bg::before { display: none; }
 .dash-overlay { cursor: pointer; }
+/* anything added AFTER the marks table (e.g. "See more") stays below it */
+#mkArea > .tbl-wrap ~ * { order: 3; }
