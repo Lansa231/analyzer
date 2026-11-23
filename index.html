@@ -2483,7 +2483,7 @@ function approverPayments({ students, host }) {
       try {
         const d = await getDoc(doc(db, 'payments', key()));
         const on = d.exists() && d.data().paid !== false;
-        $("#pyT").checked = on; if (on && d.data().cls) $("#pyC").value = d.data().cls;
+        $("#pyT").checked = on; if (on && d.data().cls) $("#pyC").value = d.data().cls; 
         show();
       } catch (e) { $("#pyMsg").innerHTML = `<div class="err">${esc(friendly(e))}</div>`; }
       busy(false);
