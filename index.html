@@ -3348,8 +3348,11 @@ function tabAttendance({roster, rosterAll, papers, attAll}){
     rosterCounts[c] = (rosterCounts[c] || 0) + 1;
   });
 
-  // Flat list of marked students
-  const list = Object.values(sel.att).sort((a,b) => (b.at || 0) - (a.at || 0));
+  // Flat list of marked students (optionally filtered by the "Show center" chooser)
+  const allList = Object.values(sel.att).sort((a,b) => (b.at || 0) - (a.at || 0));
+  if (state.dvAtView && !centerCounts[state.dvAtView]) state.dvAtView = '';   // reset if this paper has no one from that center
+  const viewCtr = state.dvAtView || '';
+  const list = viewCtr ? allList.filter(a => (a.center || 'No center') === viewCtr) : allList;
 
   host.innerHTML = `
   <div class="card">
@@ -3420,7 +3423,14 @@ function tabAttendance({roster, rosterAll, papers, attAll}){
     </div>
     <div style="margin-top:8px"><button type="button" id="dvAtPdf" class="btn btn-ghost btn-sm" style="width:auto"><i data-lucide="file-text"></i> Download attendance PDF</button></div>
     <div id="dvAtMsg"></div>
-    <p class="sub" style="margin:10px 0 6px"><b>${list.length}</b> student${list.length===1?'':'s'} attended this paper.</p>
+    <div class="row" style="margin-top:10px">
+      <div style="max-width:280px"><label style="margin-top:0">Show center</label>
+        <select id="dvAtView">
+          <option value="">All centers (${allList.length})</option>
+          ${centerNames.map(c => `<option value="${esc(c)}"${viewCtr === c ? ' selected' : ''}>${esc(c)} (${centerCounts[c]})</option>`).join('')}
+        </select></div>
+    </div>
+    <p class="sub" style="margin:10px 0 6px"><b>${list.length}</b> student${list.length===1?'':'s'} attended this paper${viewCtr ? ' at <b>' + esc(viewCtr) + '</b>' : ''}.</p>
     ${list.length ? `<div class="tbl-wrap"><table>
       <tr><th>#</th><th>Name</th><th>Barcode</th><th>Center</th><th>Marked by</th><th></th></tr>
       ${list.map((a,i) => {
@@ -3448,6 +3458,7 @@ function tabAttendance({roster, rosterAll, papers, attAll}){
     tabAttendance({ roster, rosterAll, papers, attAll });
   };
     $("#dvAtC").onchange = e => { state.dvAtCenter = e.target.value; };
+    $("#dvAtView").onchange = e => { state.dvAtView = e.target.value; tabAttendance({ roster, rosterAll, papers, attAll }); };
   // Add a student
   const add = async () => {
     const v = $("#dvAtB").value.trim().toUpperCase();
@@ -3505,11 +3516,11 @@ function tabAttendance({roster, rosterAll, papers, attAll}){
     downloadAttendancePDF({
       paper: sel,
       roster: rosterAll,
-      att: attAll,
+att: viewCtr ? attAll.filter(a => (a.center || 'No center') === viewCtr) : attAll,
       examiner: {
         uid: user.uid,
         fullName: profile.fullName,
-        center: 'All Centers'
+center: viewCtr || 'All Centers'
       },
       onlyMine: false,
       showDays: true,
