@@ -4374,7 +4374,8 @@ function drawMarksPane(students, papers){
       The <b>Center</b> column is where this student sat <b>this paper</b>.
       Change it if they attended a different center — past papers keep their own center.
     </p>
-    ${list.length ? `<div class="tbl-wrap"><table>
+    <div id="mkArea" style="display:flex;flex-direction:column"><div id="lastMarkBox" style="order:1"></div>
+    ${list.length ? `<div class="tbl-wrap" style="order:2;min-width:0"><table>
       <tr><th>Student</th><th>NIC</th><th>Center (this paper)</th>
           <th>Marks / ${sel.max}</th><th>%</th><th>Grade</th></tr>
       ${list.map(s => {
@@ -4395,7 +4396,9 @@ function drawMarksPane(students, papers){
         </tr>`;
       }).join('')}
     </table></div>` : '<p class="sub">No students are marked present for this paper yet. Add them in the Students tab → Paper attendance.</p>'}
-  </div>`;
+  </div></div>`;
+
+  paintLastMark();
 
   /* ── mark input handler ─────────────────────────────────────────────── */
   document.querySelectorAll('[data-mk]').forEach(inp => inp.onchange = async () => {
@@ -4425,7 +4428,9 @@ function drawMarksPane(students, papers){
         });
       }
       $("#svLbl").textContent = '✓ saved';
-
+  if(v == null){ const lm = getLastMark(); if(lm && lm.pid === sel.id && lm.nic === nic) setLastMark(null); }
+      else setLastMark({ pid:sel.id, title:sel.title, nic, name:st.fullName, barcode:st.barcode||'', center, mark:v, max:sel.max, at:Date.now() });
+      paintLastMark();
       sel.meta = sel.meta || {};
       if(v == null) delete sel.meta[nic];
       else          sel.meta[nic] = { n: st.fullName, c: center };
@@ -4481,6 +4486,35 @@ function drawMarksPane(students, papers){
       }
     }catch(e){ $("#svLbl").textContent = '⚠ ' + friendly(e); }
   });
+}
+  /* ===== Last-entered mark widget ===== */
+const LM_KEY = () => 'ca_lastmark_' + (user?.uid || '');
+function getLastMark(){
+  if(state.lastMark !== undefined) return state.lastMark;
+  try{ state.lastMark = JSON.parse(localStorage.getItem(LM_KEY()) || 'null'); }catch(e){ state.lastMark = null; }
+  return state.lastMark;
+}
+function setLastMark(v){
+  state.lastMark = v;
+  try{ v ? localStorage.setItem(LM_KEY(), JSON.stringify(v)) : localStorage.removeItem(LM_KEY()); }catch(e){}
+}
+function paintLastMark(){
+  const box = $("#lastMarkBox"); if(!box) return;
+  const m = getLastMark();
+  if(!m){ box.innerHTML = ''; return; }
+  const p = pct(m.mark, m.max);
+  const t = new Date(m.at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  box.innerHTML = `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px;margin:0 0 12px;border:1.5px solid var(--brand);border-radius:12px;background:var(--brand-soft)">
+    <div style="font-size:1.4rem"><i data-lucide="history"></i></div>
+    <div style="flex:1;min-width:180px">
+      <div class="sub" style="margin:0;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em">Last mark entered</div>
+      <div style="font-weight:800"><a class="nl" href="#/student/${encodeURIComponent(m.nic)}">${esc(m.name)}</a></div>
+      <div class="sub" style="margin:0;font-size:.74rem">Barcode ${esc(m.barcode || '—')} · ${esc(m.title || '')} · ${esc(t)}</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:1.5rem;font-weight:800;color:var(--brand);line-height:1.1">${m.mark} <span style="font-size:.9rem;color:var(--muted)">/ ${m.max}</span></div>
+      <span class="pill ${gCls(p)}">${p}% · Grade ${grade(p)}</span>
+    </div></div>`;
 }
 function tabAnalytics({papers}){
   const S=studentsFromMarks(papers).filter(s=>s.avg!=null);
