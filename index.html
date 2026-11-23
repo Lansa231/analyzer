@@ -3167,6 +3167,7 @@ papersAll.forEach(p=>{
     ${rows.map(r=>`<tr><td class="mono">${esc(r.p.date||'—')}</td><td>${esc(r.p.title)}</td><td class="mono"><b>${r.m}</b> / ${r.p.max}</td><td><span class="pill ${gCls(r.pc)}">${r.pc}%</span></td><td><span class="pill ${gCls(r.pc)}">${grade(r.pc)}</span></td><td>${r.rank} / ${r.n}</td><td>${r.p.published?'Published':'Hidden'}</td></tr>`).join('')}</table></div></div>`
     :'<div class="card"><p class="sub">No marks entered for this student yet.</p></div>'}`;
        if(rows.length) lazyChart('sv', $("#svC"), () => ({type:'line',data:{labels:rows.map(r=>r.p.title),datasets:[{label:'Score %',data:rows.map(r=>r.pc),borderColor:'#0369a1',backgroundColor:'rgba(3,105,161,.12)',fill:true,tension:.35,pointRadius:5,pointBackgroundColor:'#06b6d4'}]},options:{scales:{y:{min:0,max:100}}}}));
+    if($("#svEdit")) $("#svEdit").onclick = () => studentEditCard($("#svEditBox"), s, true, () => studentView());
     $("#svDel").onclick=async()=>{
       if(!confirm('Remove this student? Their marks will be deleted.')) return;
       busy(true);
