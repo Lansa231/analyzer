@@ -3405,6 +3405,11 @@ function tabAttendance({roster, rosterAll, papers, attAll}){
       </div>
     </div>
     <div class="row" style="margin-top:10px">
+          <div><label style="margin-top:0">Center</label>
+        <select id="dvAtC">
+          <option value="">Student's own center (auto)</option>
+          ${(state.lists?.centers || []).map(c => `<option${state.dvAtCenter === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}
+        </select></div>
       <div style="flex:1;min-width:220px"><label style="margin-top:0">Barcode (or NIC)</label>
         <div style="display:flex;gap:6px;align-items:stretch">
           <input id="dvAtB" placeholder="Scan or type, then press Enter" autocomplete="off" maxlength="12" style="flex:1;min-width:0">
@@ -3442,6 +3447,7 @@ function tabAttendance({roster, rosterAll, papers, attAll}){
     state.attPaper = e.target.value;
     tabAttendance({ roster, rosterAll, papers, attAll });
   };
+    $("#dvAtC").onchange = e => { state.dvAtCenter = e.target.value; };
   // Add a student
   const add = async () => {
     const v = $("#dvAtB").value.trim().toUpperCase();
@@ -3461,7 +3467,7 @@ function tabAttendance({roster, rosterAll, papers, attAll}){
       nic: s.id,
       barcode: s.barcode || '',
       name: s.fullName,
-      center: s.center || '',
+         center: state.dvAtCenter || s.center || '',
       batch: sel.batch || state.batch,
       by: profile.fullName || '',
       byNickname: profile.nickname || '',
