@@ -250,7 +250,7 @@ body.yt-locked{overflow:hidden}
     w.id = 'rankWidget'; w.className = 'card';
     w.style.cssText = 'background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:0;display:flex;align-items:center;gap:18px;flex-wrap:wrap';
     w.innerHTML = '<div style="font-size:3rem;line-height:1">\ud83c\udfc5</div><div style="flex:1;min-width:180px"><div style="opacity:.9;font-size:.85rem">Your rank - ' + esc(latest.title) +
-      '</div><div style="font-size:2.2rem;font-weight:800;line-height:1.1">#' + r[latest.pid] + '</div><div style="opacity:.9;font-size:.82rem">You are in the top 100 across all centers</div></div>';
+      '</div><div style="font-size:2.2rem;font-weight:800;line-height:1.1">#' + r[latest.pid] + '</div><div style="opacity:.9;font-size:.82rem">You are in the top 150 across all centers</div></div>';
     sum.insertAdjacentElement('afterend', w);
   }
 
