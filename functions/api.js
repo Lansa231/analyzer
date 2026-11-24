@@ -4,7 +4,7 @@
    Bindings needed: DB (D1 database), FIREBASE_PROJECT_ID (text), FIREBASE_SERVICE_ACCOUNT (secret, only for deleting logins).
    Save this file as  functions/api.js  in your GitHub repo. */
  
-class Deny extends Error {}
+class Deny extends Error {} 
 class Missing extends Error {}
 const deny = m => { throw new Deny(m); };
 const COLS = ['admins','teachers','students','changeRequests','nics','barcodes','pending','papers','marks','fileLists','settings','attendance','examiners','approvers','payments'];
