@@ -194,7 +194,7 @@ async function handle(b, uid, env) {
   }
 
   if (op === 'myranks') {
-    /* each student sees only their OWN rank, and only if they are in the top 100 of that paper across all centers (Online center ignored) */
+    /* each student sees only their OWN rank, and only if they are in the top 150 of that paper across all centers (Online center ignored) */
     if (!c.signedIn) deny();
     const s = await c.get('students', c.uid); if (!s) deny();
     const key = skeyOf(s), batch = s.batch || '2027 A/L', ranks = {};
@@ -208,7 +208,7 @@ async function handle(b, uid, env) {
       const online = ONLINE_RE.test(s.center || '');
       const pool = rows.filter(x => ONLINE_RE.test(x.center || '') === online);
       const rank = 1 + pool.filter(x => x.mark > mine.mark).length;
-      ranks[r.id] = (online || rank <= 100) ? rank : null;
+      ranks[r.id] = (online || rank <= 150) ? rank : null;
     }
       return { ranks };
   }
